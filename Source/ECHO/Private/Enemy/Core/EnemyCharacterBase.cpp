@@ -26,9 +26,7 @@ AEnemyCharacterBase::AEnemyCharacterBase()
 	m_abilitySystemComponent = CreateDefaultSubobject<UCombatAbilitySystemComponent>(TEXT("AbilitySystem"));
 	m_attributeSet = CreateDefaultSubobject<UCombatAttributeSet>(TEXT("AttributeSet"));
 	m_combat = CreateDefaultSubobject<UCombat>(TEXT("Combat"));
-
 	m_traversal = CreateDefaultSubobject<UEnemyTraversal>(TEXT("Traversal"));
-
 	m_defense = CreateDefaultSubobject<UDefense>(TEXT("Defense"));
 }
 
@@ -39,7 +37,7 @@ EDefenseResult AEnemyCharacterBase::ResolveTargetDefense_Implementation(AActor* 
 
 float AEnemyCharacterBase::GetAttackRate(const FEnemyActionData& action) const
 {
-	const bool attack = action.m_kind != EEnemyAction::Guard && action.m_kind != EEnemyAction::Dodge
+	const bool attack = action.m_kind != EEnemyAction::Guard && action.m_kind != EEnemyAction::Dodge 
 		&& action.m_kind != EEnemyAction::Recovery && action.m_kind != EEnemyAction::Presentaiton;
 	return FMath::Clamp(m_definition && m_definition->m_commonRate && attack ? m_definition->m_attackRate : action.m_playRate, .1f, 2.f);
 }
@@ -283,7 +281,6 @@ float AEnemyCharacterBase::GetMeleeDistance() const
 	return FMath::Max(m_meleeDist, GetCapsuleComponent()->GetScaledCapsuleRadius() + radius + m_bodyMargin);
 }
 
-
 bool AEnemyCharacterBase::CanDecide() const
 {
 	return !m_traversal->IsTraversing() && IsCombatActive() && !IsActing() && !m_defense->IsBusy() && IsValid(m_combatTarget) && GetWorld()->GetTimeSeconds() >= m_readyTime;
@@ -308,7 +305,6 @@ bool AEnemyCharacterBase::CanUseAction(int32 _actionIndex, float _distance) cons
 	if (action.m_launch && !CanLiftTarget(m_combatTarget)) { return false; }
 	if (action.m_backSpeed > 0.f && !CanEvade(action)) return false;
 
-
 	const double* cooldown = m_actionCooldowns.Find(action.m_actionId);
 	const float distance = _distance >= 0.f ? _distance : FVector::Dist2D(GetActorLocation(), m_combatTarget->GetActorLocation());
 
@@ -326,7 +322,6 @@ bool AEnemyCharacterBase::CanRushAttack(float _distance) const
 	}
 	return false;
 }
-
 
 int32 AEnemyCharacterBase::FindComboAction(FName _actionId) const
 {
@@ -477,7 +472,6 @@ bool AEnemyCharacterBase::RequestAction(FName _actionId)
 		return false;
 	}
 
-
 	if (m_definition->m_actions[m_activeIndex].m_kind == EEnemyAction::Guard) m_defense->ConsumeGuardRequest();
 
 	const bool continuing = !m_nextActionId.IsNone() && m_definition->m_actions[m_activeIndex].m_actionId == m_nextActionId;
@@ -502,10 +496,8 @@ bool AEnemyCharacterBase::RequestAction(FName _actionId)
 		aiController->StopMovement();
 	}
 
-
 	GetCharacterMovement()->StopMovementImmediately();
 	if (airborne) { GetCharacterMovement()->Velocity.Z = verticalSpeed; }
-
 
 	FVector targetDirection = m_combatTarget->GetActorLocation() - GetActorLocation();
 	targetDirection.Z = 0;
@@ -553,8 +545,8 @@ void AEnemyCharacterBase::FinishAction(bool _cancelled)
 	{
 
 		if (!_cancelled && action->m_kind != EEnemyAction::Guard && action->m_kind != EEnemyAction::Dodge) { m_lastAction = action->m_actionId; }
-
 		m_actionCooldowns.Add(action->m_actionId, GetWorld()->GetTimeSeconds() + action->m_cooldown);
+		
 		if (!_cancelled && !dodged && m_definition && m_comboSteps < FMath::Clamp(m_definition->m_maxComboSteps, 1, 10))
 		{
 			m_nextActionId = SelectComboBranch(*action, m_bActionHit, m_bActionBlocked);
@@ -565,11 +557,8 @@ void AEnemyCharacterBase::FinishAction(bool _cancelled)
 			m_nextActionId = NAME_None;
 		}
 
-
 		m_readyTime = GetWorld()->GetTimeSeconds() + (m_nextActionId.IsNone() ? FMath::Max(0.05f, action->m_recovery) : FMath::Max(0.f, action->m_comboGap));
-
 	}
-
 
 	if (action && action->m_airOnly && m_nextActionId.IsNone()) { m_combat->EndLift(); }
 
@@ -579,7 +568,7 @@ void AEnemyCharacterBase::FinishAction(bool _cancelled)
 	}
 
 	m_activeIndex = INDEX_NONE;
-
+	
 	if (!_cancelled) m_defense->AttackFinished();
 
 	m_combat->ResetWindows();
@@ -590,7 +579,6 @@ void AEnemyCharacterBase::FinishAction(bool _cancelled)
 
 void AEnemyCharacterBase::CancelAction()
 {
-
 	m_combat->EndLift();
 
 	m_abilitySystemComponent->CancelAbilities();

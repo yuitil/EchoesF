@@ -76,7 +76,6 @@ void UCombat::EndPlay(const EEndPlayReason::Type _reason)
 	Super::EndPlay(_reason);
 }
 
-
 void UCombat::BeginHitWindow(float _damageScale)
 {
 	m_hitScale = FMath::Max(0.0f, _damageScale);
@@ -140,7 +139,6 @@ void UCombat::TickComponent(float _deltaTime, ELevelTick _type, FActorComponentT
 		return;
 	}
 	
-
 	FVector start = mesh->GetSocketLocation(m_baseSocket);
 	FVector end = mesh->GetSocketLocation(m_tipSocket);
 	FCollisionObjectQueryParams objects;
