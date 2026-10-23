@@ -38,6 +38,10 @@ struct FComboStepData
 	UPROPERTY(EditAnywhere)
 	float LaunchForce = 0.f;
 
+	//この攻撃が敵1体に当たったときに得るエネルギー
+	UPROPERTY(EditAnywhere)
+	float m_EnergyGain = 10.f;
+
 	//コンボ入力受付開始タイミング
 	UPROPERTY(EditAnywhere)
 	float ComboWindowStart = 0.5f;
@@ -68,6 +72,7 @@ struct FComboStepData
 	float m_AirLungeDistance = 30.f;
 };
 
+class UComboDataAsset;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class ECHO_API UCombatComponent : public UActorComponent
@@ -76,6 +81,8 @@ class ECHO_API UCombatComponent : public UActorComponent
 
 public:
 	UCombatComponent();
+
+	virtual void BeginPlay() override;
 
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
 		FActorComponentTickFunction* ThisTickFunction) override;
@@ -118,6 +125,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Combo")
 	TArray<FComboStepData> ComboSteps;
 
+	//コンボの設定データ（設定されていれば、こちらの内容を ComboSteps として使う）
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Combo")
+	TObjectPtr<UComboDataAsset> ComboData;
+
 	//攻撃開始時に入力方向へ向き直るまでの時間（0なら瞬時）
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Combo")
 	float m_AttackTurnDuration;
@@ -146,6 +157,10 @@ protected:
 	//次に回避が使用可能になるまでのクールダウン
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Dodge")
 	float m_DodgeCooldown;
+
+	//攻撃の当たり判定（黄色・赤の球）を表示する
+	UPROPERTY(EditAnywhere, Category = "Combat|Debug")
+	bool m_bDebugDrawHit = false;
 
 private:
 	//攻撃方向を決める（吸い付き対象がいればOutTargetに入る）

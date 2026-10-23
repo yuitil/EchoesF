@@ -3,7 +3,7 @@
 #include "Ghost/AI/BTService_GhostFindTarget.h"
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
-#include "Enemy/EnemyChara.h"
+#include "Combat/EnemyQuery.h"
 #include "Engine/OverlapResult.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -36,12 +36,12 @@ void UBTService_GhostFindTarget::TickNode(UBehaviorTreeComponent& OwnerComp, uin
 		FCollisionObjectQueryParams(ECC_Pawn), FCollisionShape::MakeSphere(m_SearchRadius), Params);
 
 	//生きている敵の中で一番近いものを選ぶ
-	AEnemyChara* Nearest = nullptr;
+	AActor* Nearest = nullptr;
 	float NearestDistSq = TNumericLimits<float>::Max();
 	for (const FOverlapResult& Result : Overlaps)
 	{
-		AEnemyChara* Enemy = Cast<AEnemyChara>(Result.GetActor());
-		if (!Enemy || Enemy->IsHidden() || Enemy->GetCurrentState() == FEEnemyState::Dead) continue;
+		AActor* Enemy = Result.GetActor();
+		if (!EnemyQuery::IsAliveEnemy(Enemy)) continue;
 
 		//プレイヤーから離れすぎた敵は無視する
 		if (Leader && FVector::DistSquared2D(Leader->GetActorLocation(), Enemy->GetActorLocation())

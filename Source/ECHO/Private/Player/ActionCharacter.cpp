@@ -13,6 +13,8 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Combat/EnemyQuery.h"
+#include "Engine/OverlapResult.h"
 #include "DrawDebugHelpers.h"
 
 AActionCharacter::AActionCharacter(const FObjectInitializer& ObjectInitializer)
@@ -26,13 +28,13 @@ AActionCharacter::AActionCharacter(const FObjectInitializer& ObjectInitializer)
     m_CurrentEnergy(0.f),
     m_iActiveGhostCount(0),
     m_iMaxGhostCount(5),
-    m_LockOnCameraInterpSpeed(5.f),
+    m_LockOnCameraInterpSpeed(4.f),
     m_LockOnCameraOffsetY(60.f),
     m_LockOnPitchMin(-45.f),
     m_LockOnPitchMax(20.f),
     m_SideBlendRange(0.5f),
     m_TargetFocusBias(0.5f),
-    m_LockOnInterpSpeedNear(12.f),
+    m_LockOnInterpSpeedNear(8.f),
     m_JumpPressedTime(0.f),
     m_JumpHoldThreshold(0.2f),
     m_JumpZVelocityShort(1500.f),
@@ -75,14 +77,14 @@ AActionCharacter::AActionCharacter(const FObjectInitializer& ObjectInitializer)
     //壁の衝突テスト
     CameraBoom->bDoCollisionTest = true;
     //カメラが反応するチャンネルををWorldStaticのみにする（変えたい）
-    CameraBoom->ProbeChannel = ECC_GameTraceChannel1;
-    //判定用の球の大きさを少し小さくしてがたつきを抑える
-    CameraBoom->ProbeSize = 10.f;
+    CameraBoom->ProbeChannel = ECC_Camera;
+    //判定用の球の大きさ
+    CameraBoom->ProbeSize = 15.f;
     //右肩越しオフセット
     CameraBoom->SocketOffset = FVector(0.f, 60.f, 50.f);
     //カメラスムージング
     CameraBoom->bEnableCameraLag = true;
-    CameraBoom->CameraLagSpeed = 15.f;
+    CameraBoom->CameraLagSpeed = 10.f;
 
     FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
@@ -125,6 +127,12 @@ void AActionCharacter::BeginPlay()
         {
             Sub->AddMappingContext(DefaultMappingContext, 0);
         }
+
+        if (PC->PlayerCameraManager)
+        {
+            PC->PlayerCameraManager->ViewPitchMin = -60.f;   //見下ろしの限界
+            PC->PlayerCameraManager->ViewPitchMax = 35.f;    //見上げの限界（地面に潜りにくくなる）
+        }
     }
 
     GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::White,
@@ -143,21 +151,21 @@ void AActionCharacter::Tick(float DeltaTime)
         UpdateLockOnCamera(DeltaTime);
     }
 
+    //戦闘中かどうかを更新
+    UpdateCombatState(DeltaTime);
+
     //キャラクターの現在の平行移動速度を取得
     const float Speed = GetVelocity().Size2D();
 
-    //速度が一定以上かチェック
-    if (Speed > 10.f)
+    //戦闘中でなく、一定以上の速度で走り続けたらダッシュ
+    if (Speed > 10.f && !m_bInCombat)
     {
-        //走っている時間を加算
         m_CurrentRunTime += DeltaTime;
-
-        //一定時間走り続けたら、自動的にダッシュモードへ移行
         if (m_CurrentRunTime >= m_TimeToSprint) StartSprint();
     }
     else
     {
-        //立ち止まったら計測リセットとダッシュ解除
+        //止まった、または戦闘に入ったらダッシュ解除
         m_CurrentRunTime = 0.f;
         StopSprint();
     }
@@ -185,17 +193,72 @@ void AActionCharacter::Attack()
     if (CombatComponent) CombatComponent->ExecuteAttack();
 }
 
+void AActionCharacter::UpdateCombatState(float DeltaTime)
+{
+    //毎フレームは不要なので0.25秒ごとに判定する
+    m_CombatCheckTimer -= DeltaTime;
+    if (m_CombatCheckTimer > 0.f) return;
+    m_CombatCheckTimer = 0.25f;
+
+    const float Now = GetWorld()->GetTimeSeconds();
+
+    //ロックオン中、または最近攻撃を当てていれば戦闘中
+    bool bCombat = (LockOnComponent && LockOnComponent->IsLockedOn())
+        || (Now - m_LastCombatTime < m_CombatLingerTime);
+
+    //それ以外は、近くに「誰かを狙っている敵」がいるかで判定
+    if (!bCombat)
+    {
+        TArray<FOverlapResult> Overlaps;
+        FCollisionQueryParams Params;
+        Params.AddIgnoredActor(this);
+        GetWorld()->OverlapMultiByObjectType(Overlaps, GetActorLocation(), FQuat::Identity,
+            FCollisionObjectQueryParams(ECC_Pawn), FCollisionShape::MakeSphere(m_CombatCheckRadius), Params);
+
+        for (const FOverlapResult& Result : Overlaps)
+        {
+            if (EnemyQuery::IsEngaged(Result.GetActor()))
+            {
+                bCombat = true;
+                break;
+            }
+        }
+    }
+
+    m_bInCombat = bCombat;
+}
+
+void AActionCharacter::OnHitEnemy(float EnergyGain)
+{
+    m_LastCombatTime = GetWorld()->GetTimeSeconds();
+
+    SetEnergy(m_CurrentEnergy + EnergyGain);
+
+    GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan,
+        FString::Printf(TEXT("Energy: %.1f / %.1f (Stock %d)"), m_CurrentEnergy, m_MaxEnergy, GetEnergyStock()));
+}
+
 void AActionCharacter::Dodge()
 {
     if (CombatComponent) CombatComponent->ExecuteDodge();
 }
 
-void AActionCharacter::OnHitEnemy(float EnergyGain)
+void AActionCharacter::Look(const FInputActionValue& Value)
 {
-    SetEnergy(m_CurrentEnergy + EnergyGain);
+    const FVector2D LookAxisVector = Value.Get<FVector2D>();
+    if (!Controller) return;
 
-    GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan,
-        FString::Printf(TEXT("Energy: %.1f / %.1f (Stock %d)"), m_CurrentEnergy, m_MaxEnergy, GetEnergyStock()));
+    //ロックオン中は右スティックをターゲット切り替えに使う
+    if (LockOnComponent && LockOnComponent->IsLockedOn())
+    {
+        LockOnComponent->TrySwitchTarget(LookAxisVector.X);
+        return;
+    }
+
+    //左右のカメラ回転
+    AddControllerYawInput(LookAxisVector.X);
+    //上下のカメラ回転
+    AddControllerPitchInput(LookAxisVector.Y);
 }
 
 void AActionCharacter::LockOn()
@@ -339,23 +402,6 @@ void AActionCharacter::StopSprint()
         if (MC->IsSprinting()) MC->SetSprinting(false);
 }
 
-void AActionCharacter::Look(const FInputActionValue& Value)
-{
-    const FVector2D LookAxisVector = Value.Get<FVector2D>();
-    if (!Controller) return;
-
-    //ロックオン中は右スティックをターゲット切り替えに使う
-    if (LockOnComponent && LockOnComponent->IsLockedOn())
-    {
-        LockOnComponent->TrySwitchTarget(LookAxisVector.X);
-        return;
-    }
-
-    //左右のカメラ回転
-    AddControllerYawInput(LookAxisVector.X);
-    //上下のカメラ回転
-    AddControllerPitchInput(LookAxisVector.Y);
-}
 
 void AActionCharacter::OnJumped_Implementation()
 {

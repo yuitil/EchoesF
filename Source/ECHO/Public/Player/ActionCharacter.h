@@ -114,11 +114,29 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Movement")
 	class UActionMovementComponent* GetActionMovementComponent() const;
 
+	//戦闘中かどうか（ダッシュの制限などに使う）
+	bool IsInCombat() const { return m_bInCombat; }
+
+private:
+	//この範囲内に「誰かを狙っている敵」がいたら戦闘中
+	UPROPERTY(EditAnywhere, Category = "Movement|Combat")
+	float m_CombatCheckRadius = 1500.f;
+
+	//最後に攻撃を当ててから、この秒数は戦闘中とみなす
+	UPROPERTY(EditAnywhere, Category = "Movement|Combat")
+	float m_CombatLingerTime = 4.f;
+
+	bool  m_bInCombat = false;
+	float m_LastCombatTime = -100.f;
+	float m_CombatCheckTimer = 0.f;
+
+	void UpdateCombatState(float DeltaTime);
+
 	// -----------------------------------------------------------------------
 	// ロックオン処理
 	// -----------------------------------------------------------------------
-
-		//ロックオンコンポーネント
+public:
+	//ロックオンコンポーネント
 	UPROPERTY(VisibleAnywhere)
 	ULockOnComponent* LockOnComponent;
 

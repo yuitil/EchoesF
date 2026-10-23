@@ -6,6 +6,7 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
+#include "Combat/EnemyQuery.h"
 
 #include "DrawDebugHelpers.h" //デバッグ用
 
@@ -161,12 +162,8 @@ bool ULockOnComponent::IsTargetValid(AActor* Target) const
 
 	if (Distance > m_LockOnBreakRange) return false;
 
-	//死亡チェック（Poolに戻ってもDestroyされてないので必須）
-	AEnemyChara* Enemy = Cast<AEnemyChara>(Target);
-	if (Enemy && Enemy->GetCurrentState() == FEEnemyState::Dead) return false;
-
-	//非表示チェック
-	if (Target->IsHidden()) return false;
+	//生きている敵か（旧敵・ボスの両方に対応。非表示のチェックも含む）
+	if (!EnemyQuery::IsAliveEnemy(Target)) return false;
 
 	return true;
 }
@@ -185,7 +182,7 @@ AActor* ULockOnComponent::FindBestTarget() const
 
 	//全エネミーを取得
 	TArray<AActor*> Enemies;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AEnemyChara::StaticClass(), Enemies);
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ACharacter::StaticClass(), Enemies);
 
 	AActor* BestTarget = nullptr;
 	float BestDot = -1.f;
@@ -228,7 +225,7 @@ AActor* ULockOnComponent::FindNextTarget(float Direction) const
 	FVector CurrentTargetLoc = CurrentTarget->GetActorLocation();
 
 	TArray<AActor*> Enemies;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AEnemyChara::StaticClass(), Enemies);
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ACharacter::StaticClass(), Enemies);
 
 	AActor* BestCandidate = nullptr;
 
@@ -280,7 +277,7 @@ void ULockOnComponent::DrawLockOnDebug() const
 	DrawDebugDirectionalArrow(World, ArrowStart, ArrowStart + CamRight * 300.f, 60.f, FColor::White, false, -1.f, 0, 4.f);
 
 	TArray<AActor*> Enemies;
-	UGameplayStatics::GetAllActorsOfClass(World, AEnemyChara::StaticClass(), Enemies);
+	UGameplayStatics::GetAllActorsOfClass(World, ACharacter::StaticClass(), Enemies);
 
 	for (AActor* Enemy : Enemies)
 	{
