@@ -13,6 +13,9 @@ class UCombatAttributeSet;
 class UCombat;
 class UEnemyTraversal;
 class UDefense;
+//
+class UEnemyTargeting;
+//
 class UGameplayAbility;
 class UBehaviorTree;
 struct FOnAttributeChangeData;
@@ -41,6 +44,10 @@ public:
 	
 	UFUNCTION(BlueprintNativeEvent, Category = "Enemy | Defense")
 	EDefenseResult ResolveTargetDefense(AActor* target) const;
+    //
+    UFUNCTION(BlueprintImplementableEvent, Category="Enemy|Defense")
+    void TargetGuardBroken(AActor* target);
+    //
 	UFUNCTION(BlueprintCallable, Category = "Enemy | Defense")
 	bool ApplyPerfectDodge(AActor* target);
 	
@@ -72,6 +79,9 @@ protected:
 	virtual float GetActionWeightMultiplier(const FEnemyActionData& _action) const { return 1.0f; }
 	virtual void OnAcceptedHit(AActor* _attacker){}
 	virtual void OnActionEnded(){}
+	//
+	virtual void OnAttackFinished() {}
+	//
 	void HealthChanged(const FOnAttributeChangeData& _data);
 	void SetState(EEnemyState _newState);
 	void SetHealthPool(float _max);
@@ -92,6 +102,11 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UAnimMontage> m_slowMontage;
 	float m_savedRate = 1.f;
+	//
+	float m_slowStart = 0.f;
+	float m_slowEnd = 0.f;
+	FName m_slowSection;
+	//
 	
 	int32 m_comboSteps = 0;
 
@@ -132,6 +147,11 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Enemy")
 	bool CanDecide() const;
+	//
+	virtual bool IsRepositioning() const { return false; }
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Enemy|Movement", meta=(DisplayName="Stationary"))
+    bool m_stationary = false;
+	//
 
 	UFUNCTION(BlueprintNativeEvent, Category = "Enemy | Air")
 	bool CanLiftTarget(AActor* target) const;
@@ -177,6 +197,10 @@ public:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "Defense"))
 	TObjectPtr<UDefense> m_defense;
+	//
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Enemy")
+	TObjectPtr<UEnemyTargeting> m_targeting;
+	//
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "Definition"))
 	TObjectPtr<UEnemyData> m_definition;

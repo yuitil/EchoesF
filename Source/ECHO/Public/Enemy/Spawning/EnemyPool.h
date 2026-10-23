@@ -44,6 +44,10 @@ public:
 	int32 GetInactiveEnemyCount() const { return m_inactivePool.Num(); }
 
 public:
+	//
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EnemyPool", meta = (DisplayName = "Enabled"))
+	bool m_enabled = true;
+	//
 	//敵のクラスを指定するためのプロパティ
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EnemyPool")
 	TSubclassOf<AEnemyChara> m_pEnemyClass;

@@ -4,6 +4,7 @@
 #include "Engine/DataAsset.h"
 #include "Combat/CombatTypes.h"
 #include "Animation/AnimMontage.h"
+#include "GameplayTagContainer.h"
 #include "EnemyData.generated.h"
 
 UENUM(BlueprintType)
@@ -36,6 +37,22 @@ struct ECHO_API FEnemyActionData
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy", meta = (DisplayName = "Id"))
 	FName m_actionId;
+    //
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Combat", meta=(DisplayName="Special Attack"))
+    bool m_special = false;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Combat", meta=(DisplayName="Hit Base Bone"))
+    FName m_hitBase;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Combat", meta=(DisplayName="Hit Tip Bone"))
+    FName m_hitTip;
+    //
+    //
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|GAS", meta=(DisplayName="Active Tags"))
+    FGameplayTagContainer m_activeTags;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|GAS", meta=(DisplayName="Required Tags"))
+    FGameplayTagContainer m_requiredTags;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|GAS", meta=(DisplayName="Blocked Tags"))
+    FGameplayTagContainer m_blockedTags;
+    //
 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy | Air", meta = (DisplayName = "Air Only"))
@@ -83,7 +100,8 @@ struct ECHO_API FEnemyActionData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy", meta = (DisplayName = "Max Distance", ClampMin = "0"))
 	float m_maxRange = 250.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy", meta = (DisplayName = "Weight", ClampMin = "0.01"))
+	//
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy", meta = (DisplayName = "Weight", ClampMin = "0"))
 	float m_weight = 1.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy", meta = (DisplayName = "Damage", ClampMin = "0"))
@@ -139,6 +157,10 @@ class ECHO_API UEnemyData : public UDataAsset
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "InitialHealth", ClampMin = "1"))
 	float m_initialHealth = 600.0f;
+    //
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Enemy|Combat", meta=(ClampMin="0", ClampMax="1", DisplayName="Special Attack Chance"))
+    float m_specialChance = .2f;
+    //
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Defense", meta = (DisplayName = "SpecialDefenseChacne", ClampMin = "0", ClampMax = "1"))
 	float m_defenseChance = 0.2f;

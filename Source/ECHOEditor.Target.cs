@@ -11,5 +11,7 @@ public class ECHOEditorTarget : TargetRules
 		DefaultBuildSettings = BuildSettingsVersion.V6;
 		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_7;
 		ExtraModuleNames.Add("ECHO");
+        //
+        ExtraModuleNames.Add("ECHOEditor");
 	}
 }

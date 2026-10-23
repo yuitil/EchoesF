@@ -1,5 +1,8 @@
 ﻿#include "Enemy/Boss/BossEnemyCharacter.h"
 #include "Enemy/Boss/BossObservation.h"
+//
+#include "Enemy/Boss/BossSpacing.h"
+//
 #include "AIController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "TimerManager.h"
@@ -9,6 +12,9 @@
 ABossEnemyCharacter::ABossEnemyCharacter()
 {
 	m_observation = CreateDefaultSubobject<UBossObservation>(TEXT("Observation"));
+	//
+	m_spacing = CreateDefaultSubobject<UBossSpacing>(TEXT("Spacing"));
+	//
 }
 
 UBossData* ABossEnemyCharacter::GetBossData() const
@@ -18,13 +24,10 @@ UBossData* ABossEnemyCharacter::GetBossData() const
 
 void ABossEnemyCharacter::BeginPlay()
 {
-	if (!m_definition)
-	{
-		m_definition = NewObject<UBossData>(this);
-	}
+	//
 	if (!GetBossData())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("%s: Boss requires an EB Boss Definition asset; using single-life fallback."), *GetName());
+		UE_LOG(LogTemp, Warning, TEXT("%s: Assign a BossData asset to Definition in the boss Blueprint."), *GetName());
 	}
 
 	Super::BeginPlay();
@@ -32,6 +35,9 @@ void ABossEnemyCharacter::BeginPlay()
 
 void ABossEnemyCharacter::HandleHealthDepleted()
 {
+	//
+	m_spacing->Stop();
+	//
 	const UBossData* data = GetBossData();
 	if (m_bossPhase == EBossPhase::PhaseOne && data && data->m_bSecondLife)
 	{
@@ -137,6 +143,9 @@ void ABossEnemyCharacter::ResetEncounter()
 	GetWorld()->GetTimerManager().ClearTimer(m_transitionTimer);
 	Super::ResetEncounter();
 	m_observation->Reset();
+	//
+	m_spacing->Reset();
+	//
 	SetLife(EBossPhase::PhaseOne);
 }
 
@@ -145,3 +154,15 @@ void ABossEnemyCharacter::EndPlay(const EEndPlayReason::Type _reason)
 	GetWorld()->GetTimerManager().ClearTimer(m_transitionTimer);
 	Super::EndPlay(_reason);
 }
+
+//
+bool ABossEnemyCharacter::IsRepositioning() const
+{
+ return m_spacing && m_spacing->IsSpacing();
+}
+
+void ABossEnemyCharacter::OnAttackFinished()
+{
+ m_spacing->Queue();
+}
+//

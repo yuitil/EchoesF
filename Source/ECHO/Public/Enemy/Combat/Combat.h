@@ -40,6 +40,7 @@ public:
 	
 	void BeginHitWindow(float _damageScale = 1.0f);
 	void EndHitWindow();
+	bool IsHitWindowOpen() const { return m_bHitWindow; }
 	void ResetWindows();
 	virtual void TickComponent(float _deltaTime, ELevelTick _type, FActorComponentTickFunction* _function) override;
 

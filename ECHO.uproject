@@ -4,6 +4,7 @@
 	"Category": "",
 	"Description": "",
 	"Modules": [
+        { "Name": "ECHOEditor", "Type": "Editor", "LoadingPhase": "PostEngineInit" },
 		{
 			"Name": "ECHO",
 			"Type": "Runtime",
@@ -12,7 +13,8 @@
 				"Engine",
 				"AIModule",
 				"CoreUObject",
-				"GameplayAbilities"
+				"GameplayAbilities",
+				"UMG"
 			]
 		}
 	],

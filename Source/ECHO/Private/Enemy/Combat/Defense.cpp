@@ -170,6 +170,9 @@ EDefenseResult UDefense::ResolveGuardChain(AActor* _attacker, bool _heavyAttack)
 {
 	AEnemyCharacterBase* enemy = Cast<AEnemyCharacterBase>(GetOwner());
 	const UEnemyData* data = enemy ? enemy->m_definition : nullptr;
+	//
+	if (!data) return EDefenseResult::None;
+	//
 	if (!data->m_useGuardBreak || !_heavyAttack)
 	{
 		ClearHeavyChain();

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
@@ -6,6 +6,9 @@
 #include "BossEnemyCharacter.generated.h"
 
 class UBossObservation;
+//
+class UBossSpacing;
+//
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FBossLifeEvent, EBossPhase, lifePhase);
 
@@ -16,6 +19,11 @@ class ECHO_API ABossEnemyCharacter : public AEnemyCharacterBase
 
 public:
 	ABossEnemyCharacter();
+	//
+	virtual bool IsRepositioning() const override;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Boss")
+	TObjectPtr<UBossSpacing> m_spacing;
+	//
 
 	virtual void ResetEncounter() override;
 	virtual float GetSpecialDefenseChance() const override;
@@ -49,6 +57,9 @@ protected:
 	virtual float GetActionWeightMultiplier(const FEnemyActionData& _action) const override;
 	virtual void OnAcceptedHit(AActor* _attacker) override;
 	virtual void OnActionEnded() override;
+	//
+	virtual void OnAttackFinished() override;
+	//
 
 private:
 	void SetLife(EBossPhase _newLife);
