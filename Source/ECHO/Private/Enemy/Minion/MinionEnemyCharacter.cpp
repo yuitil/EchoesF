@@ -69,6 +69,9 @@ void AMinionEnemyCharacter::HandleHealthDepleted()
 void AMinionEnemyCharacter::OnAcceptedHit(AActor* attacker)
 {
     Super::OnAcceptedHit(attacker);
+    //
+    m_formation->Provoke(attacker);
+    //
     const double now = GetWorld()->GetTimeSeconds();
     if (!IsCombatActive() || !m_hitMontage || now < m_nextHit || (IsActing() && !m_interruptAttack)) { return; }
     CancelAction();

@@ -14,6 +14,9 @@ class ECHOEDITOR_API UEnemyAnimBlueprintTools : public UBlueprintFunctionLibrary
     GENERATED_BODY()
 public:
     //
+    UFUNCTION(BlueprintCallable, Category="Enemy|Editor")
+    static FString InspectServices(UBehaviorTree* tree);
+    //
     UFUNCTION(BlueprintCallable, Category="Enemy|Editor", meta=(DevelopmentOnly))
     static bool SetMovementUpperPose(UAnimBlueprint* blueprint, UAnimSequence* pose, FName bone);
     //
@@ -32,5 +35,9 @@ public:
     static bool SetupLocomotion(UAnimBlueprint* blueprint, UBlendSpace* blend);
     UFUNCTION(BlueprintCallable, Category="Enemy|Editor", meta=(DevelopmentOnly))
     static int32 SetupMinionTree(UBehaviorTree* tree);
+    //
+    UFUNCTION(BlueprintCallable, Category="Enemy|Editor", meta=(DevelopmentOnly))
+    static int32 SplitMinionService(UBehaviorTree* tree);
+    //
 };
 //

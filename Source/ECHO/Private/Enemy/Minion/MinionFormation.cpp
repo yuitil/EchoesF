@@ -46,10 +46,39 @@ void UMinionFormation::ReleaseTurn()
     //
     if (m_hasTurn)
     {
+        GetWorld()->GetSubsystem<UMinionCombatDirector>()->ClearPlayerGuard(this);
         GetWorld()->GetSubsystem<UMinionCombatDirector>()->PauseTarget(m_target.Get(), m_groupRest);
     }
     m_hasTurn=false; m_gapSince=-1.; m_ready=GetWorld()->GetTimeSeconds()+FMath::Max(0.f,m_restTime);
+    if (IsProvoked()) m_ready=FMath::Min(m_ready,m_counterReady);
 }
+//
+void UMinionFormation::Provoke(AActor* attacker)
+{
+    auto* enemy = Enemy();
+    if (!enemy || !enemy->HasAuthority() || !enemy->IsCombatActive() || !IsValid(attacker) || attacker == enemy) return;
+    m_counterTarget = attacker;
+    if (!enemy->IsActing() || enemy->m_combatTarget == attacker)
+    {
+        if (enemy->m_combatTarget != attacker) ReleaseTurn();
+        enemy->m_combatTarget = attacker;
+        m_target = attacker;
+    }
+    const double now = GetWorld()->GetTimeSeconds();
+    if (m_counterUntil <= now) m_counterReady = now + FMath::Max(.2f, m_counterDelay);
+    m_counterUntil = now + FMath::Max(1.f, m_counterTime);
+    m_ready = FMath::Min(m_ready, m_counterReady);
+}
+bool UMinionFormation::WantsCounter() const
+{
+    const double now = GetWorld()->GetTimeSeconds();
+    return now >= m_counterReady && now < m_counterUntil;
+}
+bool UMinionFormation::IsProvoked() const
+{
+    return GetWorld()->GetTimeSeconds() < m_counterUntil;
+}
+//
 //
 void UMinionFormation::SetOrbit(bool enabled)
 {

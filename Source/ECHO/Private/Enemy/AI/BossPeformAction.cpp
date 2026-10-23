@@ -66,7 +66,7 @@ bool UBossPeformAction::StartAttack(UBehaviorTreeComponent& _ownerComp)
 {
 	auto* enemy = Cast<AEnemyCharacterBase>(_ownerComp.GetAIOwner()->GetPawn());
 
-	if (!enemy || !IsValid(enemy->m_combatTarget) || FVector::Dist2D(enemy->GetActorLocation(), enemy->m_combatTarget->GetActorLocation()) > FMath::Max(m_attackDist, enemy->GetMeleeDistance()) + 20.f ||
+	if (!enemy || !IsValid(enemy->m_combatTarget) || (!enemy->m_stationary && FVector::Dist2D(enemy->GetActorLocation(), enemy->m_combatTarget->GetActorLocation()) > FMath::Max(m_attackDist, enemy->GetMeleeDistance()) + 20.f) ||
 		(!enemy->m_stationary && !enemy->GetCharacterMovement()->IsFalling() && FVector::Dist2D(enemy->GetActorLocation(), enemy->m_combatTarget->GetActorLocation()) < enemy->GetMeleeDistance() - 30.f && HasRetreatSpace(enemy)) ||
 		!enemy->RequestAction()) {
 		return false;

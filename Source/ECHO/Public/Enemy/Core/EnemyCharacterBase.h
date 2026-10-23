@@ -15,6 +15,7 @@ class UEnemyTraversal;
 class UDefense;
 //
 class UEnemyTargeting;
+class UEnemyHitEffect;
 //
 class UGameplayAbility;
 class UBehaviorTree;
@@ -29,6 +30,10 @@ class ECHO_API AEnemyCharacterBase : public ACharacter, public IAbilitySystemInt
 	GENERATED_BODY()
 
 public:
+	//
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Enemy|Hit FX")
+	TObjectPtr<UEnemyHitEffect> m_hitFx;
+	//
 	AEnemyCharacterBase();
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	virtual float TakeDamage(float _damage, const FDamageEvent& _damageEvent, AController* _instigator, AActor* _causer) override;

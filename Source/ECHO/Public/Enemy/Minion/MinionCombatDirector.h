@@ -12,8 +12,14 @@ public:
     void Register(UMinionFormation* member);
     void Unregister(UMinionFormation* member);
     void Update();
+    //
+    AActor* GetPlayerGuard(AActor* player);
+    void ClearPlayerGuard(UMinionFormation* member);
+    //
     void PauseTarget(AActor* target,float duration);
 private:
+    TWeakObjectPtr<UMinionFormation> m_playerGuard;
+    double m_guardCheck = 0.;
     TArray<TWeakObjectPtr<UMinionFormation>> m_members;
     double m_nextUpdate = 0.;
     TMap<TWeakObjectPtr<AActor>,double> m_pauses;

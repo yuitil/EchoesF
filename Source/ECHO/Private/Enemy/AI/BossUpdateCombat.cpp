@@ -20,7 +20,7 @@
 #include "Components/SkeletalMeshComponent.h"
 
 #include "Enemy/AI/EnemyTargeting.h"
-#include "Enemy/Minion/MinionFormation.h"
+
 //
 UBossUpdateCombat::UBossUpdateCombat()
 {
@@ -45,12 +45,14 @@ void UBossUpdateCombat::TickNode(UBehaviorTreeComponent& _ownerComp, uint8* _nod
 	//
 	AActor* target = enemy->m_targeting->SelectTarget();
 	//
+    //
+    if (!IsValid(target) && enemy->IsActing()) enemy->CancelAction();
+    //
 	enemy->m_combatTarget = target;
 	bool alive = enemy->IsCombatActive();
 
 	blackboard->SetValueAsObject(TEXT("TargetActor"), target);
-	const auto* formation=enemy->FindComponentByClass<UMinionFormation>();
-	const bool turn=!formation || formation->HasTurn();
+	const bool turn=true;
 	blackboard->SetValueAsBool(TEXT("CanDecide"), turn && enemy->CanDecide());
 	blackboard->SetValueAsBool(TEXT("CanMove"), turn && !enemy->m_stationary && enemy->CanDecide() && !enemy->m_traversal->IsTraversing() && !enemy->IsActing() && !enemy->m_defense->IsBusy() && enemy->GetPendingComboId().IsNone() && IsValid(target) && FVector::Dist2D(enemy->GetActorLocation(), target->GetActorLocation()) > enemy->GetMeleeDistance() + 20.f);
 	blackboard->SetValueAsFloat(TEXT("Distance"), target ? FVector::Dist2D(enemy->GetActorLocation(), target->GetActorLocation()) : 99999.0f);

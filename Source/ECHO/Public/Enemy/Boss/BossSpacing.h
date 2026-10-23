@@ -11,6 +11,26 @@ class ECHO_API UBossSpacing : public UActorComponent
     GENERATED_BODY()
 public:
     UBossSpacing();
+    //
+    UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category="Boss|Spacing")
+    bool IsTargetDown(AActor* target) const;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing")
+    bool m_onlyDown = false;
+    //
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing")
+    bool m_watchIdle = false;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing", meta=(ClampMin="0.2"))
+    float m_idleDelay = 1.2f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing", meta=(ClampMin="0"))
+    float m_idleSpeed = 80.f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing", meta=(ClampMin="100"))
+    float m_watchRange = 900.f;
+    //
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing")
+    FName m_downTag;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing")
+    TArray<TObjectPtr<class UAnimMontage>> m_downMontages;
+    //
     void Queue();
     void Stop();
     UFUNCTION(BlueprintPure, Category="Boss|Spacing")
@@ -23,6 +43,12 @@ public:
     float m_cooldown = 6.f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing", meta=(ClampMin="1"))
     float m_distance = 400.f;
+    //
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing")
+    FName m_retreatAction;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing", meta=(ClampMin="0.1",ClampMax="1"))
+    float m_retreatRatio = .85f;
+    //
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing", meta=(ClampMin="1"))
     float m_speed = 200.f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing", meta=(ClampMin="0", ClampMax="60"))
@@ -38,6 +64,8 @@ protected:
     virtual void TickComponent(float delta, ELevelTick type, FActorComponentTickFunction* tick) override;
     virtual void EndPlay(const EEndPlayReason::Type reason) override;
 private:
+    double m_idleSince = -1.;
+    bool m_watching = false;
     bool m_active = false;
     bool m_moving = false;
     bool m_oldTurn = false;

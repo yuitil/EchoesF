@@ -9,6 +9,9 @@
 #include "AbilitySystemComponent.h"
 #include "GameplayEffect.h"
 #include "Enemy/Combat/Combat.h"
+//
+#include "Enemy/Combat/EnemyHitEffect.h"
+//
 #include "Enemy/Combat/Defense.h"
 #include "Enemy/Abilities/ActionAbility.h"
 #include "Components/CapsuleComponent.h"
@@ -37,6 +40,9 @@ AEnemyCharacterBase::AEnemyCharacterBase()
 	m_combat = CreateDefaultSubobject<UCombat>(TEXT("Combat"));
 	m_traversal = CreateDefaultSubobject<UEnemyTraversal>(TEXT("Traversal"));
 	m_defense = CreateDefaultSubobject<UDefense>(TEXT("Defense"));
+	//
+	m_hitFx = CreateDefaultSubobject<UEnemyHitEffect>(TEXT("HitFX"));
+	//
 }
 
 EDefenseResult AEnemyCharacterBase::ResolveTargetDefense_Implementation(AActor* target) const
@@ -251,6 +257,14 @@ float AEnemyCharacterBase::TakeDamage(float _damage, const FDamageEvent& _damage
 	}
 
 	const float applied = FMath::Min(GetHealth(), accepted);
+	//
+	if (applied > 0.f && result != EDefenseResult::Guard)
+	{
+		const FHitResult* hit = _damageEvent.IsOfType(FPointDamageEvent::ClassID)
+			? &static_cast<const FPointDamageEvent&>(_damageEvent).HitInfo : nullptr;
+		m_hitFx->PlayHit(attacker, hit);
+	}
+	//
 	OnAcceptedHit(attacker);
 
 	m_defense->RememberHit(attacker);

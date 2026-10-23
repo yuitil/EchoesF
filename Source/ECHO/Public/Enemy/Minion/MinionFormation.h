@@ -16,6 +16,25 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Formation") 
     bool m_holdDuel = true;
     //
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Formation")
+    bool m_nearestFirst = true;
+    //
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Formation|Counter")
+    bool m_allowSupport = false;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Formation|Counter", meta=(ClampMin="0.2"))
+    float m_counterDelay = .7f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Formation|Counter", meta=(ClampMin="1"))
+    float m_counterTime = 8.f;
+    UFUNCTION(BlueprintCallable, Category="Formation|Counter")
+    void Provoke(AActor* attacker);
+    UFUNCTION(BlueprintPure, Category="Formation|Counter")
+    bool WantsCounter() const;
+    bool IsProvoked() const;
+    AActor* GetCounterTarget() const { return m_counterTarget.Get(); }
+    void ConsumeCounter() { m_counterUntil = 0.; }
+    //
+    //
+    //
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Formation", meta=(ClampMin="1",ClampMax="2")) 
     int32 m_attackers = 2;
 
@@ -78,6 +97,9 @@ protected:
     virtual void EndPlay(const EEndPlayReason::Type reason) override;
     virtual void TickComponent(float delta, ELevelTick type, FActorComponentTickFunction* fn) override;
 private:
+    TWeakObjectPtr<AActor> m_counterTarget;
+    double m_counterUntil = 0.;
+    double m_counterReady = 0.;
     void SetOrbit(bool enabled);
     bool m_orbit=false;
     bool m_oldOrient=false;

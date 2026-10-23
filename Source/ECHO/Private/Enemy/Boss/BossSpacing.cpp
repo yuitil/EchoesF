@@ -9,6 +9,11 @@
 #include "NavigationPath.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/World.h"
+//
+#include "GameFramework/Character.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Animation/AnimInstance.h"
+//
 
 //
 UBossSpacing::UBossSpacing()
@@ -16,12 +21,36 @@ UBossSpacing::UBossSpacing()
     PrimaryComponentTick.bCanEverTick = true;
 }
 
+//
+bool UBossSpacing::IsTargetDown_Implementation(AActor* target) const
+{
+    if (!IsValid(target)) return false;
+    if (!m_downTag.IsNone() && target->ActorHasTag(m_downTag)) return true;
+    const auto* character = Cast<ACharacter>(target);
+    const auto* anim = character && character->GetMesh() ? character->GetMesh()->GetAnimInstance() : nullptr;
+    if (anim) for (const auto& montage : m_downMontages)
+        if (montage && anim->Montage_IsPlaying(montage)) return true;
+    return false;
+}
+//
 void UBossSpacing::Queue()
 {
     auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
     if (!m_enabled || m_active || !enemy || !enemy->HasAuthority() || !enemy->IsCombatActive()
         || enemy->IsActing() || !enemy->GetPendingComboId().IsNone()
         || !enemy->GetCharacterMovement()->IsMovingOnGround() || GetWorld()->GetTimeSeconds() < m_next) return;
+    //
+    if (m_onlyDown && !IsTargetDown(enemy->m_combatTarget) && !m_watching) return;
+    //
+    if (IsValid(enemy->m_combatTarget) && !IsTargetDown(enemy->m_combatTarget)
+        && FVector::Dist2D(enemy->GetActorLocation(),enemy->m_combatTarget->GetActorLocation()) < FMath::Max(enemy->GetMeleeDistance()+60.f,m_distance)*m_retreatRatio)
+    {
+        if (auto* ai=Cast<AAIController>(enemy->GetController())) ai->StopMovement();
+        enemy->SetActorRotation((enemy->m_combatTarget->GetActorLocation()-enemy->GetActorLocation()).GetSafeNormal2D().Rotation());
+        const bool retreat=!m_retreatAction.IsNone() && enemy->RequestAction(m_retreatAction);
+        m_next=GetWorld()->GetTimeSeconds()+(retreat ? FMath::Max(.1f,m_cooldown) : .25f);
+        return;
+    }
     m_active = true;
     m_start = GetWorld()->GetTimeSeconds();
     m_repath = m_start + .3;
@@ -50,11 +79,26 @@ void UBossSpacing::Reset()
     Stop();
     m_healed = 0.f;
     m_next = 0.;
+    m_idleSince = -1.;
+    m_watching = false;
 }
 
 void UBossSpacing::TickComponent(float delta, ELevelTick type, FActorComponentTickFunction* tick)
 {
     Super::TickComponent(delta, type, tick);
+    //
+    auto* observer = Cast<AEnemyCharacterBase>(GetOwner());
+    auto* watched = observer ? observer->m_combatTarget.Get() : nullptr;
+    const double clock = GetWorld()->GetTimeSeconds();
+    const bool quiet = m_watchIdle && observer && IsValid(watched)
+        && !observer->m_defense->IsTargetAttacking(watched)
+        && watched->GetVelocity().Size2D() <= m_idleSpeed
+        && FVector::Dist2D(observer->GetActorLocation(),watched->GetActorLocation()) <= m_watchRange;
+    if (!quiet) m_idleSince = -1.;
+    else if (m_idleSince < 0.) m_idleSince = clock;
+    m_watching = quiet && clock-m_idleSince >= FMath::Max(.2f,m_idleDelay);
+    if (!m_active && m_onlyDown) Queue();
+    //
     if (!m_active) return;
     auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
     auto* target = enemy ? enemy->m_combatTarget.Get() : nullptr;
@@ -63,10 +107,17 @@ void UBossSpacing::TickComponent(float delta, ELevelTick type, FActorComponentTi
     if (!m_enabled || !enemy || !enemy->HasAuthority() || !IsValid(target) || !ai
         || !enemy->IsCombatActive() || enemy->IsActing() || enemy->m_defense->IsBusy()
         || enemy->m_traversal->IsTraversing() || !enemy->GetCharacterMovement()->IsMovingOnGround()
-        || now - m_start >= FMath::Max(.1f, m_duration)) { Stop(); return; }
+        || (m_onlyDown ? (!IsTargetDown(target) && (!m_watching || now-m_start >= FMath::Max(.1f,m_duration))) : now - m_start >= FMath::Max(.1f, m_duration))) { Stop(); return; }
     const float distance = FVector::Dist2D(enemy->GetActorLocation(), target->GetActorLocation());
+    if (!IsTargetDown(target) && distance < FMath::Max(enemy->GetMeleeDistance()+60.f,m_distance)*m_retreatRatio)
+    {
+        Stop();
+        enemy->SetActorRotation((target->GetActorLocation()-enemy->GetActorLocation()).GetSafeNormal2D().Rotation());
+        if (!m_retreatAction.IsNone()) enemy->RequestAction(m_retreatAction);
+        return;
+    }
     const bool attacking = enemy->m_defense->IsTargetAttacking(target);
-    if (attacking && distance < enemy->GetMeleeDistance() + 120.f) { Stop(); return; }
+    if (attacking) { Stop(); return; }
     if (now < m_start + .3) return;
     if (!m_moving)
     {

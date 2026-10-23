@@ -3,6 +3,7 @@
 #include "Enemy/Core/EnemyCharacterBase.h"
 #include "Enemy/Combat/Defense.h"
 #include "AIController.h"
+#include "Enemy/AI/EnemyTargeting.h"
 #include "NavigationSystem.h"
 #include "NavigationPath.h"
 #include "Engine/World.h"
@@ -64,19 +65,23 @@ void UMinionCombatDirector::Update()
         if(duel && owner) continue;
         if(duel) limit=1;
         //
-        if (active.Num() >= limit || (pause && now<*pause) || (!active.IsEmpty() && (now-active[0]->m_granted < active[0]->m_secondDelay || !active[0]->Enemy()->IsActing())))
+        const bool counterWaiting = group.ContainsByPredicate([](const auto* member){return !member->m_hasTurn && member->WantsCounter();});
+        if (active.Num() >= limit || (!counterWaiting && ((pause && now<*pause) || (!active.IsEmpty() && (now-active[0]->m_granted < active[0]->m_secondDelay || !active[0]->Enemy()->IsActing())))))
         { for(auto* member:group) member->m_gapSince=-1.; continue; }
         UMinionFormation* best = nullptr; float score = TNumericLimits<float>::Max();
         for (auto* member : group)
         {
             auto* enemy = member->Enemy();
+            const bool counter = member->WantsCounter();
             const double since=member->m_gapSince; member->m_gapSince=-1.;
             if (member->m_hasTurn || now < member->m_ready || !enemy->CanDecide()) continue;
             const FVector offset = enemy->GetActorLocation()-target->GetActorLocation();
             const float distance = offset.Size2D();
             auto* ai = Cast<AAIController>(enemy->GetController());
-            if (!ai || !ai->LineOfSightTo(target) || distance > member->m_joinRange || (enemy->m_stationary && distance > enemy->GetMeleeDistance()+20.f)) continue;
-            if (!active.IsEmpty())
+            if (!ai || !ai->LineOfSightTo(target) || distance > member->m_joinRange) continue;
+            if (enemy->m_stationary && (!enemy->m_definition || !enemy->m_definition->m_actions.ContainsByPredicate([distance](const auto& action){return action.m_weight>0.f && distance>=action.m_minRange && distance<=action.m_maxRange;}))) continue;
+            if (!active.IsEmpty() && !counter && !member->m_allowSupport) continue;
+            if (!active.IsEmpty() && !counter)
             {
                 const FVector first = (active[0]->Enemy()->GetActorLocation()-target->GetActorLocation()).GetSafeNormal2D();
                 if (FVector::DotProduct(first,offset.GetSafeNormal2D()) > FMath::Cos(FMath::DegreesToRadians(member->m_gapAngle))) continue;
@@ -88,11 +93,66 @@ void UMinionCombatDirector::Update()
                 if (!path || !path->IsValid() || path->IsPartial()) continue;
             }
             member->m_gapSince=since<0. ? now : since;
-            if(now-member->m_gapSince<FMath::Max(.1f,member->m_gapTime)) continue;
-            const float candidate = distance - FMath::Min(150.,FMath::Max(0.,now-member->m_ready)*10.);
+            if(!counter && now-member->m_gapSince<FMath::Max(.1f,member->m_gapTime)) continue;
+            //
+            const float candidate = (member->m_nearestFirst ? distance : distance - FMath::Min(150.,FMath::Max(0.,now-member->m_ready)*10.)) - (counter ? 100000.f : 0.f);
+            //
             if (candidate < score) { score=candidate; best=member; }
         }
-        if (best) { best->PrepareAttack(); best->m_hasTurn=true; best->m_granted=now; if(duel) m_duelists.Add(target,best); for(auto* member:group) member->m_gapSince=-1.; }
+        if (best) { best->PrepareAttack(); best->ConsumeCounter(); best->m_hasTurn=true; best->m_granted=now; if(duel) m_duelists.Add(target,best); for(auto* member:group) member->m_gapSince=-1.; }
     }
+}
+//
+
+//
+void UMinionCombatDirector::ClearPlayerGuard(UMinionFormation* member)
+{
+    if (m_playerGuard.Get() == member) { m_playerGuard.Reset(); m_guardCheck=0.; }
+}
+AActor* UMinionCombatDirector::GetPlayerGuard(AActor* player)
+{
+    if (!IsValid(player)) return nullptr;
+    auto eligible = [player](UMinionFormation* member)
+    {
+        auto* enemy = member ? member->Enemy() : nullptr;
+        return member && member->m_enabled && enemy && enemy->IsCombatActive() && !enemy->m_stationary && enemy->m_targeting
+            && FVector::Dist2D(enemy->GetActorLocation(),player->GetActorLocation()) <= enemy->m_targeting->m_range;
+    };
+    if (eligible(m_playerGuard.Get()))
+    {
+        auto* enemy = m_playerGuard->Enemy();
+        if (enemy->m_combatTarget == player || (!enemy->IsActing() && !m_playerGuard->HasTurn()))
+        {
+            const double now = GetWorld()->GetTimeSeconds();
+            if (enemy->IsActing() || now < m_guardCheck) return enemy;
+            m_guardCheck = now + FMath::Max(.2f,enemy->m_targeting->m_pathCheck);
+            auto* ai = Cast<AAIController>(enemy->GetController());
+            if (ai && ai->LineOfSightTo(player))
+            {
+                auto* path = UNavigationSystemV1::FindPathToLocationSynchronously(GetWorld(),enemy->GetActorLocation(),player->GetActorLocation(),enemy);
+                if (path && path->IsValid() && !path->IsPartial()) return enemy;
+            }
+            m_playerGuard->ReleaseTurn();
+        }
+    }
+    m_playerGuard.Reset();
+    m_guardCheck=0.;
+    float score = TNumericLimits<float>::Max();
+    for (auto& item : m_members)
+    {
+        auto* member = item.Get();
+        if (!eligible(member)) continue;
+        auto* enemy = member->Enemy();
+        if (enemy->m_combatTarget == player && (member->HasTurn() || enemy->IsActing()))
+        { m_playerGuard = member; return enemy; }
+        if (member->HasTurn() || enemy->IsActing() || member->IsProvoked()) continue;
+        auto* ai = Cast<AAIController>(enemy->GetController());
+        if (!ai || !ai->LineOfSightTo(player)) continue;
+        auto* path = UNavigationSystemV1::FindPathToLocationSynchronously(GetWorld(),enemy->GetActorLocation(),player->GetActorLocation(),enemy);
+        if (!path || !path->IsValid() || path->IsPartial()) continue;
+        const float distance = FVector::Dist2D(enemy->GetActorLocation(),player->GetActorLocation());
+        if (distance < score) { m_playerGuard = member; score = distance; }
+    }
+    return m_playerGuard.IsValid() ? m_playerGuard->Enemy() : nullptr;
 }
 //

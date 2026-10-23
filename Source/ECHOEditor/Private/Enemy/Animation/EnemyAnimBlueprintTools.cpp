@@ -264,3 +264,57 @@ int32 UEnemyAnimBlueprintTools::SetupMinionTree(UBehaviorTree* tree)
 #endif
 }
 //
+
+//
+#include "Enemy/AI/BossUpdateCombat.h"
+#include "Enemy/AI/MinionUpdateCombat.h"
+#include "Serialization/ArchiveReplaceObjectRef.h"
+#include "AIGraphNode.h"
+int32 UEnemyAnimBlueprintTools::SplitMinionService(UBehaviorTree* tree)
+{
+    if (!tree) return 0;
+    TArray<UObject*> objects;
+    GetObjectsWithOuter(tree,objects,true);
+    TMap<UObject*,UObject*> replacements;
+    for (auto* object : objects)
+    {
+        if (auto* old = Cast<UBossUpdateCombat>(object))
+        {
+            auto* service = NewObject<UMinionUpdateCombat>(old->GetOuter(),NAME_None,RF_Transactional);
+            service->InitializeNode(old->GetParentNode(),old->GetExecutionIndex(),0,old->GetTreeDepth());
+            replacements.Add(old,service);
+        }
+    }
+    objects.Add(tree);
+    for (auto* object : objects)
+    {
+        object->Modify();
+        FArchiveReplaceObjectRef<UObject> archive(object,replacements,EArchiveReplaceObjectFlags::IgnoreOuterRef | EArchiveReplaceObjectFlags::IgnoreArchetypeRef);
+        if (auto* graphNode = Cast<UAIGraphNode>(object); graphNode && Cast<UMinionUpdateCombat>(graphNode->NodeInstance))
+            graphNode->ClassData = FGraphNodeClassData(UMinionUpdateCombat::StaticClass(),FString());
+    }
+    tree->MarkPackageDirty();
+    return replacements.Num();
+}
+//
+//
+#include "BehaviorTree/BTCompositeNode.h"
+#include "BehaviorTree/BTTaskNode.h"
+#include "BehaviorTree/BTService.h"
+FString UEnemyAnimBlueprintTools::InspectServices(UBehaviorTree* tree)
+{
+    FString result;
+    TFunction<void(UBTCompositeNode*)> visit=[&](UBTCompositeNode* node)
+    {
+        if (!node) return;
+        for (const auto& service : node->Services) if (service) result+=service->GetClass()->GetName()+TEXT(";");
+        for (const auto& child : node->Children)
+        {
+            visit(child.ChildComposite);
+            if (child.ChildTask) for (const auto& service : child.ChildTask->Services) if(service) result+=service->GetClass()->GetName()+TEXT(";");
+        }
+    };
+    if (tree) visit(tree->RootNode);
+    return result;
+}
+//
