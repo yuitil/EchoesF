@@ -79,4 +79,37 @@ private:
 
 	void ApplyCapsuleTextures();
 	UTexture2D* GetCapsuleTexture(int32 Index) const;
+
+	//----------------
+	//HPバー
+	//----------------
+protected:
+	UPROPERTY(meta = (BindWidgetOptional))
+	UProgressBar* HPBar;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	UProgressBar* HPTrailBar;      //減った分を遅れて追いかける帯
+
+	UPROPERTY(EditAnywhere, Category = "Echo|HP", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float m_HPBarStartRatio = 0.283f;
+
+	UPROPERTY(EditAnywhere, Category = "Echo|HP", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float m_HPBarEndRatio = 0.931f;
+
+	//被弾してから帯が追いかけ始めるまでの時間
+	UPROPERTY(EditAnywhere, Category = "Echo|HP")
+	float m_TrailDelay = 0.4f;
+
+	//帯が減る速さ（1秒あたりのHP割合）
+	UPROPERTY(EditAnywhere, Category = "Echo|HP")
+	float m_TrailSpeed = 0.8f;
+
+private:
+	FDelegateHandle m_HPHandle;
+	float m_HPRatio = 1.f;
+	float m_TrailRatio = 1.f;
+	float m_TrailWaitTime = 0.f;
+
+	void HandleHPChanged(float Current, float Max);
+	float ToHPBarPercent(float Ratio) const { return FMath::Lerp(m_HPBarStartRatio, m_HPBarEndRatio, Ratio); }
 };

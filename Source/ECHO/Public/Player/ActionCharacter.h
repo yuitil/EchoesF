@@ -23,6 +23,8 @@ DECLARE_MULTICAST_DELEGATE_TwoParams(FOnEnergyChanged, float, float);
 //分身の数・状態が変わったとき
 DECLARE_MULTICAST_DELEGATE(FOnGhostsChanged);
 
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnHPChanged, float, float);   //UI用（現在HP, 最大HP）
+
 UCLASS()
 class ECHO_API AActionCharacter : public ACharacter
 {
@@ -109,6 +111,44 @@ protected:
 	//手に持たせる剣のメッシュ
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	UStaticMeshComponent* WeaponMesh;
+
+public:
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
+		AController* EventInstigator, AActor* DamageCauser) override;
+
+	float GetCurrentHP() const { return m_CurrentHP; }
+	float GetMaxHP()     const { return m_MaxHP; }
+	bool  IsDead()       const { return m_bIsDead; }
+
+	FOnHPChanged OnHPChanged;
+
+	//デバッグ用：コンソールで「DebugDamage 30」と打つとダメージを受ける
+	UFUNCTION(Exec)
+	void DebugDamage(float Amount = 10.f);
+
+private:
+	UPROPERTY(EditAnywhere, Category = "Health", meta = (AllowPrivateAccess = "true", ClampMin = "1"))
+	float m_MaxHP = 100.f;
+
+	UPROPERTY(VisibleInstanceOnly, Category = "Health", meta = (AllowPrivateAccess = "true"))
+	float m_CurrentHP = 0.f;
+
+	//被弾後の無敵時間（多段ヒット防止）
+	UPROPERTY(EditAnywhere, Category = "Health", meta = (AllowPrivateAccess = "true"))
+	float m_HitInvincibleTime = 0.5f;
+
+	//回避中は無敵にするか
+	UPROPERTY(EditAnywhere, Category = "Health", meta = (AllowPrivateAccess = "true"))
+	bool m_bDodgeInvincible = true;
+
+	UPROPERTY(EditAnywhere, Category = "Health|Debug", meta = (AllowPrivateAccess = "true"))
+	bool m_bDebugHP = true;
+
+	float m_LastDamageTime = -999.f;
+	bool  m_bIsDead = false;
+
+	void SetHP(float NewHP);
+	void Die();
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Movement")

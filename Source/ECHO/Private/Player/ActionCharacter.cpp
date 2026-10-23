@@ -15,6 +15,8 @@
 #include "Components/StaticMeshComponent.h"
 #include "Combat/EnemyQuery.h"
 #include "Engine/OverlapResult.h"
+#include "Engine/DamageEvents.h"
+#include "Kismet/GameplayStatics.h"
 #include "DrawDebugHelpers.h"
 
 AActionCharacter::AActionCharacter(const FObjectInitializer& ObjectInitializer)
@@ -107,6 +109,7 @@ void AActionCharacter::BeginPlay()
     //最大エネルギーは「1本分 × 最大本数」で決める
     m_MaxEnergy = m_EnergyPerStock * m_iMaxEnergyStock;
     SetEnergy(0.f);
+    SetHP(m_MaxHP);
 
     if (CombatComponent)
     {
@@ -135,10 +138,10 @@ void AActionCharacter::BeginPlay()
         }
     }
 
-    GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::White,
-        FString::Printf(TEXT("GhostClass:%s  Recorder:%s"),
-            GhostCharacterClass ? *GhostCharacterClass->GetName() : TEXT("NULL"),
-            GhostRecorder ? TEXT("OK") : TEXT("NULL")));
+    //GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::White,
+    //    FString::Printf(TEXT("GhostClass:%s  Recorder:%s"),
+    //    GhostCharacterClass ? *GhostCharacterClass->GetName() : TEXT("NULL"),
+    //    GhostRecorder ? TEXT("OK") : TEXT("NULL")));
 }
 
 void AActionCharacter::Tick(float DeltaTime)
@@ -191,6 +194,67 @@ void AActionCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 void AActionCharacter::Attack()
 {
     if (CombatComponent) CombatComponent->ExecuteAttack();
+}
+
+float AActionCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
+    AController* EventInstigator, AActor* DamageCauser)
+{
+    if (m_bIsDead || DamageAmount <= 0.f) return 0.f;
+
+    //回避中は無敵
+    if (m_bDodgeInvincible && CombatComponent && CombatComponent->IsDodging())
+    {
+        if (m_bDebugHP) GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Cyan, TEXT("Dodge! No Damage"));
+        return 0.f;
+    }
+
+    //被弾直後の無敵時間
+    const float Now = GetWorld()->GetTimeSeconds();
+    if (Now - m_LastDamageTime < m_HitInvincibleTime) return 0.f;
+
+    const float Actual = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+    if (Actual <= 0.f) return 0.f;
+
+    m_LastDamageTime = Now;
+    SetHP(m_CurrentHP - Actual);
+
+    if (m_bDebugHP)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red,
+            FString::Printf(TEXT("Damage %.0f from %s"), Actual, *GetNameSafe(DamageCauser)));
+    }
+
+    if (m_CurrentHP <= 0.f) Die();
+    return Actual;
+}
+
+void AActionCharacter::SetHP(float NewHP)
+{
+    m_CurrentHP = FMath::Clamp(NewHP, 0.f, m_MaxHP);
+    OnHPChanged.Broadcast(m_CurrentHP, m_MaxHP);
+
+    if (m_bDebugHP && GEngine)
+    {
+        //キーを固定すると同じ行が上書きされ続ける（画面左上に常に表示）
+        //GEngine->AddOnScreenDebugMessage(1001, 9999.f, FColor::Green,FString::Printf(TEXT("HP: %.0f / %.0f"), m_CurrentHP, m_MaxHP));
+    }
+}
+
+void AActionCharacter::Die()
+{
+    if (m_bIsDead) return;
+    m_bIsDead = true;
+
+    //とりあえず操作不能にするだけ（演出は後で）
+    if (APlayerController* PC = Cast<APlayerController>(GetController())) DisableInput(PC);
+    GetCharacterMovement()->DisableMovement();
+
+    if (m_bDebugHP) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("PLAYER DEAD"));
+}
+
+void AActionCharacter::DebugDamage(float Amount)
+{
+    UGameplayStatics::ApplyDamage(this, Amount, GetController(), this, nullptr);
 }
 
 void AActionCharacter::UpdateCombatState(float DeltaTime)

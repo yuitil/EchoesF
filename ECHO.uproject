@@ -4,7 +4,11 @@
 	"Category": "",
 	"Description": "",
 	"Modules": [
-        { "Name": "ECHOEditor", "Type": "Editor", "LoadingPhase": "PostEngineInit" },
+		{
+			"Name": "ECHOEditor",
+			"Type": "Editor",
+			"LoadingPhase": "PostEngineInit"
+		},
 		{
 			"Name": "ECHO",
 			"Type": "Runtime",
@@ -28,6 +32,10 @@
 		},
 		{
 			"Name": "GameplayAbilities",
+			"Enabled": true
+		},
+		{
+			"Name": "NiagaraFluids",
 			"Enabled": true
 		}
 	]
