@@ -132,15 +132,20 @@ void UCombat::TickComponent(float _deltaTime, ELevelTick _type, FActorComponentT
 		return;
 	}
 
-	UMeshComponent* mesh = m_useWeapon ? m_weapon.Get() : enemy->GetMesh();
-	if (!IsValid(mesh) || mesh->GetOwner() != enemy || !mesh->DoesSocketExist(m_baseSocket) || !mesh->DoesSocketExist(m_tipSocket))
+	//
+    const bool body = !action->m_hitBase.IsNone() && !action->m_hitTip.IsNone();
+    const FName base = body ? action->m_hitBase : m_baseSocket;
+    const FName tip = body ? action->m_hitTip : m_tipSocket;
+    UMeshComponent* mesh = body ? enemy->GetMesh() : (m_useWeapon ? m_weapon.Get() : enemy->GetMesh());
+    //
+	if (!IsValid(mesh) || mesh->GetOwner() != enemy || !mesh->DoesSocketExist(base) || !mesh->DoesSocketExist(tip))
 	{
 		m_hasPreviousHit = false;
 		return;
 	}
 	
-	FVector start = mesh->GetSocketLocation(m_baseSocket);
-	FVector end = mesh->GetSocketLocation(m_tipSocket);
+	FVector start = mesh->GetSocketLocation(base);
+	FVector end = mesh->GetSocketLocation(tip);
 	FCollisionObjectQueryParams objects;
 	objects.AddObjectTypesToQuery(ECC_Pawn);
 
@@ -202,6 +207,12 @@ void UCombat::TickComponent(float _deltaTime, ELevelTick _type, FActorComponentT
 		m_hitActors.Add(hitActor);
 		if (dodging || enemy->IsAttackSlowed()) { continue; }
 		const EDefenseResult response = enemy->ResolveTargetDefense(hitActor);
+        //
+        if (action->m_special && action->m_unblockable && response == EDefenseResult::Guard)
+        {
+            enemy->TargetGuardBroken(hitActor);
+        }
+        //
 		if (response == EDefenseResult::PerfectDodge || (!action->m_unblockable && (response == EDefenseResult::Guard || response == EDefenseResult::Parry || response == EDefenseResult::Deflect)))
 		{
 			enemy->AttackDefended_Implementation(hitActor, response);

@@ -13,6 +13,9 @@ AEnemyPool::AEnemyPool()
 void AEnemyPool::BeginPlay()
 {
 	Super::BeginPlay();
+	//
+	if (!m_enabled) { return; }
+	//
 
 	//プールの初期化
 	InitPool();
@@ -55,6 +58,9 @@ void AEnemyPool::InitPool()
 
 AEnemyChara* AEnemyPool::SpawnEnemyAtRandomLocation()
 {
+	//
+	if (!m_enabled) { return nullptr; }
+	//
 	//ナビゲーションシステムを取得
 	UNavigationSystemV1* navSystem = UNavigationSystemV1::GetCurrent(GetWorld());
 	if (!navSystem) { return nullptr; }
@@ -90,6 +96,9 @@ AEnemyChara* AEnemyPool::SpawnEnemyAtRandomLocation()
 //プールから敵を取り出す関数
 AEnemyChara* AEnemyPool::SpawnEnemy(FVector _location, FRotator _rotation)
 {
+	//
+	if (!m_enabled) { return nullptr; }
+	//
 	AEnemyChara* enemy = nullptr;
 
 	//待機中のプールに敵がいるか確認

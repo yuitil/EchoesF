@@ -1,4 +1,7 @@
 ﻿#include "Enemy/Core/EnemyCharacterBase.h"
+//
+#include "Enemy/AI/EnemyTargeting.h"
+//
 #include "Enemy/Core/EnemyTraversal.h"
 #include "Combat/GAS/CombatAbilitySystemComponent.h"
 #include "Combat/GAS/CombatAttributeSet.h"
@@ -18,9 +21,15 @@
 #include "AIController.h"
 #include "TimerManager.h"
 #include "NavigationSystem.h"
+//
+#include "Player/CombatComponent.h"
+//
 
 AEnemyCharacterBase::AEnemyCharacterBase()
 {
+	//
+	m_targeting = CreateDefaultSubobject<UEnemyTargeting>(TEXT("Targeting"));
+	//
 	PrimaryActorTick.bCanEverTick = true;
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 	m_abilitySystemComponent = CreateDefaultSubobject<UCombatAbilitySystemComponent>(TEXT("AbilitySystem"));
@@ -82,6 +91,21 @@ bool AEnemyCharacterBase::ApplyPerfectDodge(AActor* target)
 	}
 	m_slowMontage = action->m_montage;
 	m_savedRate = anim->Montage_GetPlayRate(m_slowMontage);
+	//
+	const float position = anim->Montage_GetPosition(m_slowMontage);
+	m_slowStart = 0.f;
+	m_slowEnd = m_slowMontage->GetPlayLength();
+	m_slowSection = anim->Montage_GetCurrentSection(m_slowMontage);
+	for (const auto& track : m_slowMontage->SlotAnimTracks)
+	{
+		if (const auto* segment = track.AnimTrack.GetSegmentAtTime(position))
+		{
+			m_slowStart = segment->StartPos;
+			m_slowEnd = segment->StartPos + segment->GetLength();
+			break;
+		}
+	}
+	//
 	anim->Montage_SetPlayRate(m_slowMontage, m_savedRate * FMath::Clamp(m_definition->m_slowRate, .1f, 1.f));
 	m_nextActionId = NAME_None;
 	m_combat->EndLift();
@@ -100,9 +124,25 @@ void AEnemyCharacterBase::RestoreAttackRate()
 void AEnemyCharacterBase::Tick(float _delta)
 {
 	Super::Tick(_delta);
+	//
+	if (m_slowMontage)
+	{
+		auto* anim = GetMesh()->GetAnimInstance();
+		const float position = anim ? anim->Montage_GetPosition(m_slowMontage) : -1.f;
+		if (!anim || !anim->Montage_IsPlaying(m_slowMontage) || position < m_slowStart || position >= m_slowEnd
+			|| anim->Montage_GetCurrentSection(m_slowMontage) != m_slowSection)
+		{
+			RestoreAttackRate();
+		}
+	}
+	//
 	const auto* action = GetActiveAction();
 	if (!HasAuthority() || !action || action->m_backSpeed <= 0.f || !GetCharacterMovement()->IsMovingOnGround()) { return; }
-	const float time = (GetWorld()->GetTimeSeconds() - m_actionStart) * GetAttackRate(*action) * action->m_montage->RateScale;
+	//
+    const auto* anim = GetMesh()->GetAnimInstance();
+    if (!anim || !anim->Montage_IsPlaying(action->m_montage)) return;
+    const float time = anim->Montage_GetPosition(action->m_montage);
+    //
 	if (time >= action->m_backStart && time < action->m_backEnd)
 	{
 		FNavLocation floor;
@@ -218,6 +258,15 @@ float AEnemyCharacterBase::TakeDamage(float _damage, const FDamageEvent& _damage
 	m_abilitySystemComponent->ApplyHealthDelta(-accepted, _instigator ? _instigator->GetPawn() : _causer, _causer);
 	m_defense->PublishResult(attacker, result);
 
+	//
+	if (applied > 0.f && IsValid(attacker))
+	{
+		if (auto* combat = attacker->FindComponentByClass<UCombatComponent>())
+		{
+			if (combat->IsPlayingAttackMontage()) combat->OnHitEnemy.Broadcast(applied);
+		}
+	}
+	//
 	return applied;
 }
 
@@ -283,7 +332,7 @@ float AEnemyCharacterBase::GetMeleeDistance() const
 
 bool AEnemyCharacterBase::CanDecide() const
 {
-	return !m_traversal->IsTraversing() && IsCombatActive() && !IsActing() && !m_defense->IsBusy() && IsValid(m_combatTarget) && GetWorld()->GetTimeSeconds() >= m_readyTime;
+	return !IsRepositioning() && !m_traversal->IsTraversing() && IsCombatActive() && !IsActing() && !m_defense->IsBusy() && IsValid(m_combatTarget) && GetWorld()->GetTimeSeconds() >= m_readyTime;
 }
 
 bool AEnemyCharacterBase::CanUseAction(int32 _actionIndex, float _distance) const
@@ -294,6 +343,10 @@ bool AEnemyCharacterBase::CanUseAction(int32 _actionIndex, float _distance) cons
 	}
 
 	const FEnemyActionData& action = m_definition->m_actions[_actionIndex];
+    //
+    if (!m_abilitySystemComponent || !m_abilitySystemComponent->HasAllMatchingGameplayTags(action.m_requiredTags)
+        || m_abilitySystemComponent->HasAnyMatchingGameplayTags(action.m_blockedTags)) return false;
+    //
 	const auto* character = Cast<ACharacter>(m_combatTarget.Get());
 	if (action.m_airOnly != GetCharacterMovement()->IsFalling()) { return false; }
 
@@ -375,19 +428,28 @@ int32 AEnemyCharacterBase::ChooseAction() const
 		}
 	}
 
+    //
+    TArray<int32> specials;
+    for (int32 i=0; i<m_definition->m_actions.Num(); ++i)
+        if (m_definition->m_actions[i].m_special && m_definition->m_actions[i].m_weight > 0.f && m_definition->m_actions[i].m_comboEntry && CanUseAction(i)) specials.Add(i);
+    if (!specials.IsEmpty() && FMath::FRand() < FMath::Clamp(m_definition->m_specialChance,0.f,1.f))
+        return specials[FMath::RandRange(0,specials.Num()-1)];
+    //
 	float sum = 0;
 	TArray<TPair<int32, float>> choices;
 	for (int32 i = 0; i < m_definition->m_actions.Num(); ++i)
 	{
 		const FEnemyActionData& action = m_definition->m_actions[i];
 
-		if (!CanUseAction(i) || !action.m_comboEntry || action.m_kind == EEnemyAction::Guard || action.m_reactOnly)
+		if (!CanUseAction(i) || action.m_special || !action.m_comboEntry || action.m_kind == EEnemyAction::Guard || action.m_reactOnly)
 		{
 			continue;
 		}
 
 		const float repeat = action.m_actionId == m_lastAction ? FMath::Clamp(m_definition->m_repeatWeight, 0.01f, 1.f) : 1.f;
-		const float weight = FMath::Max(0.01f, action.m_weight) * GetActionWeightMultiplier(action) * repeat;
+		//
+		const float weight = FMath::Max(0.f, action.m_weight) * GetActionWeightMultiplier(action) * repeat;
+		//
 
 		if (weight > 0)
 		{
@@ -506,7 +568,10 @@ bool AEnemyCharacterBase::RequestAction(FName _actionId)
 		SetActorRotation(targetDirection.Rotation());
 	}
 
-	m_abilitySystemComponent->SetLooseGameplayTagCount(CombatTags::StateActing, 1);
+	//
+    m_abilitySystemComponent->AddLooseGameplayTags(m_definition->m_actions[m_activeIndex].m_activeTags);
+    //
+    m_abilitySystemComponent->SetLooseGameplayTagCount(CombatTags::StateActing, 1);
 	if (!m_abilitySystemComponent->TryActivateAbilityByClass(UActionAbility::StaticClass()))
 	{
 		FinishAction(true);
@@ -567,6 +632,9 @@ void AEnemyCharacterBase::FinishAction(bool _cancelled)
 		m_comboSteps = 0;
 	}
 
+    //
+    if (action) m_abilitySystemComponent->RemoveLooseGameplayTags(action->m_activeTags);
+    //
 	m_activeIndex = INDEX_NONE;
 	
 	if (!_cancelled) m_defense->AttackFinished();
@@ -575,6 +643,9 @@ void AEnemyCharacterBase::FinishAction(bool _cancelled)
 	m_abilitySystemComponent->SetLooseGameplayTagCount(CombatTags::StateActing, 0);
 	m_actionSuccess = !_cancelled;
 	OnActionEnded();
+	//
+	if (!_cancelled && action && action->m_damage > 0.f && m_nextActionId.IsNone()) { OnAttackFinished(); }
+	//
 }
 
 void AEnemyCharacterBase::CancelAction()
