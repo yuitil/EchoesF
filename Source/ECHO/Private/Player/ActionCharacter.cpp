@@ -44,7 +44,7 @@ AActionCharacter::AActionCharacter(const FObjectInitializer& ObjectInitializer)
 {
     PrimaryActorTick.bCanEverTick = true;
 
-    //二段ジャンプ設定
+    //ジャンプ段数設定
     JumpMaxCount = 2;
 
     //コントローラーの回転でキャラ自体が回らないように
@@ -110,6 +110,7 @@ void AActionCharacter::BeginPlay()
     m_MaxEnergy = m_EnergyPerStock * m_iMaxEnergyStock;
     SetEnergy(0.f);
     SetHP(m_MaxHP);
+    RefillHeals();
 
     if (CombatComponent)
     {
@@ -186,13 +187,15 @@ void AActionCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
         EIC->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
         EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
         EIC->BindAction(DodgeAction, ETriggerEvent::Started, this, &AActionCharacter::Dodge);
-        //召喚バインド
         EIC->BindAction(SummonAction, ETriggerEvent::Started, this, &AActionCharacter::SummonGhost);
+        EIC->BindAction(HealAction, ETriggerEvent::Started, this, &AActionCharacter::Heal);
     }
 }
 
 void AActionCharacter::Attack()
 {
+    if (IsHealing()) return;
+    if (m_bIsHitStunned) return;
     if (CombatComponent) CombatComponent->ExecuteAttack();
 }
 
@@ -217,6 +220,12 @@ float AActionCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damag
 
     m_LastDamageTime = Now;
     SetHP(m_CurrentHP - Actual);
+    InterruptHeal();
+
+    if (m_CurrentHP > 0.f)
+    {
+        PlayHitReaction(DamageCauser);
+    }
 
     if (m_bDebugHP)
     {
@@ -226,6 +235,39 @@ float AActionCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damag
 
     if (m_CurrentHP <= 0.f) Die();
     return Actual;
+}
+
+void AActionCharacter::PlayHitReaction(AActor* DamageCauser)
+{
+    //攻撃中ならコンボを中断
+    if (CombatComponent) CombatComponent->CancelAttack();
+
+    //攻撃してきた相手の方を向く（正面から食らうモーションなので）
+    if (DamageCauser && DamageCauser != this)
+    {
+        FVector ToCauser = DamageCauser->GetActorLocation() - GetActorLocation();
+        ToCauser.Z = 0.f;
+        if (!ToCauser.IsNearlyZero())
+        {
+            SetActorRotation(ToCauser.Rotation());
+        }
+    }
+
+    //勢いを止めてモーション再生
+    GetCharacterMovement()->StopMovementImmediately();
+    if (m_HitReactMontage)
+    {
+        PlayAnimMontage(m_HitReactMontage, m_HitReactPlayRate);
+    }
+
+    //のけぞり開始
+    m_bIsHitStunned = true;
+    GetWorldTimerManager().SetTimer(m_HitStunTimer, this, &AActionCharacter::EndHitStun, m_HitStunTime, false);
+}
+
+void AActionCharacter::EndHitStun()
+{
+    m_bIsHitStunned = false;
 }
 
 void AActionCharacter::SetHP(float NewHP)
@@ -244,6 +286,8 @@ void AActionCharacter::Die()
 {
     if (m_bIsDead) return;
     m_bIsDead = true;
+
+    EndHeal();
 
     //とりあえず操作不能にするだけ（演出は後で）
     if (APlayerController* PC = Cast<APlayerController>(GetController())) DisableInput(PC);
@@ -304,6 +348,8 @@ void AActionCharacter::OnHitEnemy(float EnergyGain)
 
 void AActionCharacter::Dodge()
 {
+    if (m_bIsHitStunned) return;
+    InterruptHeal();
     if (CombatComponent) CombatComponent->ExecuteDodge();
 }
 
@@ -439,6 +485,9 @@ void AActionCharacter::Move(const FInputActionValue& Value)
     //攻撃中は移動しない
     if (CombatComponent && CombatComponent->IsPlayingAttackMontage()) return;
 
+    //のけぞり中は移動しない
+    if (m_bIsHitStunned) return;
+
     //回避中は移動しない（既存の処理）
     if (UActionMovementComponent* MoveComp = GetActionMovementComponent())
     {
@@ -516,6 +565,10 @@ bool AActionCharacter::CanJumpInternal_Implementation() const
 {
     //攻撃モーション中はジャンプ不可
     if (CombatComponent && CombatComponent->IsPlayingAttackMontage()) return false;
+    //回復中はジャンプ不可
+    if (IsHealing()) return false;
+
+    if (m_bIsHitStunned) return false;
 
     return Super::CanJumpInternal_Implementation();
 }
@@ -688,4 +741,81 @@ void AActionCharacter::OnGhostDestroyed(AActor* DestroyedActor)
         });
     m_iActiveGhostCount = m_ActiveGhosts.Num();
     OnGhostsChanged.Broadcast();
+}
+
+void AActionCharacter::Heal()
+{
+    if (m_bIsDead || IsHealing()) return;
+
+    if (m_bIsHitStunned) return;
+
+    if (m_iHealCount <= 0)
+    {
+        if (m_bDebugHP) GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Orange, TEXT("No Heal Left"));
+        return;
+    }
+    if (m_CurrentHP >= m_MaxHP) return;
+    if (GetCharacterMovement()->IsFalling()) return;
+    if (CombatComponent && (CombatComponent->IsAttacking() || CombatComponent->IsDodging())) return;
+
+    //構え開始：移動速度を落とす
+    m_HealPhase = EHealPhase::Windup;
+    if (UActionMovementComponent* Move = Cast<UActionMovementComponent>(GetCharacterMovement()))
+    {
+        Move->SetSpeedMultiplier(m_HealMoveSpeedRate);
+    }
+    //TODO：ここで回復モーション（瓶を飲む）を再生する
+
+    GetWorldTimerManager().SetTimer(m_HealTimer, this, &AActionCharacter::ApplyHeal, m_HealWindupTime, false);
+
+    if (m_bDebugHP) GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Green, TEXT("Heal Start..."));
+}
+
+void AActionCharacter::ApplyHeal()
+{
+    //ここで初めて回数を消費して回復
+    --m_iHealCount;
+    SetHP(m_CurrentHP + m_HealAmount);
+    OnHealCountChanged.Broadcast(m_iHealCount, m_iMaxHealCount);
+
+    if (m_bDebugHP)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Green,
+            FString::Printf(TEXT("Heal +%.0f  (Left %d / %d)"), m_HealAmount, m_iHealCount, m_iMaxHealCount));
+    }
+
+    //後隙：速度は落としたまま
+    m_HealPhase = EHealPhase::Recovery;
+    GetWorldTimerManager().SetTimer(m_HealTimer, this, &AActionCharacter::EndHeal, m_HealRecoveryTime, false);
+}
+
+void AActionCharacter::EndHeal()
+{
+    GetWorldTimerManager().ClearTimer(m_HealTimer);
+    m_HealPhase = EHealPhase::None;
+
+    if (UActionMovementComponent* Move = Cast<UActionMovementComponent>(GetCharacterMovement()))
+    {
+        Move->SetSpeedMultiplier(1.f);
+    }
+    //TODO：回復モーションを止める（中断時）
+}
+
+void AActionCharacter::InterruptHeal()
+{
+    if (!IsHealing()) return;
+
+    if (m_bDebugHP)
+    {
+        //構え中なら失敗、後隙中なら動作だけ中断（回復は済んでいる）
+        const bool bFailed = (m_HealPhase == EHealPhase::Windup);
+        GEngine->AddOnScreenDebugMessage(-1, 2.f, bFailed ? FColor::Red : FColor::Yellow,
+            bFailed ? TEXT("Heal Failed (Not consumed)") : TEXT("Heal Motion Interrupted"));
+    }
+    EndHeal();
+}
+void AActionCharacter::RefillHeals()
+{
+    m_iHealCount = m_iMaxHealCount;
+    OnHealCountChanged.Broadcast(m_iHealCount, m_iMaxHealCount);
 }

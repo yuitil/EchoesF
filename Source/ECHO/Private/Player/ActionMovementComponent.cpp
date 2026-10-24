@@ -73,8 +73,8 @@ void UActionMovementComponent::TickComponent(
         bOrientRotationToMovement = true;
     }
 
-    //最大速度の決定
-    float DesiredSpeed = m_bIsSprinting ? m_SprintSpeed : m_BaseWalkSpeed;
+    //速度を絞っている間はダッシュしない
+    float DesiredSpeed = (m_bIsSprinting && m_SpeedMultiplier >= 1.f) ? m_SprintSpeed : m_BaseWalkSpeed;
 
     //着地硬直の回復処理
     if (m_bIsLandingRecovery)
@@ -96,6 +96,7 @@ void UActionMovementComponent::TickComponent(
         }
     }
 
+    DesiredSpeed *= m_SpeedMultiplier;
     MaxWalkSpeed = DesiredSpeed;
 }
 

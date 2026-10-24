@@ -22,8 +22,10 @@ class UBatManagerComponent;
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnEnergyChanged, float, float);
 //分身の数・状態が変わったとき
 DECLARE_MULTICAST_DELEGATE(FOnGhostsChanged);
-
-DECLARE_MULTICAST_DELEGATE_TwoParams(FOnHPChanged, float, float);   //UI用（現在HP, 最大HP）
+//UI用（現在HP, 最大HP）
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnHPChanged, float, float);
+//UI用（残り回数, 最大回数）
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnHealCountChanged, int32, int32);
 
 UCLASS()
 class ECHO_API AActionCharacter : public ACharacter
@@ -75,6 +77,11 @@ protected:
 	//召喚アクション
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	class UInputAction* SummonAction;
+
+	//回復アクション
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	class UInputAction* HealAction;
+	void Heal();
 
 	// -----------------------------------------------------------------------
 	// 移動
@@ -277,9 +284,71 @@ private:
 	void OnGhostHitEnemy(float EnergyGain);
 
 	// -----------------------------------------------------------------------
-	// UI 用
+	// 回復 
 	// -----------------------------------------------------------------------
 public:
+	int32 GetHealCount()    const { return m_iHealCount; }
+	int32 GetMaxHealCount() const { return m_iMaxHealCount; }
+
+	//回数を全回復（チェックポイントなどで使う予定）
+	void RefillHeals();
+
+	FOnHealCountChanged OnHealCountChanged;
+
+	bool IsHitStunned() const { return m_bIsHitStunned; }
+
+private:
+	UPROPERTY(EditAnywhere, Category = "Health|Heal", meta = (AllowPrivateAccess = "true", ClampMin = "0"))
+	int32 m_iMaxHealCount = 5;
+
+	UPROPERTY(EditAnywhere, Category = "Health|Heal", meta = (AllowPrivateAccess = "true", ClampMin = "0"))
+	float m_HealAmount = 40.f;
+
+	int32 m_iHealCount = 0;
+
+	enum class EHealPhase : uint8 { None, Windup, Recovery };
+	EHealPhase m_HealPhase = EHealPhase::None;
+	FTimerHandle m_HealTimer;
+
+	//ボタンを押してから回復するまで（この間に被弾すると失敗）
+	UPROPERTY(EditAnywhere, Category = "Health|Heal", meta = (AllowPrivateAccess = "true", ClampMin = "0"))
+	float m_HealWindupTime = 0.5f;
+
+	//回復してから動作が終わるまで（被弾すると動作だけ中断）
+	UPROPERTY(EditAnywhere, Category = "Health|Heal", meta = (AllowPrivateAccess = "true", ClampMin = "0"))
+	float m_HealRecoveryTime = 0.5f;
+
+	//回復動作中の移動速度の倍率
+	UPROPERTY(EditAnywhere, Category = "Health|Heal", meta = (AllowPrivateAccess = "true", ClampMin = "0", ClampMax = "1"))
+	float m_HealMoveSpeedRate = 0.5f;
+
+	void ApplyHeal();      //構えが終わった瞬間に回復する
+	void EndHeal();        //回復動作の終了（中断でも呼ぶ）
+	void InterruptHeal();  //被弾・回避で割り込まれたとき
+
+	//被弾モーション
+	UPROPERTY(EditAnywhere, Category = "Health|HitReact", meta = (AllowPrivateAccess = "true"))
+	class UAnimMontage* m_HitReactMontage;
+
+	UPROPERTY(EditAnywhere, Category = "Health|HitReact", meta = (AllowPrivateAccess = "true", ClampMin = "0.1"))
+	float m_HitReactPlayRate = 1.f;
+
+	//のけぞり時間（この間は操作できない）
+	UPROPERTY(EditAnywhere, Category = "Health|HitReact", meta = (AllowPrivateAccess = "true", ClampMin = "0"))
+	float m_HitStunTime = 0.4f;
+
+	bool m_bIsHitStunned = false;
+	FTimerHandle m_HitStunTimer;
+
+	void PlayHitReaction(AActor* DamageCauser);
+	void EndHitStun();
+
+public:
+	bool IsHealing() const { return m_HealPhase != EHealPhase::None; }
+
+	// -----------------------------------------------------------------------
+	// UI 用
+	// -----------------------------------------------------------------------
 	FOnEnergyChanged OnEnergyChanged;
 	FOnGhostsChanged OnGhostsChanged;
 

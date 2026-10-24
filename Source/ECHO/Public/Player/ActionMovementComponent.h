@@ -28,6 +28,9 @@ public:
     //着地後の硬直処理を開始する関数
     void StartLandingRecovery();
 
+    //外部から移動速度を絞る（回復中など）。1.0で通常
+    void SetSpeedMultiplier(float Multiplier) { m_SpeedMultiplier = Multiplier; }
+
 protected:
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
@@ -101,4 +104,7 @@ private:
     bool m_bIsLandingRecovery;
     //着地硬直開始からの経過時間
     float m_LandingRecoveryElapsed;
+
+    //速度制限
+    float m_SpeedMultiplier = 1.f;
 };

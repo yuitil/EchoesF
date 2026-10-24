@@ -101,6 +101,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void CheckHit();
 
+	//被弾などで攻撃を強制的に中断する
+	void CancelAttack() { OnComboResetTimeout(); }
+
 	//AnimationNotifyから呼ばれる、コンボの次の段階への移行を受け付ける関数
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void OpenComboWindow();
