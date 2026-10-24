@@ -6,21 +6,22 @@
 #include "NavigationSystem.h"
 #include "AIController.h"
 
-// Sets default values
+//Sets default values
 AWaveManager::AWaveManager()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+ 	//Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
 
 }
 
-// Called when the game starts or when spawned
+//Called when the game starts or when spawned
 void AWaveManager::BeginPlay()
 {
 	//基底クラスのBeginPlayを呼び出す
 	Super::BeginPlay();
 }
 
+//経過時間に合わせて敵の状態を更新する。
 void AWaveManager::Tick(float _deltaTime)
 {
 	//基底クラスのTickを呼び出す
@@ -60,6 +61,7 @@ void AWaveManager::StartWave()
 	//エネミープールから敵をスポーン
 	for (int32 i = 0; i < m_enemiesPerWave; ++i)
 	{
+		//生成した敵や弾。
 		AEnemyChara* SpawnedEnemy = m_pEnemyPool->SpawnEnemyAtRandomLocation();
 		if (SpawnedEnemy)
 		{
@@ -153,6 +155,7 @@ void AWaveManager::UpdateAttackerRoles()
 
 	//残りの敵を包囲役に割り当てる
 	int32 encircleIndex = 0;
+	//周囲を囲む敵の数。
 	int32 totalEncirclers = m_aliveEnemies.Num() - m_activeAttackers.Num();
 
 	//アタッカー役でない敵を包囲役に割り当てる
@@ -223,6 +226,7 @@ void AWaveManager::SpawnMidBoss()
 
 	//スポーン位置と回転を設定
 	FVector spawnLoc = m_midBossSpawnPoint ? m_midBossSpawnPoint->GetActorLocation() : GetActorLocation() + FVector(500.f, 0.f, 0.f);
+	//生成時の向き。
 	FRotator spawnRot = m_midBossSpawnPoint ? m_midBossSpawnPoint->GetActorRotation() : FRotator::ZeroRotator;
 
 	//スポーンパラメータを設定
@@ -250,6 +254,7 @@ void AWaveManager::SpawnFinalBoss()
 
 	//スポーン位置と回転を設定
 	FVector spawnLoc = m_finalBossSpawnPoint ? m_finalBossSpawnPoint->GetActorLocation() : GetActorLocation() + FVector(1000.f, 0.f, 0.f);
+	//生成時の向き。
 	FRotator spawnRot = m_finalBossSpawnPoint ? m_finalBossSpawnPoint->GetActorRotation() : FRotator::ZeroRotator;
 	
 	//スポーンパラメータを設定

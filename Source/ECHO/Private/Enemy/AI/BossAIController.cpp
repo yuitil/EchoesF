@@ -16,6 +16,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 
+//操作する敵のAIを準備する。
 void ABossAIController::OnPossess(APawn* _pawn)
 {
 	Super::OnPossess(_pawn);

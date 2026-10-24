@@ -5,6 +5,7 @@
 #include "BTT_RotateEnemy.generated.h"
 
 
+//コンストラクタ
 UCLASS()
 class ECHO_API UBTT_RotateEnemy : public UBTTaskNode
 {

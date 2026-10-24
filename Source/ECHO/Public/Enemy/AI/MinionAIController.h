@@ -7,6 +7,7 @@
 
 class AMinionChara;
 
+//コンストラクタ
 UCLASS()
 class ECHO_API AMinionAIController : public AEnemyAIController
 {

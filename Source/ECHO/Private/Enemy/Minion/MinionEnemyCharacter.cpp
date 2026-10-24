@@ -6,24 +6,38 @@
 #include "Animation/AnimMontage.h"
 #include "Enemy/Minion/MinionFormation.h"
 #include "Enemy/Minion/MinionParryResponse.h"
-//
+
+//判定に使う幅や待ち時間。
+namespace MinionEnemyCharacterTuning
+{
+    //死亡演出を待つ時間の上限。
+    constexpr auto maxDeathTime = 30.f;
+    //待ち時間の下限。
+    constexpr auto minWait = .1f;
+    //死亡アニメーションの速度の下限。
+    constexpr auto minDeathRate = .01f;
+}
+
+//初期設定と必要な部品を用意する。
 AMinionEnemyCharacter::AMinionEnemyCharacter()
 {
     m_formation=CreateDefaultSubobject<UMinionFormation>(TEXT("Formation"));
     m_parry=CreateDefaultSubobject<UMinionParryResponse>(TEXT("ParryResponse"));
 }
 
-bool AMinionEnemyCharacter::IsActionAllowed(const FEnemyActionData& action) const
+//現在の状態で選べる攻撃か調べる。
+bool AMinionEnemyCharacter::IsActionAllowed(const FEnemyActionData& _action) const
 {
-    return action.m_kind==EEnemyAction::Guard || action.m_kind==EEnemyAction::Dodge || m_formation->HasTurn();
+    return _action.m_kind==EEnemyAction::Guard || _action.m_kind==EEnemyAction::Dodge || m_formation->HasTurn();
 }
 
-void AMinionEnemyCharacter::OnAttackFinished() 
-{ 
-    m_formation->ReleaseTurn(); 
+//攻撃終了後の次の行動を準備する。
+void AMinionEnemyCharacter::OnAttackFinished()
+{
+    m_formation->ReleaseTurn();
 }
 
-//
+//行動終了後の状態を整える。
 void AMinionEnemyCharacter::OnActionEnded()
 {
     Super::OnActionEnded();
@@ -33,53 +47,58 @@ void AMinionEnemyCharacter::OnActionEnded()
     }
 }
 
-//
-void AMinionEnemyCharacter::AttackDefended_Implementation(AActor* defender, EDefenseResult result)
+//攻撃を防がれた結果を受け取る。
+void AMinionEnemyCharacter::AttackDefended_Implementation(AActor* _defender, EDefenseResult _result)
 {
-    if(result==EDefenseResult::Parry) 
-    { 
-        m_parry->Begin(defender); 
-        return; 
+    if(_result==EDefenseResult::Parry)
+    {
+        m_parry->Begin(_defender);
+        return;
     }
-    Super::AttackDefended_Implementation(defender,result);
-    if (!IsActing() && (result == EDefenseResult::Parry || result == EDefenseResult::Deflect))
+    Super::AttackDefended_Implementation(_defender,_result);
+    if (!IsActing() && (_result == EDefenseResult::Parry || _result == EDefenseResult::Deflect))
     {
         m_formation->ReleaseTurn();
     }
 }
 
-void AMinionEnemyCharacter::FinishParryReaction(UAnimMontage* montage,float duration)
+//受け流された後の停止を解除する。
+void AMinionEnemyCharacter::FinishParryReaction(UAnimMontage* _montage,float _duration)
 {
     CancelAction();
-    const float length=montage ? PlayAnimMontage(montage) : 0.f;
-    m_readyTime=GetWorld()->GetTimeSeconds()+FMath::Max(FMath::Max(.1f,duration),length);
+    //対象の長さ。
+    const float length=_montage ? PlayAnimMontage(_montage) : 0.f;
+    m_readyTime=GetWorld()->GetTimeSeconds()+FMath::Max(FMath::Max(MinionEnemyCharacterTuning::minWait,_duration),length);
     m_formation->ReleaseTurn();
 }
 
-//
+//体力がなくなった時の処理を行う。
 void AMinionEnemyCharacter::HandleHealthDepleted()
 {
     Super::HandleHealthDepleted();
     DetachFromControllerPendingDestroy();
-    const float length = m_definition && m_definition->m_deathMontage ? m_definition->m_deathMontage->GetPlayLength() / FMath::Max(.01f, FMath::Abs(m_definition->m_deathMontage->RateScale)) : 0.f;
-    SetLifeSpan(FMath::Clamp(length, 0.f, 30.f) + FMath::Max(.1f, m_corpseTime));
+    //対象の長さ。
+    const float length = m_definition && m_definition->m_deathMontage ? m_definition->m_deathMontage->GetPlayLength() / FMath::Max(MinionEnemyCharacterTuning::minDeathRate, FMath::Abs(m_definition->m_deathMontage->RateScale)) : 0.f;
+    SetLifeSpan(FMath::Clamp(length, 0.f, MinionEnemyCharacterTuning::maxDeathTime) + FMath::Max(MinionEnemyCharacterTuning::minWait, m_corpseTime));
 }
 
-//
-void AMinionEnemyCharacter::OnAcceptedHit(AActor* attacker)
+//ダメージを受けた後の反応を行う。
+void AMinionEnemyCharacter::OnAcceptedHit(AActor* _attacker)
 {
-    Super::OnAcceptedHit(attacker);
-    //
-    m_formation->Provoke(attacker);
-    //
+    Super::OnAcceptedHit(_attacker);
+
+    m_formation->Provoke(_attacker);
+
+    //現在の時刻。
     const double now = GetWorld()->GetTimeSeconds();
-    if (!IsCombatActive() || !m_hitMontage || now < m_nextHit || (IsActing() && !m_interruptAttack)) { return; }
+    if(!IsCombatActive() || !m_hitMontage || now < m_nextHit || (IsActing() && !m_interruptAttack)) { return; }
     CancelAction();
     if (auto* ai = Cast<AAIController>(GetController()))
     {
         ai->StopMovement();
     }
     GetCharacterMovement()->StopMovementImmediately();
+    //対象の長さ。
     const float length = PlayAnimMontage(m_hitMontage);
     if (length > 0.f)
     {
@@ -87,4 +106,3 @@ void AMinionEnemyCharacter::OnAcceptedHit(AActor* attacker)
         m_nextHit = now + FMath::Max(length,m_hitCooldown);
     }
 }
-//

@@ -100,10 +100,12 @@ void AMidBoss::PerformSlashAttack()
 
 	//現在の位置と攻撃の終点を計算
 	FVector start = GetActorLocation();
+	//調べ終える位置。
 	FVector end = start + GetActorForwardVector() * m_slashLength;
 
 	//攻撃範囲内の敵を検出
 	TArray<FHitResult> hitResults;
+	//キャラクターの当たり判定。
 	FCollisionShape capsule = FCollisionShape::MakeCapsule(m_slashRadius, m_slashLength / 2.f);
 	
 	//クエリパラメータを設定
@@ -120,6 +122,7 @@ void AMidBoss::PerformSlashAttack()
 	//ヒットした敵にダメージを与える
 	for (const auto& hit : hitResults)
 	{
+		//攻撃が当たった相手。
 		AActor* hitActor = hit.GetActor();
 		if (hitActor && hitActor != this)
 		{
@@ -136,6 +139,7 @@ void AMidBoss::PlaceWireTrap()
 
 	//ワイヤートラップの範囲内の敵を検出
 	TArray<FOverlapResult> overlapResults;
+	//球形の攻撃判定。
 	FCollisionShape sphere = FCollisionShape::MakeSphere(m_wireRadius);
 
 	//クエリパラメータを設定
@@ -151,6 +155,7 @@ void AMidBoss::PlaceWireTrap()
 	//範囲内の敵にダメージを与える
 	for (const auto& overlap : overlapResults)
 	{
+		//攻撃範囲に重なった相手。
 		AActor* overlapActor = overlap.GetActor();
 		if (overlapActor && overlapActor != this)
 		{
@@ -179,6 +184,7 @@ void AMidBoss::PerformCharageAttack()
 		{
 			//突進攻撃の範囲内の敵を検出
 			TArray<FHitResult> hitResults;
+			//キャラクターの当たり判定。
 			FCollisionShape capsule = FCollisionShape::MakeCapsule(m_slashRadius, m_chargeDistance / 2.f);
 
 			//クエリパラメータを設定
@@ -187,11 +193,13 @@ void AMidBoss::PerformCharageAttack()
 			
 			//突進攻撃の範囲を計算
 			FVector start = GetActorLocation();
+			//調べ終える位置。
 			FVector end = start + GetActorForwardVector() * m_chargeDistance;
 			GetWorld()->SweepMultiByChannel(hitResults, start, end, FQuat::Identity, ECC_Pawn, capsule, queryParams);
 
 			for (auto& hit : hitResults)
 			{
+				//攻撃が当たった相手。
 				AActor* hitActor = hit.GetActor();
 				if (hitActor && hitActor->ActorHasTag("Player"))
 				{

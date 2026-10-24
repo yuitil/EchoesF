@@ -88,23 +88,23 @@ void AEnemyAIController::OnTargetPerceptionUpdated(AActor* _actor, FAIStimulus _
 
 	//if (_stimulus.WasSuccessfullySensed())
 	//{
-	//	SetTargetActor(_actor);
+	//SetTargetActor(_actor);
 	//}
 	//else
 	//{
-	//	ClearTarget();
+	//ClearTarget();
 	//}
 
 	//if (_actor->ActorHasTag("Player"))
 	//{
-	//	if (_stimulus.WasSuccessfullySensed())
-	//	{
-	//		GetBlackboardComponent()->SetValueAsObject(TEXT("TargetActor"), _actor);
-	//	}
+	//if (_stimulus.WasSuccessfullySensed())
+	//{
+	//GetBlackboardComponent()->SetValueAsObject(TEXT("TargetActor"), _actor);
+	//}
 	//}
 	//else
 	//{
-	//	GetBlackboardComponent()->ClearValue(TEXT("TargetActor"));
+	//GetBlackboardComponent()->ClearValue(TEXT("TargetActor"));
 	//}
 }
 

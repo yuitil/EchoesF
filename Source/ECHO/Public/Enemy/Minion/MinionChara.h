@@ -4,6 +4,7 @@
 #include "Enemy/EnemyChara.h"
 #include "MinionChara.generated.h"
 
+//コンストラクタ
 UCLASS()
 class ECHO_API AMinionChara : public AEnemyChara
 {

@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+//Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -9,17 +9,18 @@
 //前方宣言
 class AEnemyChara;
 
+//Sets default values for this actor's properties
 UCLASS()
 class ECHO_API AEnemyPool : public AActor
 {
 	GENERATED_BODY()
 	
 public:	
-	// Sets default values for this actor's properties
+	//Sets default values for this actor's properties
 	AEnemyPool();
 
 protected:
-	// Called when the game starts or when spawned
+	//Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 public:	
@@ -44,10 +45,9 @@ public:
 	int32 GetInactiveEnemyCount() const { return m_inactivePool.Num(); }
 
 public:
-	//
+	//この機能を使うか。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EnemyPool", meta = (DisplayName = "Enabled"))
 	bool m_enabled = true;
-	//
 	//敵のクラスを指定するためのプロパティ
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EnemyPool")
 	TSubclassOf<AEnemyChara> m_pEnemyClass;

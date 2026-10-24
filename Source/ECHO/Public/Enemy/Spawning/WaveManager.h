@@ -7,6 +7,7 @@
 class AEnemyPool;
 class AEnemyChara;
 
+//集団の中で担当する行動。
 UENUM(BlueprintType)
 enum class EAttackRole : uint8
 {
@@ -22,25 +23,29 @@ enum class EAttackRole : uint8
 //BBキー名
 namespace WaveBBKey
 {
+	//BTが攻撃役か保存する項目名。
 	static const FName bIsActiveAttacker(TEXT("bIsActiveAttacker"));
+	//BTが周囲で待つ位置を保存する項目名。
 	static const FName EncirclePosition(TEXT("EncirclePosition"));
 }
 
+//Sets default values for this actor's properties
 UCLASS()
 class ECHO_API AWaveManager : public AActor
 {
 	GENERATED_BODY()
 	
 public:	
-	// Sets default values for this actor's properties
+	//Sets default values for this actor's properties
 	AWaveManager();
 
 protected:
-	// Called when the game starts or when spawned
+	//Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 public:
 
+	//経過時間に合わせて敵の状態を更新する。
 	void Tick(float _deltaTime) override;
 
 	//Waveを開始する関数
@@ -92,9 +97,11 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave | Boss", meta = (ClampMin = "1", ClampMax = "99"))
 	int32 m_midBossSpawnPercent = 50;
 
+	//生成する中ボスのBPクラス。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave | Boss")
 	TSubclassOf<AEnemyChara> m_midBossClass;
 
+	//生成する最後のボスのBPクラス。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave | Boss")
 	TSubclassOf<AEnemyChara> m_finalBossClass;
 

@@ -7,6 +7,7 @@
 #include "Engine/World.h"
 #include "DrawDebugHelpers.h"
 
+//初期設定と必要な部品を用意する。
 AMinionChara::AMinionChara() : m_normalSpeed(500.f), m_rushSpeed(900.f), m_rushTriggerDistance(600.f)
 , m_attackTraceRadius(60.f), m_attackTraceLength(120.f), m_isRushing(false)
 {
@@ -47,6 +48,7 @@ void AMinionChara::Tick(float _deltaTime)
 	UpdateRushBehavior();
 }
 
+//距離に合わせて突進の状態を更新する。
 void AMinionChara::UpdateRushBehavior()
 {
 	//Dead状態のときは何もしない
@@ -130,10 +132,12 @@ void AMinionChara::PerformAttackTrace()
 
 	//攻撃の開始点と終了点を計算
 	FVector start = GetActorLocation();
+	//調べ終える位置。
 	FVector end = start + GetActorForwardVector() * m_attackTraceLength;
 
 	//ヒット結果を格納する配列と、当たり判定の形状を設定
 	TArray<FHitResult> hitResults;
+	//当たり判定の形。
 	FCollisionShape collisionShape = FCollisionShape::MakeCapsule(m_attackTraceRadius, m_attackTraceLength* 0.5);
 
 	//クエリパラメータを設定
@@ -152,6 +156,7 @@ void AMinionChara::PerformAttackTrace()
 	//ヒットしたアクターに対してダメージを与える
 	for (FHitResult& hit : hitResults)
 	{
+		//攻撃が当たった相手。
 		AActor* hitActor = hit.GetActor();
 		if (!hitActor || hitActor == this) { continue; }
 

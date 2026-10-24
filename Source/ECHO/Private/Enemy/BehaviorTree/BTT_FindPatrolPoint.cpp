@@ -7,6 +7,7 @@
 #include "BehaviorTree/BehaviorTreeComponent.h"
 
 
+//歩ける場所から次の巡回先を選ぶ。
 UBTT_FindPatrolPoint::UBTT_FindPatrolPoint() : m_patrolRadius(1000.0f), m_minDistanceFromLastPoint(200.0f)
 {
 	//タスクの名前を設定
@@ -54,6 +55,7 @@ EBTNodeResult::Type UBTT_FindPatrolPoint::ExecuteTask(UBehaviorTreeComponent& _o
 	
 	//ポイントが見つかるまで繰り返す
 	const int maxAttempts = 10;
+	//移動先が見つかったか。
 	bool bFoundPoint = false;
 
 	for (int i = 0; i < maxAttempts; ++i)

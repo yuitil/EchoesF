@@ -14,9 +14,13 @@
 //ブラックボードのキーの名前を定数として定義
 namespace MinionBBKey
 {
+	//BTが狙う相手を保存する項目名。
 	static const FName TargetActor(TEXT("TargetActor"));
+	//BTが巡回先を保存する項目名。
 	static const FName PatrolLocation(TEXT("PatrolLocation"));
+	//BTが攻撃可能な距離か保存する項目名。
 	static const FName bIsInAttackRange(TEXT("bIsInAttackRange"));
+	//BTが死亡状態を保存する項目名。
 	static const FName bIsDead(TEXT("bIsDead"));
 }
 
@@ -182,6 +186,7 @@ void AMinionAIController::NotifyDead()
 	UE_LOG(LogTemp, Log, TEXT("AMinionAIController：死亡通知を受け取りました"));
 }
 
+//攻撃が届くかをBTへ伝える。
 void AMinionAIController::UpdateAttackRangeBlackboard()
 {
 	//ブラックボードコンポーネントを取得

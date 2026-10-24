@@ -4,6 +4,7 @@
 #include "Enemy/EnemyChara.h"
 #include "MidBoss.generated.h"
 
+//コンストラクタ
 UCLASS()
 class ECHO_API AMidBoss : public AEnemyChara
 {
@@ -27,6 +28,7 @@ public:
 	//死亡関数
 	virtual void Die() override;
 
+	//現在のフェーズを返す。
 	UFUNCTION(BlueprintCallable, Category = "MidBoss")
 	int32 GetCurrentPhase() const { return m_currentPhase; }
 

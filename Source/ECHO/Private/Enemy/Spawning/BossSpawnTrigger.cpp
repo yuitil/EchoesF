@@ -2,10 +2,10 @@
 #include "Enemy/Spawning/WaveManager.h"
 #include "Components/BoxComponent.h"
 
-// Sets default values
+//Sets default values
 ABossSpawnTrigger::ABossSpawnTrigger()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+ 	//Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
 
 	//コンポネント
@@ -21,7 +21,7 @@ ABossSpawnTrigger::ABossSpawnTrigger()
 	m_triggerBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 }
 
-// Called when the game starts or when spawned
+//Called when the game starts or when spawned
 void ABossSpawnTrigger::BeginPlay()
 {
 	Super::BeginPlay();

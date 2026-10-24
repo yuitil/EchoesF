@@ -12,12 +12,14 @@ class UAISenseConfig_Hearing;
 class UBehaviorTreeComponent; 
 class UBlackboardComponent;
 
+//従来の敵の索敵とBTを管理する。
 UCLASS()
 class ECHO_API AEnemyAIController : public AAIController
 {
 	GENERATED_BODY()
 
 public:
+	//従来の敵の索敵とBTを管理する。
 	AEnemyAIController();
 
 protected:

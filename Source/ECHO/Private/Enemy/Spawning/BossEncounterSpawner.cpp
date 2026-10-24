@@ -1,4 +1,4 @@
-﻿#include "Enemy/Spawning/BossEncounterSpawner.h"
+#include "Enemy/Spawning/BossEncounterSpawner.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
@@ -8,13 +8,33 @@
 #include "NavigationSystem.h"
 #include "Components/CapsuleComponent.h"
 
+//動作を確かめるための幅や待ち時間。
+namespace BossEncounterSpawnerTuning
+{
+    //開始範囲の半分の大きさ。
+    constexpr auto triggerHalfSize = 150.f;
+    //開始範囲の横幅。
+    constexpr auto triggerWidth = 200.f;
+    //生成位置までの距離。
+    constexpr auto spawnDistance = 600.f;
+    //生成時に持ち上げる高さ。
+    constexpr auto spawnHeight = 100.f;
+    //歩ける場所を探す横幅。
+    constexpr auto navWidth = 200;
+    //歩ける場所を探す高さ。
+    constexpr auto navHeight = 500;
+    //地面との距離に持たせる余裕。
+    constexpr auto floorMargin = 5.f;
+}
+
+//初期設定と必要な部品を用意する。
 ABossEncounterSpawner::ABossEncounterSpawner()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
 	m_trigger = CreateDefaultSubobject<UBoxComponent>(TEXT("StartTrigger"));
 	SetRootComponent(m_trigger);
-	m_trigger->SetBoxExtent(FVector(150.f, 200.f, 150.f));
+	m_trigger->SetBoxExtent(FVector(BossEncounterSpawnerTuning::triggerHalfSize, BossEncounterSpawnerTuning::triggerWidth, BossEncounterSpawnerTuning::triggerHalfSize));
 	m_trigger->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	m_trigger->SetCollisionResponseToAllChannels(ECR_Ignore);
 	m_trigger->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
@@ -22,9 +42,10 @@ ABossEncounterSpawner::ABossEncounterSpawner()
 
 	m_spawnAnchor = CreateDefaultSubobject<USceneComponent>(TEXT("SpawnAnchor"));
 	m_spawnAnchor->SetupAttachment(m_trigger);
-	m_spawnAnchor->SetRelativeLocation(FVector(600.f, 0.f, 100.f));
+	m_spawnAnchor->SetRelativeLocation(FVector(BossEncounterSpawnerTuning::spawnDistance, 0.f, BossEncounterSpawnerTuning::spawnHeight));
 }
 
+//ゲーム開始時に必要な状態を準備する。
 void ABossEncounterSpawner::BeginPlay()
 {
 	Super::BeginPlay();
@@ -36,8 +57,10 @@ void ABossEncounterSpawner::BeginPlay()
 	}
 }
 
+//プレイヤーの侵入を受けて生成を開始する。
 void ABossEncounterSpawner::PlayerEntered(UPrimitiveComponent* _component, AActor* _actor, UPrimitiveComponent* _otherComp, int32 _bodyIndex, bool _fromSweep, const FHitResult& _hit)
 {
+	//対象のプレイヤー。
 	APawn* player = Cast<APawn>(_actor);
 	if (m_bStartOnEnter && player && player->IsPlayerControlled())
 	{
@@ -45,11 +68,13 @@ void ABossEncounterSpawner::PlayerEntered(UPrimitiveComponent* _component, AActo
 	}
 }
 
+//生成したボスを返す。
 AEnemyCharacterBase* ABossEncounterSpawner::GetBoss() const
 {
 	return IsValid(m_boss) ? m_boss.Get() : nullptr;
 }
 
+//ボス戦の進行状態を切り替える。
 void ABossEncounterSpawner::ChangeState(EBossEncounterState _state, const FString& _message)
 {
 	m_state = _state;
@@ -57,12 +82,10 @@ void ABossEncounterSpawner::ChangeState(EBossEncounterState _state, const FStrin
 	m_onEncounterChanged.Broadcast(m_state, _message);
 }
 
+//ボスを生成して戦闘を開始する。
 bool ABossEncounterSpawner::StartEncounter()
 {
-	if (!HasAuthority() || m_bBusy || m_bEnding || m_state != EBossEncounterState::Idle || IsValid(m_boss))
-	{
-		return false;
-	}
+	if(!HasAuthority() || m_bBusy || m_bEnding || m_state != EBossEncounterState::Idle || IsValid(m_boss)) { return false; }
 
 	if (!m_bossClass || m_bossClass->HasAnyClassFlags(CLASS_Abstract))
 	{
@@ -71,20 +94,24 @@ bool ABossEncounterSpawner::StartEncounter()
 	}
 
 	m_bBusy = true;
+	//生成する位置と向き。
 	FTransform spawnTransform = IsValid(m_spawnPoint) ? m_spawnPoint->GetActorTransform() : m_spawnAnchor->GetComponentTransform();
 	spawnTransform.SetScale3D(FVector::OneVector);
 	if (m_navSpawn)
 	{
+		//歩ける場所を調べる機能。
 		auto* nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+		//基準となる位置。
 		FNavLocation point;
-		if (!nav || !nav->ProjectPointToNavigation(spawnTransform.GetLocation(), point, FVector(200, 200, 500)))
+		if (!nav || !nav->ProjectPointToNavigation(spawnTransform.GetLocation(), point, FVector(BossEncounterSpawnerTuning::navWidth, BossEncounterSpawnerTuning::navWidth, BossEncounterSpawnerTuning::navHeight)))
 		{
 			m_bBusy = false;
 			ChangeState(EBossEncounterState::Failed, TEXT("Spawn Anchor requires a built NavMesh. Reset Encounter after fixing placement."));
 			return false;
 		}
+		//生成するクラスの初期設定。
 		const auto* defaults = m_bossClass->GetDefaultObject<AEnemyCharacterBase>();
-		spawnTransform.SetLocation(point.Location + FVector(0, 0, defaults->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + 5.f));
+		spawnTransform.SetLocation(point.Location + FVector(0, 0, defaults->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + BossEncounterSpawnerTuning::floorMargin));
 	}
 	if (const auto* player = UGameplayStatics::GetPlayerPawn(this, 0))
 	{
@@ -95,7 +122,6 @@ bool ABossEncounterSpawner::StartEncounter()
 			return false;
 		}
 	}
-	
 
 	m_boss = GetWorld()->SpawnActorDeferred<AEnemyCharacterBase>(m_bossClass, spawnTransform, this, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding);
 	if (!IsValid(m_boss))
@@ -134,10 +160,7 @@ bool ABossEncounterSpawner::StartEncounter()
 	m_onBossSpawned.Broadcast(m_boss);
 	m_bBusy = false;
 
-	if (m_bEnding)
-	{
-		return false;
-	}
+	if(m_bEnding) { return false; }
 	if (!IsValid(m_boss))
 	{
 		ChangeState(EBossEncounterState::Failed, TEXT("Boss was destroyed during the spawn event."));
@@ -155,21 +178,17 @@ bool ABossEncounterSpawner::StartEncounter()
 	return m_state == EBossEncounterState::Running;
 }
 
+//ボスの状態から戦闘完了を確認する。
 void ABossEncounterSpawner::BossStateChanged(EEnemyState _state)
 {
-	if (!HasAuthority() || m_bBusy || m_bEnding || m_state != EBossEncounterState::Running || _state != EEnemyState::Dead)
-	{
-		return;
-	}
+	if(!HasAuthority() || m_bBusy || m_bEnding || m_state != EBossEncounterState::Running || _state != EEnemyState::Dead) { return; }
 	ChangeState(EBossEncounterState::Completed, TEXT("Boss defeated."));
 }
 
+//ボスが消えた後の登録を解除する。
 void ABossEncounterSpawner::BossDestroyed(AActor* _actor)
 {
-	if (_actor != m_boss.Get())
-	{
-		return;
-	}
+	if(_actor != m_boss.Get()) { return; }
 
 	m_boss = nullptr;
 	if (!m_bBusy && !m_bEnding && m_state == EBossEncounterState::Running)
@@ -178,14 +197,13 @@ void ABossEncounterSpawner::BossDestroyed(AActor* _actor)
 	}
 }
 
+//生成したボスの登録と通知を解除する。
 void ABossEncounterSpawner::ClearBoss()
 {
+	//対象のボス。
 	AEnemyCharacterBase* boss = m_boss.Get();
 	m_boss = nullptr;
-	if (!IsValid(boss))
-	{
-		return;
-	}
+	if(!IsValid(boss)) { return; }
 
 	boss->m_onStateChanged.RemoveDynamic(this, &ABossEncounterSpawner::BossStateChanged);
 	boss->OnDestroyed.RemoveDynamic(this, &ABossEncounterSpawner::BossDestroyed);
@@ -198,12 +216,10 @@ void ABossEncounterSpawner::ClearBoss()
 	boss->Destroy();
 }
 
+//次の戦闘に向けて状態を初期化する。
 void ABossEncounterSpawner::ResetEncounter()
 {
-	if (!HasAuthority() || m_bBusy || m_bEnding)
-	{
-		return;
-	}
+	if(!HasAuthority() || m_bBusy || m_bEnding) { return; }
 
 	m_bBusy = true;
 	ClearBoss();
@@ -211,6 +227,7 @@ void ABossEncounterSpawner::ResetEncounter()
 	ChangeState(EBossEncounterState::Idle, TEXT("Encounter reset. Call Start Encounter to retry."));
 }
 
+//終了時にタイマーや登録を解除する。
 void ABossEncounterSpawner::EndPlay(const EEndPlayReason::Type _reason)
 {
 	m_bEnding = true;

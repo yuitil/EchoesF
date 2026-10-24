@@ -5,11 +5,11 @@
 #include "Enemy/Spawning/WaveManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
-// Sets default values
+//Sets default values
 AEnemyChara::AEnemyChara() : m_maxHP(100.f), m_currentHP(0.0f), m_attackRange(200.f), m_damage(20.f), m_cooldownTimer(2.f), m_moveSpeed(300.f)
 , m_targetActor(nullptr), m_behaviorTree(nullptr), m_pawnSensing(nullptr), m_currentState(FEEnemyState::Idle)
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+ 	//Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 	//初期ステートはIdle
@@ -26,7 +26,7 @@ AEnemyChara::AEnemyChara() : m_maxHP(100.f), m_currentHP(0.0f), m_attackRange(20
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 }
 
-// Called when the game starts or when spawned
+//Called when the game starts or when spawned
 void AEnemyChara::BeginPlay()
 {
 	Super::BeginPlay();
@@ -47,7 +47,7 @@ void AEnemyChara::BeginPlay()
 	}
 }
 
-// Called every frame
+//Called every frame
 void AEnemyChara::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -121,6 +121,7 @@ void AEnemyChara::Die()
 	}
 }
 
+//見つけた相手を攻撃対象として確認する。
 void AEnemyChara::OnSeePawn(APawn* _pawn)
 {
 	//ヌルだったら処理しない

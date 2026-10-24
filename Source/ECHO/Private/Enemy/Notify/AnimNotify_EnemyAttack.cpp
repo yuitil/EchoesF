@@ -3,6 +3,7 @@
 #include "Enemy/Minion/MinionChara.h"
 #include "GameFramework/Actor.h"
 
+//アニメーションの指定位置で処理を呼ぶ。
 void UAnimNotify_EnemyAttack::Notify(USkeletalMeshComponent* _meshComp, UAnimSequenceBase* _animation)
 {
 	//基底クラスを呼び出す

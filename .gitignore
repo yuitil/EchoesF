@@ -80,3 +80,15 @@ DerivedDataCache/*
 .idea/
 *.iws
 .vscode/
+
+# Local Git LFS cache and windowless helper
+/LocalCache/
+/Config/UserEngine.ini
+
+# Local generated files (keep source models and Unreal assets)
+/Art/Enemy/Boss/build.json
+*.slnx
+*.VC.db-shm
+*.VC.db-wal
+Plugins/**/Saved/
+Plugins/**/DerivedDataCache/

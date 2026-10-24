@@ -6,11 +6,13 @@
 
 namespace EnemyQuery
 {
+	//敵として扱う相手か調べる。
 	bool IsEnemy(const AActor* Actor)
 	{
 		return Cast<AEnemyChara>(Actor) || Cast<AEnemyCharacterBase>(Actor);
 	}
 
+	//生きていて攻撃できる敵か調べる。
 	bool IsAliveEnemy(const AActor* Actor)
 	{
 		//無効・非表示（プールに戻っている敵）は対象外
@@ -31,6 +33,7 @@ namespace EnemyQuery
 		return false;
 	}
 
+	//敵が誰かを狙っているか調べる。
 	bool IsEngaged(const AActor* Actor)
 	{
 		if (!IsAliveEnemy(Actor)) return false;

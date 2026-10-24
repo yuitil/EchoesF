@@ -8,17 +8,24 @@ class UBehaviorTree;
 class UPawnSensingComponent;
 class UAnimMontage;
 
+//状態の変化をBPや他の処理へ知らせる通知を用意する。
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnEnemyEliminated, AEnemyChara*, EliminatedEnemy);
 
 //敵のステート
 UENUM(BlueprintType)
 enum class FEEnemyState : uint8
 {
+	//初期設定と必要な部品を用意する。
 	Idle UMETA(DisplayName = "Idle"),
+	//初期設定と必要な部品を用意する。
 	Patrol UMETA(DisplayName = "Patrol"),
+	//初期設定と必要な部品を用意する。
 	Chase UMETA(DisplayName = "Chase"),
+	//初期設定と必要な部品を用意する。
 	Attack UMETA(DisplayName = "Attack"),
+	//初期設定と必要な部品を用意する。
 	Stunned UMETA(DisplayName = "Stunned"),
+	//初期設定と必要な部品を用意する。
 	Dead UMETA(DisplayName = "Dead")
 };
 
@@ -26,26 +33,30 @@ enum class FEEnemyState : uint8
 UENUM(BlueprintType)
 enum class EEnemyRole : uint8
 {
+	//初期設定と必要な部品を用意する。
 	Warrior   UMETA(DisplayName = "Warrior (前衛)"),
+	//初期設定と必要な部品を用意する。
 	Mage      UMETA(DisplayName = "Mage (魔法使い)"),
+	//初期設定と必要な部品を用意する。
 	Priest    UMETA(DisplayName = "Priest (僧侶)")
 };
 
+//Sets default values for this character's properties
 UCLASS()
 class ECHO_API AEnemyChara : public ACharacter
 {
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
+	//Sets default values for this character's properties
 	AEnemyChara();
 
 protected:
-	// Called when the game starts or when spawned
+	//Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 public:
-	// Called every frame
+	//Called every frame
 	virtual void Tick(float DeltaTime) override;
 
 	//ダメージ用
@@ -67,6 +78,7 @@ public:
 	//倒された時の関数
 	virtual void Die();
 
+	//次の攻撃までの待ち時間を戻す。
 	void ResetTimer();
 
 	//ビヘイビアーを取得
@@ -84,6 +96,7 @@ public:
 	//現在のステートを設定
 	FORCEINLINE void SetCurrentState(FEEnemyState _state) { m_currentState = _state; }
 
+	//敵が倒された時の通知。
 	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FOnEnemyEliminated m_onEnemyEliminated;
 
@@ -136,6 +149,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
 	UAnimMontage* m_attackMontage;
 
+	//攻撃の終了や待ち時間を管理するタイマー。
 	FTimerHandle m_attackTimerHandle;
 
 public:
@@ -143,7 +157,7 @@ public:
 	FORCEINLINE EEnemyRole GetEnemyRole() const { return m_enemyRole; }
 
 	protected:
-		// 敵の役職（エディタ側で変更可能）
+		//敵の役職（エディタ側で変更可能）
 		UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
 		EEnemyRole m_enemyRole = EEnemyRole::Warrior; // デフォルトは戦士
 };

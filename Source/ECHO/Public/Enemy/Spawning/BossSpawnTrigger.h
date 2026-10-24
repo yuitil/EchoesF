@@ -8,17 +8,18 @@
 class UBoxComponent;
 class AWaveManager;
 
+//Sets default values for this actor's properties
 UCLASS()
 class ECHO_API ABossSpawnTrigger : public AActor
 {
 	GENERATED_BODY()
 	
 public:	
-	// Sets default values for this actor's properties
+	//Sets default values for this actor's properties
 	ABossSpawnTrigger();
 
 protected:
-	// Called when the game starts or when spawned
+	//Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 public:

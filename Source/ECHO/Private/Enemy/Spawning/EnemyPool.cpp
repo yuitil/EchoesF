@@ -1,21 +1,19 @@
 #include "Enemy/Spawning/EnemyPool.h"
 #include "Enemy/EnemyChara.h"
 #include "NavigationSystem.h"
-// Sets default values
+//Sets default values
 AEnemyPool::AEnemyPool()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+ 	//Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
 
 }
 
-// Called when the game starts or when spawned
+//Called when the game starts or when spawned
 void AEnemyPool::BeginPlay()
 {
 	Super::BeginPlay();
-	//
 	if (!m_enabled) { return; }
-	//
 
 	//プールの初期化
 	InitPool();
@@ -40,6 +38,7 @@ void AEnemyPool::InitPool()
 	//初期プールサイズ分の敵を生成して待機中のプールに追加
 	for (int32 i = 0; i < m_initialPoolSize; ++i)
 	{
+		//処理の対象となる敵。
 		AEnemyChara* enemy = GetWorld()->SpawnActor<AEnemyChara>(m_pEnemyClass, FVector(0.f, 0.f, 100.f), FRotator::ZeroRotator, spawnParams);
 		
 		if (enemy)
@@ -56,17 +55,17 @@ void AEnemyPool::InitPool()
 	}
 }
 
+//周囲から生成できる場所を探して敵を出す。
 AEnemyChara* AEnemyPool::SpawnEnemyAtRandomLocation()
 {
-	//
 	if (!m_enabled) { return nullptr; }
-	//
 	//ナビゲーションシステムを取得
 	UNavigationSystemV1* navSystem = UNavigationSystemV1::GetCurrent(GetWorld());
 	if (!navSystem) { return nullptr; }
 	
 	//スポーン位置をランダムに生成
 	FNavLocation navLocation;
+	//相手を囲む中心位置。
 	FVector center = GetActorLocation();
 
 	//ポイントが見つかるまで繰り返す
@@ -96,9 +95,8 @@ AEnemyChara* AEnemyPool::SpawnEnemyAtRandomLocation()
 //プールから敵を取り出す関数
 AEnemyChara* AEnemyPool::SpawnEnemy(FVector _location, FRotator _rotation)
 {
-	//
 	if (!m_enabled) { return nullptr; }
-	//
+	//処理の対象となる敵。
 	AEnemyChara* enemy = nullptr;
 
 	//待機中のプールに敵がいるか確認
