@@ -148,6 +148,11 @@ void UCombat::TickComponent(float _deltaTime, ELevelTick _type, FActorComponentT
 	FVector end = mesh->GetSocketLocation(tip);
 	FCollisionObjectQueryParams objects;
 	objects.AddObjectTypesToQuery(ECC_Pawn);
+	//ターゲットのオブジェクトタイプも対象にする（Player プリセット対応）
+	if (const UPrimitiveComponent* targetRoot = IsValid(target) ? Cast<UPrimitiveComponent>(target->GetRootComponent()) : nullptr)
+	{
+		objects.AddObjectTypesToQuery(targetRoot->GetCollisionObjectType());
+	}
 
 	FCollisionQueryParams params(SCENE_QUERY_STAT(BossSword), false, enemy);
 	

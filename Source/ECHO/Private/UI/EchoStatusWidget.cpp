@@ -27,6 +27,20 @@ void UEchoStatusWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
 		return;
 	}
 
+	//HPバー、減った分の帯を、少し遅れて追いかけさせる
+	if (m_TrailRatio > m_HPRatio)
+	{
+		if (m_TrailWaitTime > 0.f)
+		{
+			m_TrailWaitTime -= InDeltaTime;
+		}
+		else
+		{
+			m_TrailRatio = FMath::Max(m_HPRatio, m_TrailRatio - m_TrailSpeed * InDeltaTime);
+		}
+		if (HPTrailBar) HPTrailBar->SetPercent(ToHPBarPercent(m_TrailRatio));
+	}
+
 	//点滅：切り替わる瞬間だけテクスチャを更新する（毎フレーム更新しない）
 	if (m_BlinkInterval > 0.f && GetWorld())
 	{
@@ -49,6 +63,7 @@ void UEchoStatusWidget::NativeDestruct()
 	{
 		P->OnEnergyChanged.Remove(m_EnergyHandle);
 		P->OnGhostsChanged.Remove(m_GhostsHandle);
+		P->OnHPChanged.Remove(m_HPHandle);
 	}
 	Super::NativeDestruct();
 }
@@ -61,12 +76,14 @@ bool UEchoStatusWidget::TryBindPlayer()
 	Player = P;
 	m_EnergyHandle = P->OnEnergyChanged.AddUObject(this, &UEchoStatusWidget::HandleEnergyChanged);
 	m_GhostsHandle = P->OnGhostsChanged.AddUObject(this, &UEchoStatusWidget::HandleGhostsChanged);
+	m_HPHandle = P->OnHPChanged.AddUObject(this, &UEchoStatusWidget::HandleHPChanged);
 
 	BuildCapsules(P->GetMaxGhostCount());
 
 	//初期表示
 	HandleEnergyChanged(P->GetCurrentEnergy(), P->GetMaxEnergy());
 	HandleGhostsChanged();
+	HandleHPChanged(P->GetCurrentHP(), P->GetMaxHP());
 	return true;
 }
 
@@ -163,4 +180,21 @@ void UEchoStatusWidget::ApplyCapsuleTextures()
 			CapsuleImages[i]->SetBrushFromTexture(Tex, false);
 		}
 	}
+}
+
+void UEchoStatusWidget::HandleHPChanged(float Current, float Max)
+{
+	const float NewRatio = Max > 0.f ? FMath::Clamp(Current / Max, 0.f, 1.f) : 0.f;
+
+	if (NewRatio < m_HPRatio)
+	{
+		//減ったときは少し待ってから帯を追いかけさせる
+		m_TrailWaitTime = m_TrailDelay;
+	}
+	//回復したときは帯もすぐ合わせる
+	m_TrailRatio = FMath::Max(m_TrailRatio, NewRatio);
+	m_HPRatio = NewRatio;
+
+	if (HPBar)      HPBar->SetPercent(ToHPBarPercent(m_HPRatio));
+	if (HPTrailBar) HPTrailBar->SetPercent(ToHPBarPercent(m_TrailRatio));
 }
