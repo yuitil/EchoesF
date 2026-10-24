@@ -20,7 +20,7 @@ static const FName LungeRootMotionName(TEXT("AttackLunge"));
 UCombatComponent::UCombatComponent() :
 	m_AttackTurnDuration(0.1f),
 	m_TurnElapsed(0.f),
-	m_DodgeForce(3500.f),
+	m_DodgeForce(2200.f),
 	m_DodgeDuration(0.1f),
 	m_DodgeCooldown(0.7f),
 	m_iCurrentComboIndex(0),
