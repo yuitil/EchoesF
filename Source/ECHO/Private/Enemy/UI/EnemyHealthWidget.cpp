@@ -67,8 +67,8 @@ void UEnemyHealthWidget::NativeTick(const FGeometry& _shape, float _delta)
     const bool rising = boss && boss->m_bossPhase == EBossPhase::Transition;
     if(rising && !m_wasRising && !m_postureMode) { m_shown = 0.f; }
     m_wasRising = rising;
-    //回復は少しずつ満たし、被弾はすぐ反映する。
-    m_shown = ratio < m_shown ? ratio : FMath::FInterpConstantTo(m_shown, ratio, _delta, m_fillSpeed);
+    //回復は徐々に表示し、体勢の全回復と被弾はすぐ反映する。
+    m_shown = (m_postureMode && ratio >= 1.f) || ratio < m_shown ? ratio : FMath::FInterpConstantTo(m_shown, ratio, _delta, m_fillSpeed);
     if(m_healthBar) { m_healthBar->SetPercent(m_shown); }
     if(m_trailBar) { m_trailBar->SetPercent(FMath::Min(m_trail, ratio > m_shown ? m_shown : m_trail)); }
     //フェーズ2のオーラはWidget BPのアニメーションで指定する。
