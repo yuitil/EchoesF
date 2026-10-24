@@ -39,6 +39,10 @@ public:
 	//抽選の値が設定した確率に入るか調べる。
 	static bool PassesChance(float _roll, float _chance);
 
+	//指定した秒数だけガードを崩す。
+	UFUNCTION(BlueprintCallable, Category="Enemy|GuardBreak")
+	void BreakFor(float _seconds);
+
 	//受けた攻撃を覚えて次の防御に備える。
 	void RememberHit(AActor* _attacker);
 

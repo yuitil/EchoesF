@@ -16,10 +16,13 @@ namespace MinionBBKey
 {
 	//BTが狙う相手を保存する項目名。
 	static const FName TargetActor(TEXT("TargetActor"));
+	
 	//BTが巡回先を保存する項目名。
 	static const FName PatrolLocation(TEXT("PatrolLocation"));
+	
 	//BTが攻撃可能な距離か保存する項目名。
 	static const FName bIsInAttackRange(TEXT("bIsInAttackRange"));
+	
 	//BTが死亡状態を保存する項目名。
 	static const FName bIsDead(TEXT("bIsDead"));
 }

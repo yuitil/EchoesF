@@ -10,13 +10,17 @@ namespace BossObservationTuning
 {
     //近距離として記録する範囲。
     constexpr auto closeRange = 250;
-    //移動したと判断する基準。
+    
+	//移動したと判断する基準。
     constexpr auto moveThreshold = 100;
-    //アニメーションが再開したと判断する余裕。
+   
+	//アニメーションが再開したと判断する余裕。
     constexpr auto restartMargin = 0.02f;
-    //回避の癖を判断する最低回数。
+    
+	//回避の癖を判断する最低回数。
     constexpr auto minDodges = 3;
-    //攻撃後の隙を記録する時間。
+    
+	//攻撃後の隙を記録する時間。
     constexpr auto historyDelay = 10.0;
 }
 
@@ -44,6 +48,7 @@ void UBossObservation::Observe(AActor* _target, const UBossData* _data)
 	//基準位置からのずらし量。
 	FVector offSet = _target->GetActorLocation() - GetOwner()->GetActorLocation();
 	offSet.Z = 0.0f;
+	
 	//移動や判定に使う方向。
 	FVector direction = offSet.GetSafeNormal();
 
@@ -57,12 +62,16 @@ void UBossObservation::Observe(AActor* _target, const UBossData* _data)
 
 	//対象のキャラクター。
 	ACharacter* character = Cast<ACharacter>(_target);
+	
 	//アニメーションを再生する部品。
 	UAnimInstance* animInstance = character && character->GetMesh() ? character->GetMesh()->GetAnimInstance() : nullptr;
+	
 	//対象のモンタージュ。
 	UAnimMontage* montage = animInstance ? animInstance->GetCurrentActiveMontage() : nullptr;
+	
 	//現在の位置や再生位置。
 	float position = montage ? animInstance->Montage_GetPosition(montage) : -1;
+	
 	//処理を開始できたか。
 	const bool started = montage && (m_lastMontage.Get() != montage ||  position + BossObservationTuning::restartMargin < m_lastAnimPos);
 
@@ -115,6 +124,7 @@ void UBossObservation::Freeze()
 	if(m_bIsFrozen) { return; }
 
 	m_frozenPattern = m_pattern;
+	
 	//記録した数。
 	const float sampleCount = FMath::Max(1, m_pattern.m_samples);
 	m_frozenPattern.m_closeRatio = m_closeCount / sampleCount;

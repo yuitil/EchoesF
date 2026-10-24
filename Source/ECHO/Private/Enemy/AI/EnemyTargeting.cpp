@@ -39,14 +39,18 @@ AActor* UEnemyTargeting::SelectTarget()
 
     //敵の行動を操作するAI。
     auto* ai = Cast<AAIController>(enemy->GetController());
+    
     //今までで最も適した候補。
     AActor* best = nullptr;
+    
     //候補の選ばれやすさ。
     float score = TNumericLimits<float>::Max();
+    
     //候補として調べる処理。
     auto consider = [&](AActor* actor)
     {
         if(!IsCandidate(actor)) { return; }
+        
         //相手までの距離。
         float distance = FVector::Dist2D(actor->GetActorLocation(),enemy->GetActorLocation());
         if(distance > FMath::Max(0.f,m_range) || (ai && !ai->LineOfSightTo(actor))) { return; }
@@ -55,8 +59,10 @@ AActor* UEnemyTargeting::SelectTarget()
     };
     consider(UGameplayStatics::GetPlayerPawn(this,0));
     if (m_targetClones) for (TActorIterator<AGhostCharacter> it(GetWorld()); it; ++it) consider(*it);
-    if(!best && IsCandidate(enemy->m_combatTarget)
-        && FVector::Dist2D(enemy->GetActorLocation(), enemy->m_combatTarget->GetActorLocation()) <= m_range) { return enemy->m_combatTarget; }
+    if(!best && IsCandidate(enemy->m_combatTarget) && FVector::Dist2D(enemy->GetActorLocation(), enemy->m_combatTarget->GetActorLocation()) <= m_range) 
+    { 
+        return enemy->m_combatTarget;
+    }
     return best;
 }
 
@@ -66,20 +72,30 @@ AActor* UEnemyTargeting::SelectMinionTarget()
     //処理の対象となる敵。
     auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
     if(!enemy) { return nullptr; }
+   
     //集団戦での役割を管理する部品。
     auto* formation = enemy->FindComponentByClass<UMinionFormation>();
     if(enemy->IsActing()) { return IsCandidate(enemy->m_combatTarget) ? enemy->m_combatTarget.Get() : nullptr; }
+    
     //今の相手を狙い続ける距離。
     const float keepRange = FMath::Max(m_range,m_giveUpRange);
+    
     //現在の相手を維持するか。
-    auto keep = [&](AActor* actor) { return IsCandidate(actor) && FVector::DistSquared2D(enemy->GetActorLocation(),actor->GetActorLocation()) <= FMath::Square(keepRange); };
+    auto keep = [&](AActor* actor) 
+        { 
+            return IsCandidate(actor) && FVector::DistSquared2D(enemy->GetActorLocation(),actor->GetActorLocation()) <= FMath::Square(keepRange); 
+        };
+
     if(formation && formation->IsProvoked() && keep(formation->GetCounterTarget())) { return formation->GetCounterTarget(); }
     if(formation && formation->HasTurn() && keep(enemy->m_combatTarget)) { return enemy->m_combatTarget; }
     if(!m_preferClones || !m_targetClones) { return SelectTarget(); }
+    
     //敵の行動を操作するAI。
     auto* ai = Cast<AAIController>(enemy->GetController());
+    
     //今までで最も適した候補。
     AActor* best = nullptr;
+    
     //候補の選ばれやすさ。
     float score = TNumericLimits<float>::Max();
     for (TActorIterator<AGhostCharacter> it(GetWorld()); it; ++it)
@@ -87,6 +103,7 @@ AActor* UEnemyTargeting::SelectMinionTarget()
         //狙っている相手。
         auto* target = *it;
         if (!IsCandidate(target)) continue;
+       
         //相手までの距離。
         float distance = FVector::Dist2D(enemy->GetActorLocation(), target->GetActorLocation());
         if (distance > m_range || (ai && !ai->LineOfSightTo(target))) continue;
@@ -102,8 +119,7 @@ AActor* UEnemyTargeting::SelectMinionTarget()
 
     //対象のプレイヤー。
     auto* player = UGameplayStatics::GetPlayerPawn(this,0);
-    if(best && m_keepPlayerDuel && IsCandidate(player)
-        && GetWorld()->GetSubsystem<UMinionCombatDirector>()->GetPlayerGuard(player) == enemy) { return player; }
+    if(best && m_keepPlayerDuel && IsCandidate(player) && GetWorld()->GetSubsystem<UMinionCombatDirector>()->GetPlayerGuard(player) == enemy) { return player; }
 
     return best ? best : SelectTarget();
 }

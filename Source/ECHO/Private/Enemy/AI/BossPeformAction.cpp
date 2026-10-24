@@ -64,24 +64,33 @@ namespace
 	bool HasRetreatSpace(AEnemyCharacterBase* enemy)
 	{
 		if(!enemy || !IsValid(enemy->m_combatTarget)) { return false; }
+		
 		//調べ始める位置。
 		const FVector start = enemy->GetActorLocation();
+		
 		//相手から離れる方向。
 		const FVector away = (start - enemy->m_combatTarget->GetActorLocation()).GetSafeNormal2D();
+		
 		//調べ終える位置。
 		const FVector end = enemy->m_combatTarget->GetActorLocation() + away * (enemy->GetMeleeDistance() + BossPeformActionTuning::retreatMargin);
+		
 		//ぶつかった場所の情報。
 		FHitResult hit;
+		
 		//生成や当たり判定に使う設定。
 		FCollisionQueryParams params(SCENE_QUERY_STAT(EnemyRetreatSpace), false, enemy);
+		
 		//キャラクターの当たり判定。
 		const auto* capsule = enemy->GetCapsuleComponent();
 		if(enemy->GetWorld()->SweepSingleByChannel(hit, start, FVector(end.X, end.Y, start.Z), FQuat::Identity, ECC_Pawn,
 			FCollisionShape::MakeCapsule(capsule->GetScaledCapsuleRadius(), capsule->GetScaledCapsuleHalfHeight()), params)) { return false; }
+		
 		//歩ける場所を調べる機能。
 		auto* nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(enemy->GetWorld());
+		
 		//地面に当たった情報。
 		FNavLocation floor;
+		
 		//足元の位置。
 		const float feet = start.Z - capsule->GetScaledCapsuleHalfHeight();
 		return nav && nav->ProjectPointToNavigation(FVector(end.X, end.Y, feet), floor, FVector(BossPeformActionTuning::navWidth, BossPeformActionTuning::navWidth, BossPeformActionTuning::navHeight)) && FMath::Abs(floor.Location.Z - feet) <= enemy->GetCharacterMovement()->MaxStepHeight;
@@ -120,6 +129,7 @@ bool UBossPeformAction::StartAttack(UBehaviorTreeComponent& _ownerComp)
 		!enemy->RequestAction()) { return false; }
 
 	m_serial = enemy->m_actionSerial;
+	
 	//使用する行動の設定。
 	const auto* action = enemy->GetActiveAction();
 	m_deadline = enemy->GetWorld()->GetTimeSeconds() + enemy->GetActionTimeout(*action);
@@ -132,22 +142,29 @@ bool UBossPeformAction::CanCatch(AEnemyCharacterBase* _enemy, float& _hitEnd, fl
 	//使用する行動の設定。
 	const auto* action = _enemy->GetReadyAction(m_rushAction);
 	if(!action || !action->m_montage || !_enemy->GetPendingComboId().IsNone()) { return false; }
+	
 	//敵の行動を操作するAI。
 	AAIController* ai = Cast<AAIController>(_enemy->GetController());
+	
 	//狙っている相手。
 	AActor* target = _enemy->m_combatTarget;
+	
 	//調べ始める位置。
 	const FVector start = _enemy->GetActorLocation();
+	
 	//相手までの距離。
 	const float distance = FVector::Dist2D(start, target->GetActorLocation());
 	if(!ai || !ai->LineOfSightTo(target) || distance <= FMath::Max(m_attackDist, m_rushMin) || distance > m_rushRange) { return false; }
 
 	if(_enemy->GetWorld()->GetTimeSeconds() - m_chaseStart < m_chaseDelay) { return false; }
+	
 	//相手へ向かう方向。
 	const FVector toward = (target->GetActorLocation() - start).GetSafeNormal2D();
+	
 	//向いている方向。
 	const float facing = FVector::DotProduct(_enemy->GetActorForwardVector().GetSafeNormal2D(), toward);
 	if(facing < FMath::Cos(FMath::DegreesToRadians(m_rushAngle))) { return false; }
+	
 	//相手が離れる速さ。
 	const float escapeSpeed = FVector::DotProduct(target->GetVelocity(), toward);
 	if(escapeSpeed < -BossPeformActionTuning::approachSpeed) { return false; }
@@ -166,47 +183,62 @@ bool UBossPeformAction::CanCatch(AEnemyCharacterBase* _enemy, float& _hitEnd, fl
 	//再生する区間。
 	const int32 section = action->m_montage->GetSectionIndex(m_moveSection);
 	if(section == INDEX_NONE) { return false; }
+	
 	//区間が終わる再生位置。
 	float sectionEnd = 0.f;
 	action->m_montage->GetSectionStartAndEndTime(section, _moveStart, sectionEnd);
+	
 	//使用する再生速度。
 	const float rate = FMath::Max(BossPeformActionTuning::minRate, _enemy->GetAttackRate(*action) * action->m_montage->RateScale);
 	_moveStart /= rate;
 	_hitEnd = FMath::Min(_hitEnd, sectionEnd / rate);
+	
 	//処理に使う時間。
 	const float time = _hitEnd - BossPeformActionTuning::hitMargin;
 	if(time <= _moveStart) { return false; }
+	
 	//相手の移動を先読みした位置。
 	const FVector predicted = target->GetActorLocation() + target->GetVelocity() * time;
 	if(FMath::Abs(predicted.Z - start.Z) > m_heightLimit) { return false; }
+	
 	//進行方向の障害物の情報。
 	FHitResult wall;
+	
 	//生成や当たり判定に使う設定。
 	FCollisionQueryParams params(SCENE_QUERY_STAT(DashReach), false, _enemy);
 	params.AddIgnoredActor(target);
 	if(_enemy->GetWorld()->LineTraceSingleByChannel(wall, start, predicted, ECC_Visibility, params)) { return false; }
+	
 	//目的地までの移動経路。
 	auto* path = UNavigationSystemV1::FindPathToLocationSynchronously(_enemy->GetWorld(), start, predicted, _enemy);
 	if(!path || !path->IsValid() || path->IsPartial()) { return false; }
+	
 	//目的地までの直線距離。
 	const float direct = FVector::Dist2D(start, predicted);
 	if(path->GetPathLength() > direct * BossPeformActionTuning::pathRatio + BossPeformActionTuning::rangeMargin) { return false; }
+	
 	//加速の強さ。
 	const float accel = FMath::Max(_enemy->GetCharacterMovement()->MaxAcceleration, m_rushSpeed * BossPeformActionTuning::dashAccel);
+	
 	//移動する速さ。
 	const float speed = 0.f;
+	
 	//目的地までの移動時間。
 	const float travelTime = time - _moveStart;
+	
 	//加速にかかる時間。
 	const float ramp = FMath::Min(travelTime, (m_rushSpeed - speed) / accel);
+	
 	//移動する距離。
 	const float travel = speed * ramp + .5f * accel * ramp * ramp + m_rushSpeed * (travelTime - ramp);
 	if(path->GetPathLength() > travel + FMath::Max(0.f, m_attackDist - BossPeformActionTuning::reachMargin)) { return false; }
 
 	//相手との距離を縮める速さ。
 	const float closing = _enemy->GetCharacterMovement()->MaxWalkSpeed - escapeSpeed;
+	
 	//通常移動で近づく時間。
 	const float walkTime = closing > 1.f ? (distance - m_attackDist) / closing : BIG_NUMBER;
+	
 	//突進で近づく時間。
 	const float dashTime = _moveStart + FMath::Max(0.f, path->GetPathLength() - m_attackDist) / m_rushSpeed + BossPeformActionTuning::dashDelay;
 	return walkTime - dashTime >= m_minGain;
@@ -218,10 +250,13 @@ bool UBossPeformAction::TryDash(UBehaviorTreeComponent& _ownerComp)
 {
 	//敵の行動を操作するAI。
 	auto* ai = _ownerComp.GetAIOwner();
+	
 	//処理の対象となる敵。
 	auto* enemy = ai ? Cast<AEnemyCharacterBase>(ai->GetPawn()) : nullptr;
+	
 	//攻撃判定を終える再生位置。
 	float hitEnd = 0.f;
+	
 	//移動を始める再生位置。
 	float moveStart = 0.f;
 	if(!enemy || enemy->GetWorld()->GetTimeSeconds() < m_nextCheck) { return false; }
@@ -229,12 +264,14 @@ bool UBossPeformAction::TryDash(UBehaviorTreeComponent& _ownerComp)
 	if(!enemy || !CanCatch(enemy, hitEnd, moveStart) || !enemy->RequestAction(m_rushAction)) { return false; }
 	m_fast = true;
 	m_serial = enemy->m_actionSerial;
+	
 	//移動を管理する部品。
 	auto* move = enemy->GetCharacterMovement();
 	move->MaxWalkSpeed = m_rushSpeed;
 	move->MaxAcceleration = FMath::Max(m_oldAccel, m_rushSpeed * BossPeformActionTuning::dashAccel);
 	m_hitEnd = enemy->GetWorld()->GetTimeSeconds() + hitEnd;
 	m_moveStart = enemy->GetWorld()->GetTimeSeconds() + moveStart;
+	
 	//使用する行動の設定。
 	const auto* action = enemy->GetActiveAction();
 	m_deadline = enemy->GetWorld()->GetTimeSeconds() + enemy->GetActionTimeout(*action);
@@ -248,8 +285,10 @@ void UBossPeformAction::StopRush(UBehaviorTreeComponent& _ownerComp)
 {
 	if(!m_rushing) { return; }
 	m_rushing = false;
+	
 	//敵の行動を操作するAI。
 	auto* ai = _ownerComp.GetAIOwner();
+	
 	//処理の対象となる敵。
 	auto* enemy = ai ? Cast<AEnemyCharacterBase>(ai->GetPawn()) : nullptr;
 
@@ -272,6 +311,7 @@ EBTNodeResult::Type UBossPeformAction::ExecuteTask(UBehaviorTreeComponent& _owne
 {
 	//敵の行動を操作するAI。
 	auto* ai = _ownerComp.GetAIOwner();
+	
 	//処理の対象となる敵。
 	auto* enemy = ai ? Cast<AEnemyCharacterBase>(ai->GetPawn()) : nullptr;
 	m_rushing = false;
@@ -284,6 +324,7 @@ EBTNodeResult::Type UBossPeformAction::ExecuteTask(UBehaviorTreeComponent& _owne
 	if(enemy->m_stationary) { return StartAttack(_ownerComp) ? EBTNodeResult::InProgress : EBTNodeResult::Failed; }
 
 	m_chaseStart = enemy->GetWorld()->GetTimeSeconds();
+	
 	//相手までの距離。
 	const float distance = FVector::Dist2D(enemy->GetActorLocation(), enemy->m_combatTarget->GetActorLocation());
 
@@ -293,6 +334,7 @@ EBTNodeResult::Type UBossPeformAction::ExecuteTask(UBehaviorTreeComponent& _owne
 		if (!m_retreatAction.IsNone() && enemy->RequestAction(m_retreatAction))
 		{
 			m_serial = enemy->m_actionSerial;
+			
 			//使用する行動の設定。
 			const auto* action = enemy->GetActiveAction();
 			m_deadline = enemy->GetWorld()->GetTimeSeconds() + enemy->GetActionTimeout(*action);
@@ -302,6 +344,7 @@ EBTNodeResult::Type UBossPeformAction::ExecuteTask(UBehaviorTreeComponent& _owne
 		//相手から離れる方向。
 		FVector away = (enemy->GetActorLocation() - enemy->m_combatTarget->GetActorLocation()).GetSafeNormal2D();
 		if (away.IsNearlyZero()) { away = -enemy->GetActorForwardVector(); }
+		
 		//移動の目的地。
 		const FVector goal = enemy->m_combatTarget->GetActorLocation() + away * enemy->GetMeleeDistance();
 		m_oldSpeed = enemy->GetCharacterMovement()->MaxWalkSpeed;
@@ -340,11 +383,17 @@ void UBossPeformAction::TickTask(UBehaviorTreeComponent& _ownerComp, uint8* _nod
 {
 	//敵の行動を操作するAI。
 	auto* ai = _ownerComp.GetAIOwner();
+	
 	//処理の対象となる敵。
 	auto* enemy = ai ? Cast<AEnemyCharacterBase>(ai->GetPawn()) : nullptr;
 	if (!enemy) { StopRush(_ownerComp); FinishLatentTask(_ownerComp, EBTNodeResult::Failed); return; }
 	if (const auto* formation=enemy->FindComponentByClass<UMinionFormation>(); formation && !formation->HasTurn() && !enemy->IsActing())
-	{ StopRush(_ownerComp); FinishLatentTask(_ownerComp, EBTNodeResult::Succeeded); return; }
+	{ 
+		StopRush(_ownerComp); 
+		FinishLatentTask(_ownerComp, EBTNodeResult::Succeeded); 
+		return; 
+	}
+	
 	//現在の時刻。
 	const double now = enemy->GetWorld()->GetTimeSeconds();
 	if (m_rushing)
@@ -356,6 +405,7 @@ void UBossPeformAction::TickTask(UBehaviorTreeComponent& _ownerComp, uint8* _nod
 			FinishLatentTask(_ownerComp, EBTNodeResult::Failed);
 			return;
 		}
+
 		//相手までの距離。
 		const float distance = FVector::Dist2D(enemy->GetActorLocation(), enemy->m_combatTarget->GetActorLocation());
 		if (m_fast)
@@ -370,11 +420,13 @@ void UBossPeformAction::TickTask(UBehaviorTreeComponent& _ownerComp, uint8* _nod
 
 			//移動を止める距離。
 			const float stop = FMath::Max(m_attackDist, enemy->GetMeleeDistance());
+			
 			//移動を管理する部品。
 			auto* move = enemy->GetCharacterMovement();
 
 			//処理に使う上限。
 			const float limit = now < m_moveStart ? FMath::Clamp(m_startSpeed, 0.f, m_rushSpeed) : m_rushSpeed;
+			
 			//移動する速さ。
 			const float speed = FMath::Min(limit, FMath::Max(0.f, distance - stop) / FMath::Max(BossPeformActionTuning::minStepTime, _delta * 2.f));
 			move->MaxWalkSpeed = speed;
@@ -391,7 +443,12 @@ void UBossPeformAction::TickTask(UBehaviorTreeComponent& _ownerComp, uint8* _nod
 			}
 			return;
 		}
-		if (!enemy->CanDecide()) { StopRush(_ownerComp); FinishLatentTask(_ownerComp, EBTNodeResult::Failed); return; }
+		if (!enemy->CanDecide()) 
+		{ 
+			StopRush(_ownerComp); 
+			FinishLatentTask(_ownerComp, EBTNodeResult::Failed);
+			return; 
+		}
 		if (distance <= m_rushMin && ai->LineOfSightTo(enemy->m_combatTarget) && StartAttack(_ownerComp))
 		{
 			StopRush(_ownerComp);
@@ -420,8 +477,10 @@ void UBossPeformAction::TickTask(UBehaviorTreeComponent& _ownerComp, uint8* _nod
 EBTNodeResult::Type UBossPeformAction::AbortTask(UBehaviorTreeComponent& _ownerComp, uint8* _nodeMemory)
 {
 	StopRush(_ownerComp);
+
 	//敵の行動を操作するAI。
 	auto* ai = _ownerComp.GetAIOwner();
+
 	//処理の対象となる敵。
 	auto* enemy = ai ? Cast<AEnemyCharacterBase>(ai->GetPawn()) : nullptr;
 	if (enemy && enemy->m_actionSerial == m_serial) { enemy->CancelAction(); }

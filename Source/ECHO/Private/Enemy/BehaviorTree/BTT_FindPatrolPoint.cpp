@@ -55,6 +55,7 @@ EBTNodeResult::Type UBTT_FindPatrolPoint::ExecuteTask(UBehaviorTreeComponent& _o
 	
 	//ポイントが見つかるまで繰り返す
 	const int maxAttempts = 10;
+	
 	//移動先が見つかったか。
 	bool bFoundPoint = false;
 

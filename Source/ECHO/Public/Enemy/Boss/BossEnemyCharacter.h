@@ -9,6 +9,8 @@ class UBossObservation;
 class UBossApproach;
 
 class UBossSpacing;
+class UBossPosture;
+class UEnemyAfterimageTrail;
 
 //状態の変化をBPや他の処理へ知らせる通知を用意する。
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FBossLifeEvent, EBossPhase, lifePhase);
@@ -25,6 +27,9 @@ public:
 
 	//間合いを取り直しているか返す。
 	virtual bool IsRepositioning() const override;
+
+	//被弾した分を体勢ゲージにも伝える。
+	virtual float TakeDamage(float _damage, const FDamageEvent& _event, AController* _instigator, AActor* _causer) override;
 
 	//次の戦闘に向けて状態を初期化する。
 	virtual void ResetEncounter() override;
@@ -56,6 +61,14 @@ public:
 	//抜刀と接近を管理する部品。
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Boss")
 	TObjectPtr<UBossApproach> m_approach;
+
+	//HPと別に体勢を管理する部品。
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Boss")
+	TObjectPtr<UBossPosture> m_posture;
+
+	//通知の区間でメッシュ形の残像を出す部品。
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Boss")
+	TObjectPtr<UEnemyAfterimageTrail> m_afterimage;
 
 	//間合いの調整を行う部品。
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Boss")

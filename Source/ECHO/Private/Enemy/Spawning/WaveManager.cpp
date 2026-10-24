@@ -226,6 +226,7 @@ void AWaveManager::SpawnMidBoss()
 
 	//スポーン位置と回転を設定
 	FVector spawnLoc = m_midBossSpawnPoint ? m_midBossSpawnPoint->GetActorLocation() : GetActorLocation() + FVector(500.f, 0.f, 0.f);
+	
 	//生成時の向き。
 	FRotator spawnRot = m_midBossSpawnPoint ? m_midBossSpawnPoint->GetActorRotation() : FRotator::ZeroRotator;
 

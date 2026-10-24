@@ -20,28 +20,40 @@ namespace BossSpacingTuning
 {
     //距離の判定に持たせる余裕。
     constexpr auto rangeMargin = 60.f;
+    
     //再び試すまでの時間。
     constexpr auto retryDelay = .25f;
+    
     //行動を始めるまでの時間。
     constexpr auto startDelay = .3;
+    
     //向きを変える速さ。
     constexpr auto turnSpeed = 5.f;
+   
     //経路を更新する間隔。
     constexpr auto pathDelay = .5;
+   
     //近づきすぎと判断する距離の割合。
     constexpr auto innerRing = .85f;
+   
     //歩ける場所を探す横幅。
     constexpr auto navWidth = 100;
+   
     //歩ける場所を探す高さ。
     constexpr auto navHeight = 200;
+  
     //移動先の補正に使う余裕。
     constexpr auto pathMargin = 10.f;
+ 
     //移動を止める距離。
     constexpr auto stopRange = 30.f;
+  
     //回復に必要な距離の割合。
     constexpr auto healRangeRatio = .8f;
+   
     //行動時間の下限。
     constexpr auto minDuration = .1f;
+   
     //様子見と判断する時間の下限。
     constexpr auto minIdleTime = .2f;
 }
@@ -57,12 +69,23 @@ bool UBossSpacing::IsTargetDown_Implementation(AActor* _target) const
 {
     if(!IsValid(_target)) { return false; }
     if(!m_downTag.IsNone() && _target->ActorHasTag(m_downTag)) { return true; }
+    
     //対象のキャラクター。
     const auto* character = Cast<ACharacter>(_target);
+    
     //アニメーションを再生する部品。
     const auto* anim = character && character->GetMesh() ? character->GetMesh()->GetAnimInstance() : nullptr;
-    if (anim) for (const auto& montage : m_downMontages)
-        if(montage && anim->Montage_IsPlaying(montage)) { return true; }
+    if (anim)
+    {
+        for (const auto& montage : m_downMontages)
+        {
+            if (montage && anim->Montage_IsPlaying(montage))
+            {
+                return true;
+            }
+
+        }
+    }
     return false;
 }
 
@@ -71,11 +94,11 @@ void UBossSpacing::Queue()
 {
     //処理の対象となる敵。
     auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
+    
     //抜刀と接近を管理する部品。
     const auto* approach = enemy ? enemy->FindComponentByClass<UBossApproach>() : nullptr;
     if(approach && approach->IsDrawing()) { return; }
-    if(!m_enabled || m_active || !enemy || !enemy->HasAuthority() || !enemy->IsCombatActive()
-        || enemy->IsActing() || !enemy->GetPendingComboId().IsNone()
+    if(!m_enabled || m_active || !enemy || !enemy->HasAuthority() || !enemy->IsCombatActive() || enemy->IsActing() || !enemy->GetPendingComboId().IsNone()
         || !enemy->GetCharacterMovement()->IsMovingOnGround() || GetWorld()->GetTimeSeconds() < m_next) { return; }
 
     if(m_onlyDown && !IsTargetDown(enemy->m_combatTarget) && !m_watching) { return; }
@@ -85,6 +108,7 @@ void UBossSpacing::Queue()
     {
         if (auto* ai=Cast<AAIController>(enemy->GetController())) ai->StopMovement();
         enemy->SetActorRotation((enemy->m_combatTarget->GetActorLocation()-enemy->GetActorLocation()).GetSafeNormal2D().Rotation());
+        
         //退避に使う行動。
         const bool retreat=!m_retreatAction.IsNone() && enemy->RequestAction(m_retreatAction);
         m_next=GetWorld()->GetTimeSeconds()+(retreat ? FMath::Max(BossSpacingTuning::minDuration,m_cooldown) : BossSpacingTuning::retryDelay);
@@ -131,33 +155,38 @@ void UBossSpacing::TickComponent(float _delta, ELevelTick _type, FActorComponent
 
     //相手の行動を観察する部品。
     auto* observer = Cast<AEnemyCharacterBase>(GetOwner());
+    
     //観察している相手。
     auto* watched = observer ? observer->m_combatTarget.Get() : nullptr;
+    
     //現在の時刻。
     const double clock = GetWorld()->GetTimeSeconds();
+    
     //相手が攻撃せず静止しているか。
-    const bool quiet = m_watchIdle && observer && IsValid(watched)
-        && !observer->m_defense->IsTargetAttacking(watched)
-        && watched->GetVelocity().Size2D() <= m_idleSpeed
-        && FVector::Dist2D(observer->GetActorLocation(),watched->GetActorLocation()) <= m_watchRange;
+    const bool quiet = m_watchIdle && observer && IsValid(watched) && !observer->m_defense->IsTargetAttacking(watched)
+        && watched->GetVelocity().Size2D() <= m_idleSpeed && FVector::Dist2D(observer->GetActorLocation(),watched->GetActorLocation()) <= m_watchRange;
     if (!quiet) m_idleSince = -1.;
     else if (m_idleSince < 0.) m_idleSince = clock;
     m_watching = quiet && clock-m_idleSince >= FMath::Max(BossSpacingTuning::minIdleTime,m_idleDelay);
-    if (!m_active && m_onlyDown) Queue();
+    if (!m_active && m_onlyDown) { Queue(); }
 
     if(!m_active) { return; }
+   
     //処理の対象となる敵。
     auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
+   
     //狙っている相手。
     auto* target = enemy ? enemy->m_combatTarget.Get() : nullptr;
+   
     //敵の行動を操作するAI。
     auto* ai = enemy ? Cast<AAIController>(enemy->GetController()) : nullptr;
+   
     //現在の時刻。
     const double now = GetWorld()->GetTimeSeconds();
-    if (!m_enabled || !enemy || !enemy->HasAuthority() || !IsValid(target) || !ai
-        || !enemy->IsCombatActive() || enemy->IsActing() || enemy->m_defense->IsBusy()
-        || enemy->m_traversal->IsTraversing() || !enemy->GetCharacterMovement()->IsMovingOnGround()
+    if (!m_enabled || !enemy || !enemy->HasAuthority() || !IsValid(target) || !ai || !enemy->IsCombatActive() || enemy->IsActing() 
+        || enemy->m_defense->IsBusy() || enemy->m_traversal->IsTraversing() || !enemy->GetCharacterMovement()->IsMovingOnGround()
         || (m_onlyDown ? (!IsTargetDown(target) && (!m_watching || now-m_start >= FMath::Max(BossSpacingTuning::minDuration,m_duration))) : now - m_start >= FMath::Max(BossSpacingTuning::minDuration, m_duration))) { Stop(); return; }
+    
     //相手までの距離。
     const float distance = FVector::Dist2D(enemy->GetActorLocation(), target->GetActorLocation());
     if (!IsTargetDown(target) && distance < FMath::Max(enemy->GetMeleeDistance()+BossSpacingTuning::rangeMargin,m_distance)*m_retreatRatio)
@@ -167,9 +196,14 @@ void UBossSpacing::TickComponent(float _delta, ELevelTick _type, FActorComponent
         if (!m_retreatAction.IsNone()) enemy->RequestAction(m_retreatAction);
         return;
     }
+    
     //攻撃を再生中か。
     const bool attacking = enemy->m_defense->IsTargetAttacking(target);
-    if (attacking) { Stop(); return; }
+    if (attacking) 
+    { 
+        Stop();
+        return; 
+    }
     if(now < m_start + BossSpacingTuning::startDelay) { return; }
     if (!m_moving)
     {
@@ -179,6 +213,7 @@ void UBossSpacing::TickComponent(float _delta, ELevelTick _type, FActorComponent
         enemy->GetCharacterMovement()->bOrientRotationToMovement = false;
         m_moving = true;
     }
+    
     //相手から離れる方向。
     const FVector away = (enemy->GetActorLocation() - target->GetActorLocation()).GetSafeNormal2D();
     enemy->SetActorRotation(FMath::RInterpTo(enemy->GetActorRotation(), (-away).Rotation(), _delta, BossSpacingTuning::turnSpeed));
@@ -187,25 +222,46 @@ void UBossSpacing::TickComponent(float _delta, ELevelTick _type, FActorComponent
         m_repath = now + BossSpacingTuning::pathDelay;
         //歩ける場所を調べる機能。
         auto* nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+        
         //判定に使う半径。
         const float radius = FMath::Max(enemy->GetMeleeDistance() + BossSpacingTuning::rangeMargin, m_distance);
+        
         //方向を決める角度。
         const float angle = distance < radius * BossSpacingTuning::innerRing ? 0.f : FMath::Clamp(m_orbitAngle, 0.f, BossSpacingTuning::rangeMargin) * m_side;
+        
         //移動したい位置。
         const FVector desired = target->GetActorLocation() + away.RotateAngleAxis(angle, FVector::UpVector) * radius;
+        
         //移動の目的地。
         FNavLocation goal;
-        if (!nav || !nav->ProjectPointToNavigation(desired, goal, FVector(BossSpacingTuning::navWidth,BossSpacingTuning::navWidth,BossSpacingTuning::navHeight))) { Stop(); return; }
+        if (!nav || !nav->ProjectPointToNavigation(desired, goal, FVector(BossSpacingTuning::navWidth,BossSpacingTuning::navWidth,BossSpacingTuning::navHeight))) 
+        { 
+            Stop(); 
+            return; 
+        }
+        
         //目的地までの移動経路。
         auto* path = UNavigationSystemV1::FindPathToLocationSynchronously(GetWorld(), enemy->GetNavAgentLocation(), goal.Location, enemy);
-        if (!path || !path->IsValid() || path->IsPartial()) { Stop(); return; }
+        if (!path || !path->IsValid() || path->IsPartial()) 
+        { 
+            Stop(); 
+            return; 
+        }
         for (int32 i=1; i<path->PathPoints.Num(); ++i)
         {
             //近くの有効な位置。
             const FVector closest = FMath::ClosestPointOnSegment(target->GetActorLocation(), path->PathPoints[i-1], path->PathPoints[i]);
-            if (FVector::Dist2D(closest, target->GetActorLocation()) < FMath::Min(distance - BossSpacingTuning::pathMargin, enemy->GetMeleeDistance())) { Stop(); return; }
+            if (FVector::Dist2D(closest, target->GetActorLocation()) < FMath::Min(distance - BossSpacingTuning::pathMargin, enemy->GetMeleeDistance())) 
+            { 
+                Stop(); 
+                return; 
+            }
         }
-        if (ai->MoveToLocation(goal.Location, BossSpacingTuning::stopRange, false, true, true, true, nullptr, false) == EPathFollowingRequestResult::Failed) { Stop(); return; }
+        if (ai->MoveToLocation(goal.Location, BossSpacingTuning::stopRange, false, true, true, true, nullptr, false) == EPathFollowingRequestResult::Failed) 
+        { 
+            Stop(); 
+            return; 
+        }
     }
     if (!attacking && distance >= FMath::Max(m_distance * BossSpacingTuning::healRangeRatio, enemy->GetMeleeDistance() + BossSpacingTuning::rangeMargin)
         && now - m_start >= FMath::Max(0.f, m_healDelay) && enemy->m_attributeSet)

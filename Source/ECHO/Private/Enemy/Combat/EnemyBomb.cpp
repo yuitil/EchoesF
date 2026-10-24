@@ -14,12 +14,16 @@ namespace EnemyBombTuning
 {
     //弾の当たり判定の半径。
     constexpr auto ballRadius = 14.f;
+    
     //着地した弾の跳ね返りの強さ。
     constexpr auto bounceRatio = .15f;
+    
     //生成した弾を残す時間。
     constexpr auto lifeTime = 8.f;
+    
     //爆発までの待ち時間の下限。
     constexpr auto minFuse = .3f;
+    
     //命中位置から演出をずらす距離。
     constexpr auto hitOffset = 2.f;
 }
@@ -55,7 +59,11 @@ void AEnemyBomb::BeginPlay()
 {
     Super::BeginPlay();
     if (GetOwner()) m_collision->IgnoreActorWhenMoving(GetOwner(),true);
-    if(m_explodeOnHit) { m_collision->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block); }
+    if(m_explodeOnHit) 
+    { 
+        m_collision->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
+    
+    }
 
 }
 
@@ -73,6 +81,7 @@ void AEnemyBomb::Landed(const FHitResult& _hit, const FVector& _velocity)
     if(!HasAuthority() || m_armed || _hit.GetActor() == GetOwner()) { return; }
     if(!m_explodeOnHit && _hit.ImpactNormal.Z < m_floorNormal) { return; }
     m_armed=true;
+   
     //着弾した弾の移動と接触判定を止める。
     m_move->StopMovementImmediately();
     m_move->Deactivate();
@@ -107,38 +116,49 @@ void AEnemyBomb::Explode()
 {
     //| m_armed|同じ弾で着弾処理を二度行わないようにする。
     if(!HasAuthority() || !m_armed) { return; }
+    
     //基準となる位置。
     const FVector point=m_groundPoint;
+   
     //狙っている相手。
     auto* target=m_target.Get(); auto* source=m_source.Get();
     if (IsValid(target) && target->CanBeDamaged() && FVector::DistSquared(point,target->GetActorLocation())<=FMath::Square(FMath::Max(1.f,m_radius)))
     {
         //進行方向の障害物の情報。
         FHitResult wall;
+        
         //生成や当たり判定に使う設定。
         FCollisionQueryParams params(SCENE_QUERY_STAT(EnemyBomb),false,this);
-        if(source) params.AddIgnoredActor(source);
+        if (source) { params.AddIgnoredActor(source); }
+       
         //爆発と相手の間に障害物があるか。
         const bool blocked=GetWorld()->LineTraceSingleByChannel(wall,point,target->GetActorLocation(),ECC_Visibility,params) && wall.GetActor()!=target;
+       
         //相手の回避状態を調べる部品。
         const auto* combat=target->FindComponentByClass<UCombatComponent>();
+        
         //回避できたかを確認する値。
         const bool dodge=combat && combat->IsDodging();
+        
         //相手が攻撃を防いだ方法。
         const EDefenseResult defense=source ? source->ResolveTargetDefense(target) : EDefenseResult::None;
+        
         //相手が攻撃を防いだか。
         const bool defended=defense==EDefenseResult::PerfectDodge || (!m_unblockable && defense!=EDefenseResult::None);
+        
         //障害物や有効な防御がない相手だけにダメージを与える。
         if (!blocked && !dodge && !defended)
         {
             if(source && m_unblockable && defense==EDefenseResult::Guard) source->TargetGuardBroken(target);
-            UGameplayStatics::ApplyDamage(target,m_damage,source ? source->GetController() : nullptr,source,
-                m_unblockable ? UEBUnblockableDamageType::StaticClass() : UEBCombatDamageType::StaticClass());
+            UGameplayStatics::ApplyDamage(target,m_damage,source ? source->GetController() : nullptr,source, m_unblockable ? UEBUnblockableDamageType::StaticClass() : UEBCombatDamageType::StaticClass());
         }
     }
     //爆発の見た目を出して弾を片付ける。
     ShowExplosion(point);
-    if(m_debugHit) { UE_LOG(LogTemp, Display, TEXT("EnemyBomb Burst %s time=%.3f"), *GetName(), GetWorld()->GetTimeSeconds()); }
+    if(m_debugHit) 
+    { 
+        UE_LOG(LogTemp, Display, TEXT("EnemyBomb Burst %s time=%.3f"), *GetName(), GetWorld()->GetTimeSeconds()); 
+    }
     Destroy();
 }
 

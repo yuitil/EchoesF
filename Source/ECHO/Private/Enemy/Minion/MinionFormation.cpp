@@ -13,22 +13,31 @@ namespace MinionFormationTuning
 {
     //周回速度の下限。
     constexpr auto minOrbitSpeed = 50.f;
+   
     //移動先を更新する間隔。
     constexpr auto moveDelay = .7;
+    
     //一度に周回する角度の上限。
     constexpr auto maxOrbitStep = 25.f;
+    
     //周回の基本速度。
     constexpr auto ringSpeed = 180.f;
+   
     //歩ける場所を探す横幅。
     constexpr auto navWidth = 100;
+    
     //歩ける場所を探す高さ。
     constexpr auto navHeight = 250;
+    
     //移動を止める距離。
     constexpr auto stopRange = 35.f;
+    
     //更新間隔の下限。
     constexpr auto minUpdateDelay = .2f;
+    
     //移動先を求めるための時間幅。
     constexpr auto moveStep = .7f;
+    
     //移動先の補正に使う余裕。
     constexpr auto pathMargin = .7f;
 }
@@ -50,6 +59,7 @@ AEnemyCharacterBase* UMinionFormation::Enemy() const
 void UMinionFormation::BeginPlay()
 {
     Super::BeginPlay();
+    
     //敵の役割決めはサーバー側で行う。
     if (GetOwner()->HasAuthority())
     {
@@ -94,13 +104,15 @@ void UMinionFormation::Provoke(AActor* _attacker)
     auto* enemy = Enemy();
     if(!enemy || !enemy->HasAuthority() || !enemy->IsCombatActive() || !IsValid(_attacker) || _attacker == enemy) { return; }
     m_counterTarget = _attacker;
-    //| enemy->m_combatTarget == _attacker)|攻撃の途中で別の相手へ急に向かないようにする。
+    
+    //enemy->m_combatTarget == _attacker)|攻撃の途中で別の相手へ急に向かないようにする。
     if (!enemy->IsActing() || enemy->m_combatTarget == _attacker)
     {
-        if (enemy->m_combatTarget != _attacker) ReleaseTurn();
+        if (enemy->m_combatTarget != _attacker) { ReleaseTurn(); } 
         enemy->m_combatTarget = _attacker;
         m_target = _attacker;
     }
+
     //現在の時刻。
     const double now = GetWorld()->GetTimeSeconds();
     if (m_counterUntil <= now) m_counterReady = now + FMath::Max(MinionFormationTuning::minUpdateDelay, m_counterDelay);
@@ -174,11 +186,13 @@ void UMinionFormation::TickComponent(float _delta,ELevelTick _type,FActorCompone
     }
 
     GetWorld()->GetSubsystem<UMinionCombatDirector>()->Update();
+    
     //敵の行動を操作するAI。
     auto* ai=Cast<AAIController>(enemy->GetController());
     if (!ai || !enemy->IsCombatActive() || !m_target.IsValid())
     {
-        SetOrbit(false); return;
+        SetOrbit(false); 
+        return;
     }
     if (m_hasTurn || enemy->IsActing() || enemy->m_defense->IsBusy())
     {
@@ -201,22 +215,31 @@ void UMinionFormation::TickComponent(float _delta,ELevelTick _type,FActorCompone
 
     //歩ける場所を調べる機能。
     auto* nav=FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+    
     //歩ける場所へ補正した位置。
     FNavLocation projected;
+   
     //相手を囲む中心位置。
     const FVector center=m_target->GetActorLocation();
+    
     //中心から外へ向かう方向。
     const FVector radial=enemy->GetActorLocation()-center;
+    
     //方向を決める角度。
     const float angle=FMath::RadiansToDegrees(FMath::Atan2(radial.Y,radial.X));
+    
     //目的地へ向かう方向。
     const FVector goalDir=m_ringGoal-center;
+    
     //移動したい位置。
     const float desired=FMath::RadiansToDegrees(FMath::Atan2(goalDir.Y,goalDir.X));
+    
     //今回進める幅。
     const float step=angle+FMath::Clamp(FMath::FindDeltaAngleDegrees(angle,desired),-MinionFormationTuning::maxOrbitStep,MinionFormationTuning::maxOrbitStep);
+   
     //判定に使う半径。
     const float radius=FMath::FInterpConstantTo(radial.Size2D(),m_radius,MinionFormationTuning::moveStep,MinionFormationTuning::ringSpeed);
+    
     //経路上の次の位置。
     const FVector waypoint=center+FRotator(0,step,0).Vector()*radius;
     if(!nav || !nav->ProjectPointToNavigation(waypoint,projected,FVector(MinionFormationTuning::navWidth,MinionFormationTuning::navWidth,MinionFormationTuning::navHeight)))
@@ -230,7 +253,10 @@ void UMinionFormation::TickComponent(float _delta,ELevelTick _type,FActorCompone
     if(!path || !path->IsValid() || path->IsPartial()) { return; }
     for (int32 i = 1;i < path->PathPoints.Num();++i)
     {
-        if(FMath::PointDistToSegment(m_target->GetActorLocation(), path->PathPoints[i - 1], path->PathPoints[i]) < enemy->GetMeleeDistance() * MinionFormationTuning::pathMargin) { return; }
+        if(FMath::PointDistToSegment(m_target->GetActorLocation(), path->PathPoints[i - 1], path->PathPoints[i]) < enemy->GetMeleeDistance() * MinionFormationTuning::pathMargin) 
+        { 
+            return;
+        }
     }
     ai->MoveToLocation(projected.Location,MinionFormationTuning::stopRange,false,true,true,true,nullptr,false);
 }

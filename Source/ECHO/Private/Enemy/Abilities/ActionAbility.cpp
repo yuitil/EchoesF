@@ -28,6 +28,7 @@ void UActionAbility::ActivateAbility(const FGameplayAbilitySpecHandle _handle, c
 
 	//処理の対象となる敵。
 	AEnemyCharacterBase* enemy = _actorInfo ? Cast<AEnemyCharacterBase>(_actorInfo->AvatarActor) : nullptr;
+	
 	//使用する行動の設定。
 	const FEnemyActionData* actionData = enemy ? enemy->GetActiveAction() : nullptr;
 

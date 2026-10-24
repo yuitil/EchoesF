@@ -8,6 +8,7 @@ class AEnemyCharacterBase;
 class UProgressBar;
 class UTextBlock;
 class UWidgetAnimation;
+class UImage;
 
 //敵の体力とガードが崩れた状態をBPの画面へ渡す。
 UCLASS(Abstract)
@@ -82,7 +83,38 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|UI")
     FText m_riseText = NSLOCTEXT("EnemyUI", "Rise", "再起");
 
+public:
+    //このWidgetを頭上の体勢ゲージとして使う。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|UI")
+    bool m_postureMode = false;
+
+    //体力が増えた時にバーが満ちる速さ。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|UI", meta=(ClampMin="0.01"))
+    float m_fillSpeed = .7f;
+
+    //フェーズ2でBPのオーラ演出を繰り返す。
+    UPROPERTY(Transient, BlueprintReadOnly, Category="Enemy|UI", meta=(BindWidgetAnimOptional))
+    TObjectPtr<UWidgetAnimation> m_phaseAura;
+
+public:
+    //フェーズ2のオーラを表示するBP内の画像名。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|UI")
+    FName m_phaseGlowName = TEXT("AuraVeil");
+
+    //BPの動くマテリアルで表示するフェーズ2のオーラ。
+    UPROPERTY(Transient)
+    TObjectPtr<UImage> m_phaseGlow;
+
 private:
+    //前回は立ち上がり中だったか。
+    bool m_wasRising = false;
+
+    //前回のフェーズ2表示。
+    bool m_wasPhaseTwo = false;
+
+    //画面で表示している割合。
+    float m_shown = 1.f;
+
     //表示する敵。敵の削除を妨げない。
     TWeakObjectPtr<AEnemyCharacterBase> m_enemy;
 

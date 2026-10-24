@@ -237,10 +237,19 @@ EDefenseResult UDefense::ResolveGuardChain(AActor* _attacker, bool _heavyAttack)
 //ガードを崩して無防備な時間を開始する。
 void UDefense::StartGuardBreak()
 {
+	const auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
+	if(!enemy || !enemy->m_definition) { return; }
+	BreakFor(enemy->m_definition->m_guardBreakTime);
+}
+
+//指定した秒数だけガードを崩す。
+void UDefense::BreakFor(float _seconds)
+{
 	//処理の対象となる敵。
 	AEnemyCharacterBase* enemy = Cast<AEnemyCharacterBase>(GetOwner());
 	//動作を続ける時間。
-	const float duration = FMath::Max(DefenseTuning::minHold, enemy->m_definition->m_guardBreakTime);
+	if(!enemy || !enemy->HasAuthority() || !enemy->IsCombatActive() || !enemy->m_definition || m_bGuardBroken) { return; }
+	const float duration = FMath::Max(DefenseTuning::minHold, _seconds);
 	BeginReaction(enemy->m_definition->m_guardBreakMontage, duration);
 	m_bGuardBroken = true;
 	enemy->ShowGuardBreak();

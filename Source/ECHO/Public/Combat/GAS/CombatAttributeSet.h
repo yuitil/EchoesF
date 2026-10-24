@@ -50,11 +50,13 @@ public:
 public:
 	//この体力項目の読み書き用の関数を作る。
 	COMBAT_ATTR(Health, m_health)
+
 	//この体力項目の読み書き用の関数を作る。
 	COMBAT_ATTR(MaxHealth, m_maxHealth)
 
 	//体力が変わる前に値の範囲を整える。
 	virtual void PreAttributeChange(const FGameplayAttribute& _attribute, float& _value) override;
+
 	//効果で体力が変わった後に値を整える。
 	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& _data) override;
 };

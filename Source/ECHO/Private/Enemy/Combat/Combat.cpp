@@ -31,6 +31,24 @@ UCombat::UCombat()
 	PrimaryComponentTick.TickGroup = TG_PostUpdateWork;
 }
 
+//BPで指定した剣の判定を接続する。
+void UCombat::BeginPlay()
+{
+    Super::BeginPlay();
+    BindWeapon();
+}
+
+//攻撃前にも剣の接続を確かめる。
+void UCombat::BindWeapon()
+{
+    if(!GetOwner() || m_weaponTag.IsNone()) { return; }
+
+    for(auto* part : GetOwner()->GetComponentsByTag(UMeshComponent::StaticClass(), m_weaponTag))
+    {
+        if(SetWeaponMesh(Cast<UMeshComponent>(part), m_baseSocket, m_tipSocket)) { return; }
+    }
+}
+
 //攻撃判定に使う武器を設定する。
 bool UCombat::SetWeaponMesh(UMeshComponent* _mesh, FName _base, FName _tip)
 {
@@ -97,6 +115,7 @@ void UCombat::EndPlay(const EEndPlayReason::Type _reason)
 //剣の攻撃判定を有効にする。
 void UCombat::BeginHitWindow(float _damageScale)
 {
+    BindWeapon();
 	m_hitScale = FMath::Max(0.0f, _damageScale);
 	//前の命中記録を消して、次の判定に備える。
 	m_hitActors.Empty();

@@ -15,6 +15,7 @@ namespace MinionParryResponseTuning
 {
     //停止時間の下限。
     constexpr auto minPause = .08f;
+    
     //再生速度の下限。
     constexpr auto minRate = .01f;
 }
@@ -32,16 +33,27 @@ bool UMinionParryResponse::Begin(AActor* _defender)
 {
     //処理の対象となる敵。
     auto* enemy=Cast<AMinionEnemyCharacter>(GetOwner());
-    if(!enemy || !enemy->HasAuthority() || !enemy->IsCombatActive() || !enemy->IsActing() || !IsValid(_defender) || _defender!=enemy->m_combatTarget || m_paused.IsValid()) { return false; }
+    if(!enemy || !enemy->HasAuthority() || !enemy->IsCombatActive() || !enemy->IsActing() || !IsValid(_defender) || _defender!=enemy->m_combatTarget || m_paused.IsValid()) 
+    { 
+        return false; 
+    }
+    
     //使用する行動の設定。
     const auto* action=enemy->GetActiveAction(); if(!action || action->m_unblockable || action->m_damage<=0.f) { return false; }
-    if(!enemy->m_combat->IsHitWindowOpen() || FVector::Dist2D(enemy->GetActorLocation(),_defender->GetActorLocation())>action->m_maxRange) { return false; }
+    if(!enemy->m_combat->IsHitWindowOpen() || FVector::Dist2D(enemy->GetActorLocation(),_defender->GetActorLocation())>action->m_maxRange) 
+    { 
+        return false; 
+    }
+
     //アニメーションを再生する部品。
     auto* anim=enemy->GetMesh()->GetAnimInstance(); if(!anim || !anim->Montage_IsPlaying(action->m_montage)) { return false; }
     m_paused=action->m_montage; anim->Montage_Pause(m_paused.Get());
     enemy->m_combat->EndHitWindow();
     enemy->ShowGuardBreak();
-    if(auto* ai=Cast<AAIController>(enemy->GetController())) ai->StopMovement();
+    if (auto* ai = Cast<AAIController>(enemy->GetController()))
+    {
+        ai->StopMovement();
+    }
     enemy->GetCharacterMovement()->StopMovementImmediately();
     GetWorld()->GetSubsystem<UMinionCombatDirector>()->PauseTarget(_defender,m_freezeTime+m_recovery);
     GetWorld()->GetTimerManager().SetTimer(m_timer,this,&UMinionParryResponse::Finish,FMath::Clamp(m_freezeTime,MinionParryResponseTuning::minRate,.5f),false);
@@ -55,8 +67,14 @@ void UMinionParryResponse::Finish()
     auto* enemy=Cast<AMinionEnemyCharacter>(GetOwner());
     if(enemy && m_paused.IsValid())
     {
-        if(auto* anim=enemy->GetMesh()->GetAnimInstance()) anim->Montage_Stop(MinionParryResponseTuning::minPause,m_paused.Get());
-        if(enemy->IsCombatActive()) enemy->FinishParryReaction(m_reaction,m_recovery);
+        if (auto* anim = enemy->GetMesh()->GetAnimInstance())
+        {
+            anim->Montage_Stop(MinionParryResponseTuning::minPause, m_paused.Get());
+        }
+        if (enemy->IsCombatActive())
+        {
+            enemy->FinishParryReaction(m_reaction, m_recovery);
+        }
     }
     m_paused.Reset();
 }

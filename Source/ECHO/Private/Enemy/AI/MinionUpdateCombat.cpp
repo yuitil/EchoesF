@@ -27,9 +27,11 @@ namespace MinionUpdateCombatTuning
 {
     //状態を更新する間隔。
     constexpr auto updateDelay = 0.2f;
-    //距離の判定に持たせる余裕。
+   
+	//距離の判定に持たせる余裕。
     constexpr auto rangeMargin = 20.f;
-    //相手がいない時に使う距離。
+    
+	//相手がいない時に使う距離。
     constexpr auto noTargetRange = 99999.0f;
 }
 
@@ -49,8 +51,10 @@ void UMinionUpdateCombat::TickNode(UBehaviorTreeComponent& _ownerComp, uint8* _n
 
 	//敵の行動を操作するAI。
 	AAIController* aiController = _ownerComp.GetAIOwner();
+	
 	//処理の対象となる敵。
 	AEnemyCharacterBase* enemy = aiController ? Cast<AEnemyCharacterBase>(aiController->GetPawn()) : nullptr;
+	
 	//BTが判断に使う値の保存先。
 	UBlackboardComponent* blackboard = _ownerComp.GetBlackboardComponent();
 	if(!enemy || !blackboard) { return; }
@@ -58,18 +62,26 @@ void UMinionUpdateCombat::TickNode(UBehaviorTreeComponent& _ownerComp, uint8* _n
 	//狙っている相手。
 	AActor* target = enemy->m_targeting->SelectMinionTarget();
 
-    if (target != enemy->m_combatTarget)
-        if (auto* group = enemy->FindComponentByClass<UMinionFormation>()) group->ReleaseTurn();
+	if (target != enemy->m_combatTarget)
+	{
 
-    if (!IsValid(target) && enemy->IsActing()) enemy->CancelAction();
+		if (auto* group = enemy->FindComponentByClass<UMinionFormation>())
+		{
+			group->ReleaseTurn();
+		}
+	}
+
+	if (!IsValid(target) && enemy->IsActing()) { enemy->CancelAction(); }
 
 	enemy->m_combatTarget = target;
 	//生きていて戦闘できるか。
 	bool alive = enemy->IsCombatActive();
 
 	blackboard->SetValueAsObject(TEXT("TargetActor"), target);
+	
 	//集団戦での役割を管理する部品。
 	const auto* formation=enemy->FindComponentByClass<UMinionFormation>();
+	
 	//攻撃に参加できるか。
 	const bool turn=!formation || formation->HasTurn();
 	blackboard->SetValueAsBool(TEXT("CanDecide"), turn && enemy->CanDecide());

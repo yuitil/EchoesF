@@ -1,5 +1,7 @@
 #include "Enemy/Boss/BossEnemyCharacter.h"
 #include "Enemy/Boss/BossObservation.h"
+#include "Enemy/Boss/BossPosture.h"
+#include "Enemy/Animation/EnemyAfterimageTrail.h"
 #include "Enemy/Boss/BossApproach.h"
 
 #include "Enemy/Boss/BossSpacing.h"
@@ -20,6 +22,8 @@ namespace BossEnemyCharacterTuning
 //初期設定と必要な部品を用意する。
 ABossEnemyCharacter::ABossEnemyCharacter()
 {
+	m_posture = CreateDefaultSubobject<UBossPosture>(TEXT("Posture"));
+	m_afterimage = CreateDefaultSubobject<UEnemyAfterimageTrail>(TEXT("Afterimage"));
 	m_approach = CreateDefaultSubobject<UBossApproach>(TEXT("Approach"));
 	m_observation = CreateDefaultSubobject<UBossObservation>(TEXT("Observation"));
 
@@ -54,6 +58,7 @@ void ABossEnemyCharacter::HandleHealthDepleted()
 
 	//BPから設定した敵のデータ。
 	const UBossData* data = GetBossData();
+	
 	//一度目の体力切れでは死亡せず、立ち上がりへ進む。
 	if (m_bossPhase == EBossPhase::PhaseOne && data && data->m_bSecondLife)
 	{
@@ -65,6 +70,7 @@ void ABossEnemyCharacter::HandleHealthDepleted()
 		{
 			if (UBrainComponent* brain = controller->GetBrainComponent()) { brain->StopLogic(TEXT("Phase transition")); }
 		}
+		
 		//残っている攻撃を止めて切り替えに備える。
 		CancelAction();
 		if (AAIController* controller = Cast<AAIController>(GetController()))
@@ -74,6 +80,7 @@ void ABossEnemyCharacter::HandleHealthDepleted()
 		GetCharacterMovement()->StopMovementImmediately();
 		GetCharacterMovement()->DisableMovement();
 		SetHealthPool(data->m_phaseTwoHealth);
+		
 		//次の処理まで待つ時間。
 		float delay = FMath::Max(BossEnemyCharacterTuning::minTransition, data->m_transitionTime);
 		if (data->m_transitionMontage)
@@ -83,6 +90,7 @@ void ABossEnemyCharacter::HandleHealthDepleted()
 		GetWorldTimerManager().SetTimer(m_transitionTimer, this, &ABossEnemyCharacter::FinishTransition, delay, false);
 		return;
 	}
+	
 	//最終フェーズの体力切れは通常の死亡として扱う。
 	m_bossPhase = EBossPhase::Dead;
 	Super::HandleHealthDepleted();
@@ -93,6 +101,8 @@ void ABossEnemyCharacter::HandleHealthDepleted()
 //ボスのフェーズを切り替える。
 void ABossEnemyCharacter::SetLife(EBossPhase _newLife)
 {
+	m_posture->Reset();
+	m_afterimage->Stop();
 	m_bossPhase = _newLife;
 	SetState(m_bossPhase == EBossPhase::Dead ? EEnemyState::Dead : m_bossPhase == EBossPhase::Transition ? EEnemyState::Suspended : EEnemyState::Alive);
 	m_onLifeChanged.Broadcast(m_bossPhase);
@@ -105,10 +115,12 @@ void ABossEnemyCharacter::FinishTransition()
 	if(m_bossPhase != EBossPhase::Transition) { return; }
 
 	StopAnimMontage();
+	
 	//残っている攻撃を止めて切り替えに備える。
 	CancelAction();
 	GetCharacterMovement()->StopMovementImmediately();
 	GetCharacterMovement()->MaxWalkSpeed = m_moveSpeed;
+	
 	//移動を使える状態へ戻してからフェーズ2を始める。
 	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 	SetLife(EBossPhase::PhaseTwo);
@@ -133,6 +145,7 @@ bool ABossEnemyCharacter::IsActionAllowed(const FEnemyActionData& _action) const
 {
 	//刀を抜き終わってから攻撃を選ぶ。
 	if(m_approach && !m_approach->HasDrawn()) { return false; }
+	
 	//BPから設定した敵のデータ。
 	const UBossData* data = GetBossData();
 	if(!data) { return true; }
@@ -204,4 +217,14 @@ bool ABossEnemyCharacter::IsRepositioning() const
 void ABossEnemyCharacter::OnAttackFinished()
 {
  m_spacing->Queue();
+}
+
+//被弾した分を体勢ゲージにも伝える。
+float ABossEnemyCharacter::TakeDamage(float _damage, const FDamageEvent& _event, AController* _instigator, AActor* _causer)
+{
+    //致命傷によるフェーズ切り替えでは体勢を減らさない。
+    const EBossPhase phase = m_bossPhase;
+    const float taken = Super::TakeDamage(_damage, _event, _instigator, _causer);
+    if(taken > 0.f && phase == m_bossPhase && IsCombatActive()) { m_posture->Hit(taken); }
+    return taken;
 }

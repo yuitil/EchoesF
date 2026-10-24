@@ -1,5 +1,4 @@
 ﻿#include "Enemy/Core/EnemyCharacterBase.h"
-
 #include "Enemy/AI/EnemyTargeting.h"
 
 #include "Enemy/Core/EnemyTraversal.h"
@@ -32,33 +31,47 @@ namespace EnemyCharacterBaseTuning
 {
     //体の当たり判定の半径。
     constexpr auto bodyRadius = 42.f;
-    //体の当たり判定の半分の高さ。
+    
+	//体の当たり判定の半分の高さ。
     constexpr auto bodyHalfHeight = 96.0f;
-    //行動終了を待つ時間の余裕。
+    
+	//行動終了を待つ時間の余裕。
     constexpr auto timeoutMargin = 3.f;
-    //歩ける場所を探す横幅。
+    
+	//歩ける場所を探す横幅。
     constexpr auto navWidth = 30;
-    //歩ける場所を探す高さ。
+   
+	//歩ける場所を探す高さ。
     constexpr auto navHeight = 150;
-    //初期体力の基準。
+   
+	//初期体力の基準。
     constexpr auto baseHealth = 600;
-    //続けられるコンボの段数。
+    
+	//続けられるコンボの段数。
     constexpr auto maxComboSteps = 10;
-    //攻撃後の待ち時間の下限。
+    
+	//攻撃後の待ち時間の下限。
     constexpr auto minRecovery = 0.05f;
-    //経路を調べる分割数。
+    
+	//経路を調べる分割数。
     constexpr auto pathSteps = 5;
-    //経路を調べる分割数。
+    
+	//経路を調べる分割数。
     constexpr auto pathStepCount = 5.f;
-    //経路の横幅。
+    
+	//経路の横幅。
     constexpr auto pathWidth = 25;
-    //地面との距離に持たせる余裕。
+    
+	//地面との距離に持たせる余裕。
     constexpr auto floorMargin = 4;
-    //計算に使う最小の刻み幅。
+    
+	//計算に使う最小の刻み幅。
     constexpr auto minStep = .1f;
-    //再生速度の下限。
+    
+	//再生速度の下限。
     constexpr auto minRate = .01f;
-    //抽選に使う重みの下限。
+    
+	//抽選に使う重みの下限。
     constexpr auto minWeight = 0.01f;
 }
 
@@ -105,7 +118,10 @@ float AEnemyCharacterBase::GetDefenseWindow(EDefenseResult _result, FName _actio
 		action = m_definition ? m_definition->m_actions.FindByPredicate([_actionId](const FEnemyActionData& item) { return item.m_actionId == _actionId; }) : nullptr;
 	}
 	if(!action || action->m_damage <= 0.f) { return 0.f; }
-	if(_result == EDefenseResult::PerfectDodge) { return m_definition && m_definition->m_perfectDodge ? FMath::Clamp(action->m_dodgeWindow > 0.f ? action->m_dodgeWindow : m_definition->m_dodgeWindow, 0.f, .5f) : 0.f; }
+	if(_result == EDefenseResult::PerfectDodge) 
+	{ 
+		return m_definition && m_definition->m_perfectDodge ? FMath::Clamp(action->m_dodgeWindow > 0.f ? action->m_dodgeWindow : m_definition->m_dodgeWindow, 0.f, .5f) : 0.f; 
+	}
 	if(action->m_unblockable) { return 0.f; }
 	if(_result == EDefenseResult::Parry) { return FMath::Clamp(action->m_parryWindow, 0.f, .5f); }
 	if(_result == EDefenseResult::Deflect) { return FMath::Clamp(action->m_deflectWindow, 0.f, .5f); }
@@ -133,6 +149,7 @@ bool AEnemyCharacterBase::ApplyPerfectDodge(AActor* _target)
 {
 	//使用する行動の設定。
 	const auto* action = GetActiveAction();
+	
 	//アニメーションを再生する部品。
 	auto* anim = GetMesh()->GetAnimInstance();
 	if(!HasAuthority() || !IsActing() || !IsValid(_target) || _target != m_combatTarget || !action || action->m_damage <= 0.f
@@ -179,6 +196,7 @@ void AEnemyCharacterBase::Tick(float _delta)
 	{
 		//アニメーションを再生する部品。
 		auto* anim = GetMesh()->GetAnimInstance();
+		
 		//現在の位置や再生位置。
 		const float position = anim ? anim->Montage_GetPosition(m_slowMontage) : -1.f;
 		if (!anim || !anim->Montage_IsPlaying(m_slowMontage) || position < m_slowStart || position >= m_slowEnd
@@ -195,17 +213,21 @@ void AEnemyCharacterBase::Tick(float _delta)
     //アニメーションを再生する部品。
     const auto* anim = GetMesh()->GetAnimInstance();
     if(!anim || !anim->Montage_IsPlaying(action->m_montage)) { return; }
-    //処理に使う時間。
+    
+	//処理に使う時間。
     const float time = anim->Montage_GetPosition(action->m_montage);
 
 	if (time >= action->m_backStart && time < action->m_backEnd)
 	{
 		//地面に当たった情報。
 		FNavLocation floor;
+		
 		//歩ける場所を調べる機能。
 		auto* nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+		
 		//次に使う区間または候補。
 		const FVector next = GetActorLocation() + EvadeDirection(*action) * action->m_backSpeed * FMath::Max(_delta, EnemyCharacterBaseTuning::minStep);
+		
 		//足元の位置。
 		const float feet = GetActorLocation().Z - GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 		if (!nav || !nav->ProjectPointToNavigation(next, floor, FVector(EnemyCharacterBaseTuning::navWidth, EnemyCharacterBaseTuning::navWidth, EnemyCharacterBaseTuning::navHeight)) || FMath::Abs(floor.Location.Z - feet) > GetCharacterMovement()->MaxStepHeight)
@@ -290,13 +312,16 @@ float AEnemyCharacterBase::TakeDamage(float _damage, const FDamageEvent& _damage
 
 	//受けたダメージの情報。
 	const UEBCombatDamageType* damageInfo = _damageEvent.DamageTypeClass ? Cast<UEBCombatDamageType>(_damageEvent.DamageTypeClass->GetDefaultObject()) : nullptr;
+	
 	//ガードできない攻撃か。
 	const bool unblockable = damageInfo && !damageInfo->m_bBlockable;
 
 	//強攻撃として扱うか。
 	const bool heavyAttack = damageInfo ? damageInfo->m_heavyAttack : m_defense->IsObservedHeavyAttack(attacker);
+	
 	//処理の結果。
 	const EDefenseResult result = m_defense->ResolveHit(attacker, unblockable, heavyAttack);
+	
 	//防御で受けた時は体の命中と別の火花を出す。
 	if(result == EDefenseResult::Guard || result == EDefenseResult::Deflect || result == EDefenseResult::Parry)
 	{
@@ -327,8 +352,7 @@ float AEnemyCharacterBase::TakeDamage(float _damage, const FDamageEvent& _damage
 	if (applied > 0.f && result != EDefenseResult::Guard)
 	{
 		//ぶつかった場所の情報。
-		const FHitResult* hit = _damageEvent.IsOfType(FPointDamageEvent::ClassID)
-			? &static_cast<const FPointDamageEvent&>(_damageEvent).HitInfo : nullptr;
+		const FHitResult* hit = _damageEvent.IsOfType(FPointDamageEvent::ClassID) ? &static_cast<const FPointDamageEvent&>(_damageEvent).HitInfo : nullptr;
 		m_hitFx->PlayHit(attacker, hit);
 	}
 
@@ -390,6 +414,7 @@ void AEnemyCharacterBase::HandleHealthDepleted()
 			brain->StopLogic(TEXT("Dead"));
 		}
 	}
+	
 	//死亡後に移動や接触が残らないように止める。
 	GetCharacterMovement()->DisableMovement();
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -414,6 +439,7 @@ float AEnemyCharacterBase::GetMeleeDistance() const
 {
 	//キャラクターの当たり判定。
 	const auto* capsule = IsValid(m_combatTarget) ? m_combatTarget->FindComponentByClass<UCapsuleComponent>() : nullptr;
+	
 	//判定に使う半径。
 	const float radius = capsule ? capsule->GetScaledCapsuleRadius() : 0.f;
 	return FMath::Max(m_meleeDist, GetCapsuleComponent()->GetScaledCapsuleRadius() + radius + m_bodyMargin);
@@ -452,6 +478,7 @@ bool AEnemyCharacterBase::CanUseAction(int32 _actionIndex, float _distance) cons
 
 	//再使用までの待ち時間。
 	const double* cooldown = m_actionCooldowns.Find(action.m_actionId);
+	
 	//相手までの距離。
 	const float distance = _distance >= 0.f ? _distance : FVector::Dist2D(GetActorLocation(), m_combatTarget->GetActorLocation());
 
@@ -490,8 +517,13 @@ int32 AEnemyCharacterBase::ChooseAction() const
 
 	//攻撃された後のガード予約があれば先に使う。
 	if (m_defense->HasGuardRequest() && m_defense->ShouldStartGuard())
-		for (int32 i = 0;i < m_definition->m_actions.Num();++i)
-			if(m_definition->m_actions[i].m_kind == EEnemyAction::Guard && CanUseAction(i)) { return i; }
+		for (int32 i = 0; i < m_definition->m_actions.Num(); ++i)
+		{
+			if(m_definition->m_actions[i].m_kind == EEnemyAction::Guard && CanUseAction(i)) 
+			{ 
+				return i; 
+			}
+		}
 
 	//次につなぐ攻撃。
 	const int32 followUp = FindComboAction(m_nextActionId);
@@ -503,7 +535,10 @@ int32 AEnemyCharacterBase::ChooseAction() const
 		//選択できる候補。
 		TArray<int32> options;
 		for (int32 i = 0;i < m_definition->m_actions.Num();++i)
-			if (m_definition->m_actions[i].m_kind == EEnemyAction::Dodge && m_definition->m_actions[i].m_reactOnly && CanUseAction(i)) options.Add(i);
+			if (m_definition->m_actions[i].m_kind == EEnemyAction::Dodge && m_definition->m_actions[i].m_reactOnly && CanUseAction(i))
+			{
+				options.Add(i);
+			}
 		if(!options.IsEmpty()) { return options[FMath::RandRange(0, options.Num() - 1)]; }
 	}
 
@@ -512,18 +547,31 @@ int32 AEnemyCharacterBase::ChooseAction() const
 	{
 		for (int32 i = 0; i < m_definition->m_actions.Num(); ++i)
 		{
-			if(m_definition->m_actions[i].m_kind == EEnemyAction::Guard && CanUseAction(i)) { return i; }
+			if(m_definition->m_actions[i].m_kind == EEnemyAction::Guard && CanUseAction(i)) 
+			{
+				return i;
+			}
 		}
 	}
 
     //必殺技の候補。
     TArray<int32> specials;
-    for (int32 i=0; i<m_definition->m_actions.Num(); ++i)
-        if (m_definition->m_actions[i].m_special && m_definition->m_actions[i].m_weight > 0.f && m_definition->m_actions[i].m_comboEntry && CanUseAction(i)) specials.Add(i);
-    if(!specials.IsEmpty() && FMath::FRand() < FMath::Clamp(m_definition->m_specialChance,0.f,1.f)) { return specials[FMath::RandRange(0,specials.Num()-1)]; }
+	for (int32 i = 0; i < m_definition->m_actions.Num(); ++i)
+	{
+		if (m_definition->m_actions[i].m_special && m_definition->m_actions[i].m_weight > 0.f && m_definition->m_actions[i].m_comboEntry && CanUseAction(i))
+		{
+			specials.Add(i);
+		}
+	}
+
+    if(!specials.IsEmpty() && FMath::FRand() < FMath::Clamp(m_definition->m_specialChance,0.f,1.f)) 
+	{ 
+		return specials[FMath::RandRange(0,specials.Num()-1)];
+	}
 
 	//抽選に使う値の合計。
 	float sum = 0;
+	
 	//今回抽選する候補。
 	TArray<TPair<int32, float>> choices;
 	for (int32 i = 0; i < m_definition->m_actions.Num(); ++i)
@@ -588,7 +636,11 @@ void AEnemyCharacterBase::AttackDefended_Implementation(AActor* _defender, EDefe
 	if(!IsActing() || !HasAuthority() || _defender != m_combatTarget || _result == EDefenseResult::None) { return; }
 
 	//ジャスト回避された時は、現在の攻撃だけ減速する。
-	if (_result == EDefenseResult::PerfectDodge) { ApplyPerfectDodge(_defender); return; }
+	if (_result == EDefenseResult::PerfectDodge) 
+	{ 
+		ApplyPerfectDodge(_defender); 
+		return; 
+	}
 
 	//使用する行動の設定。
 	const auto* action = GetActiveAction();
@@ -611,6 +663,7 @@ void AEnemyCharacterBase::AttackDefended_Implementation(AActor* _defender, EDefe
 const FEnemyActionData* AEnemyCharacterBase::GetReadyAction(FName _actionId) const
 {
 	if(!CanDecide()) { return nullptr; }
+	
 	//配列の中の位置。
 	const int32 index = FindComboAction(_actionId);
 	return index != INDEX_NONE ? &m_definition->m_actions[index] : nullptr;
@@ -641,7 +694,10 @@ bool AEnemyCharacterBase::RequestAction(FName _actionId)
 
 	m_savedSpeed = GetCharacterMovement()->MaxWalkSpeed;
 	m_savedTurn = GetCharacterMovement()->bOrientRotationToMovement;
-	if (m_definition->m_actions[m_activeIndex].m_backSpeed > 0.f) { GetCharacterMovement()->bOrientRotationToMovement = false; }
+	if (m_definition->m_actions[m_activeIndex].m_backSpeed > 0.f) 
+	{ 
+		GetCharacterMovement()->bOrientRotationToMovement = false; 
+	}
 	m_actionStart = GetWorld()->GetTimeSeconds();
 
 	++m_actionSerial;
@@ -649,6 +705,7 @@ bool AEnemyCharacterBase::RequestAction(FName _actionId)
 
 	//空中にいるか。
 	const bool airborne = GetCharacterMovement()->IsFalling();
+	
 	//上下方向の速度。
 	const float verticalSpeed = GetCharacterMovement()->Velocity.Z;
 
@@ -709,7 +766,10 @@ void AEnemyCharacterBase::FinishAction(bool _cancelled)
 	if (action)
 	{
 
-		if (!_cancelled && action->m_kind != EEnemyAction::Guard && action->m_kind != EEnemyAction::Dodge) { m_lastAction = action->m_actionId; }
+		if (!_cancelled && action->m_kind != EEnemyAction::Guard && action->m_kind != EEnemyAction::Dodge) 
+		{ 
+			m_lastAction = action->m_actionId;
+		}
 		m_actionCooldowns.Add(action->m_actionId, GetWorld()->GetTimeSeconds() + action->m_cooldown);
 
 		if (!_cancelled && !dodged && m_definition && m_comboSteps < FMath::Clamp(m_definition->m_maxComboSteps, 1, EnemyCharacterBaseTuning::maxComboSteps))
@@ -725,7 +785,10 @@ void AEnemyCharacterBase::FinishAction(bool _cancelled)
 		m_readyTime = GetWorld()->GetTimeSeconds() + (m_nextActionId.IsNone() ? FMath::Max(EnemyCharacterBaseTuning::minRecovery, action->m_recovery) : FMath::Max(0.f, action->m_comboGap));
 	}
 
-	if (action && action->m_airOnly && m_nextActionId.IsNone()) { m_combat->EndLift(); }
+	if (action && action->m_airOnly && m_nextActionId.IsNone()) 
+	{ 
+		m_combat->EndLift(); 
+	}
 
 	if (m_nextActionId.IsNone())
 	{
@@ -736,7 +799,7 @@ void AEnemyCharacterBase::FinishAction(bool _cancelled)
 
 	m_activeIndex = INDEX_NONE;
 
-	if (!_cancelled) m_defense->AttackFinished();
+	if (!_cancelled) { m_defense->AttackFinished(); }
 
 	m_combat->ResetWindows();
 	m_abilitySystemComponent->SetLooseGameplayTagCount(CombatTags::StateActing, 0);
@@ -812,12 +875,16 @@ bool AEnemyCharacterBase::CanEvade(const FEnemyActionData& _action) const
 	//歩ける場所を調べる機能。
 	auto* nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
 	if(!nav || !_action.m_montage || !GetCharacterMovement()->IsMovingOnGround()) { return false; }
+	
 	//使用する再生速度。
 	const float rate = FMath::Max(EnemyCharacterBaseTuning::minStep, GetAttackRate(_action) * _action.m_montage->RateScale);
+	
 	//調べ始める位置。
 	const FVector start = GetActorLocation();
+	
 	//前回からの経過時間や値の差。
 	const FVector delta = EvadeDirection(_action) * _action.m_backSpeed * FMath::Max(0.f, _action.m_backEnd - _action.m_backStart) / rate;
+	
 	//足元の位置。
 	const float feet = start.Z - GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 	for (int i = 1;i <= EnemyCharacterBaseTuning::pathSteps;++i)
@@ -826,6 +893,7 @@ bool AEnemyCharacterBase::CanEvade(const FEnemyActionData& _action) const
 		FNavLocation floor;
 		if(!nav->ProjectPointToNavigation(start + delta * (i / EnemyCharacterBaseTuning::pathStepCount), floor, FVector(EnemyCharacterBaseTuning::pathWidth, EnemyCharacterBaseTuning::pathWidth, EnemyCharacterBaseTuning::navHeight)) || FMath::Abs(floor.Location.Z - feet) > GetCharacterMovement()->MaxStepHeight) { return false; }
 	}
+	
 	//ぶつかった場所の情報。
 	FHitResult hit;FCollisionQueryParams params(SCENE_QUERY_STAT(EnemyEvade), false, this);
 	return !GetWorld()->SweepSingleByChannel(hit, start + FVector(0, 0, EnemyCharacterBaseTuning::floorMargin), start + delta + FVector(0, 0, EnemyCharacterBaseTuning::floorMargin), FQuat::Identity, ECC_Pawn,

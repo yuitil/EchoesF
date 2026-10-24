@@ -13,17 +13,23 @@ namespace BossEncounterSpawnerTuning
 {
     //開始範囲の半分の大きさ。
     constexpr auto triggerHalfSize = 150.f;
-    //開始範囲の横幅。
+   
+	//開始範囲の横幅。
     constexpr auto triggerWidth = 200.f;
-    //生成位置までの距離。
+   
+	//生成位置までの距離。
     constexpr auto spawnDistance = 600.f;
-    //生成時に持ち上げる高さ。
+   
+	//生成時に持ち上げる高さ。
     constexpr auto spawnHeight = 100.f;
-    //歩ける場所を探す横幅。
+   
+	//歩ける場所を探す横幅。
     constexpr auto navWidth = 200;
-    //歩ける場所を探す高さ。
+    
+	//歩ける場所を探す高さ。
     constexpr auto navHeight = 500;
-    //地面との距離に持たせる余裕。
+   
+	//地面との距離に持たせる余裕。
     constexpr auto floorMargin = 5.f;
 }
 
@@ -101,6 +107,7 @@ bool ABossEncounterSpawner::StartEncounter()
 	{
 		//歩ける場所を調べる機能。
 		auto* nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+		
 		//基準となる位置。
 		FNavLocation point;
 		if (!nav || !nav->ProjectPointToNavigation(spawnTransform.GetLocation(), point, FVector(BossEncounterSpawnerTuning::navWidth, BossEncounterSpawnerTuning::navWidth, BossEncounterSpawnerTuning::navHeight)))
@@ -109,6 +116,7 @@ bool ABossEncounterSpawner::StartEncounter()
 			ChangeState(EBossEncounterState::Failed, TEXT("Spawn Anchor requires a built NavMesh. Reset Encounter after fixing placement."));
 			return false;
 		}
+		
 		//生成するクラスの初期設定。
 		const auto* defaults = m_bossClass->GetDefaultObject<AEnemyCharacterBase>();
 		spawnTransform.SetLocation(point.Location + FVector(0, 0, defaults->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + BossEncounterSpawnerTuning::floorMargin));

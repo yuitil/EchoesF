@@ -16,6 +16,9 @@ public:
 	//武器が当たった相手へダメージを渡す。
 	UCombat();
 
+	//BPで指定した剣の判定を接続する。
+	virtual void BeginPlay() override;
+
 	//打ち上げ後の重力を元に戻す。
 	void EndLift();
 
@@ -43,6 +46,10 @@ public:
 	bool SetWeaponMesh(UMeshComponent* _mesh, FName _base = TEXT("BladeBase"), FName _tip = TEXT("BladeTip"));
 
 public:
+	//BPの剣部品に付けるタグ。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Combat")
+	FName m_weaponTag;
+
 	//攻撃判定の根元ソケット。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (DisplayName = "WeaponBaseSocket"))
 	FName m_baseSocket = TEXT("hand_r");
@@ -68,6 +75,9 @@ public:
 	bool m_bGuarding = false;
 
 private:
+    //剣のタグから判定部品をつなぎ直す。
+    void BindWeapon();
+
 	//命中した相手を打ち上げる。
 	void BeginLift(class ACharacter* _target, const struct FEnemyActionData& _action);
 

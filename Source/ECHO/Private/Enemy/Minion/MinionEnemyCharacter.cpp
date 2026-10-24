@@ -12,8 +12,10 @@ namespace MinionEnemyCharacterTuning
 {
     //死亡演出を待つ時間の上限。
     constexpr auto maxDeathTime = 30.f;
+    
     //待ち時間の下限。
     constexpr auto minWait = .1f;
+    
     //死亡アニメーションの速度の下限。
     constexpr auto minDeathRate = .01f;
 }
@@ -66,6 +68,7 @@ void AMinionEnemyCharacter::AttackDefended_Implementation(AActor* _defender, EDe
 void AMinionEnemyCharacter::FinishParryReaction(UAnimMontage* _montage,float _duration)
 {
     CancelAction();
+    
     //対象の長さ。
     const float length=_montage ? PlayAnimMontage(_montage) : 0.f;
     m_readyTime=GetWorld()->GetTimeSeconds()+FMath::Max(FMath::Max(MinionEnemyCharacterTuning::minWait,_duration),length);
@@ -77,6 +80,7 @@ void AMinionEnemyCharacter::HandleHealthDepleted()
 {
     Super::HandleHealthDepleted();
     DetachFromControllerPendingDestroy();
+    
     //対象の長さ。
     const float length = m_definition && m_definition->m_deathMontage ? m_definition->m_deathMontage->GetPlayLength() / FMath::Max(MinionEnemyCharacterTuning::minDeathRate, FMath::Abs(m_definition->m_deathMontage->RateScale)) : 0.f;
     SetLifeSpan(FMath::Clamp(length, 0.f, MinionEnemyCharacterTuning::maxDeathTime) + FMath::Max(MinionEnemyCharacterTuning::minWait, m_corpseTime));
@@ -98,6 +102,7 @@ void AMinionEnemyCharacter::OnAcceptedHit(AActor* _attacker)
         ai->StopMovement();
     }
     GetCharacterMovement()->StopMovementImmediately();
+   
     //対象の長さ。
     const float length = PlayAnimMontage(m_hitMontage);
     if (length > 0.f)

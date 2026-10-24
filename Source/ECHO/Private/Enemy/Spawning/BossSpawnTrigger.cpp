@@ -14,6 +14,7 @@ ABossSpawnTrigger::ABossSpawnTrigger()
 
 	//デフォルトサイズ
 	m_triggerBox->SetBoxExtent(FVector(200.f, 200.f, 200.f));
+	
 	//コリジョン設定
 	m_triggerBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	m_triggerBox->SetCollisionObjectType(ECC_WorldDynamic);

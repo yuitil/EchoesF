@@ -16,6 +16,7 @@ class ECHO_API UEBCombatDamageType : public UDamageType
 public:
 	//強攻撃として扱うか。
 	bool m_heavyAttack = false;
+	
 	//ガードで防げる攻撃か。
 	bool m_bBlockable = true;
 };
