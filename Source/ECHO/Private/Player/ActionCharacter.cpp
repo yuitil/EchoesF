@@ -20,813 +20,841 @@
 #include "DrawDebugHelpers.h"
 
 AActionCharacter::AActionCharacter(const FObjectInitializer& ObjectInitializer)
-    : Super(ObjectInitializer.SetDefaultSubobjectClass<UActionMovementComponent>(
-        ACharacter::CharacterMovementComponentName)),
-    m_TimeToSprint(1.5f),
-    m_CurrentRunTime(0.f),
-    m_GhostSummonCost(30.f),
-    m_MaxEnergy(100.f),
-    m_EnergyGainPerHit(15.f),
-    m_CurrentEnergy(0.f),
-    m_iActiveGhostCount(0),
-    m_iMaxGhostCount(5),
-    m_LockOnCameraInterpSpeed(4.f),
-    m_LockOnCameraOffsetY(60.f),
-    m_LockOnPitchMin(-45.f),
-    m_LockOnPitchMax(20.f),
-    m_SideBlendRange(0.5f),
-    m_TargetFocusBias(0.5f),
-    m_LockOnInterpSpeedNear(8.f),
-    m_JumpPressedTime(0.f),
-    m_JumpHoldThreshold(0.2f),
-    m_JumpZVelocityShort(1500.f),
-    m_JumpZVelocityLong(800.f)
+	: Super(ObjectInitializer.SetDefaultSubobjectClass<UActionMovementComponent>(
+		  ACharacter::CharacterMovementComponentName)),
+	  m_TimeToSprint(1.5f),
+	  m_CurrentRunTime(0.f),
+	  m_GhostSummonCost(30.f),
+	  m_MaxEnergy(100.f),
+	  m_EnergyGainPerHit(15.f),
+	  m_CurrentEnergy(0.f),
+	  m_iActiveGhostCount(0),
+	  m_iMaxGhostCount(5),
+	  m_LockOnCameraInterpSpeed(4.f),
+	  m_LockOnCameraOffsetY(60.f),
+	  m_LockOnPitchMin(-45.f),
+	  m_LockOnPitchMax(20.f),
+	  m_SideBlendRange(0.5f),
+	  m_TargetFocusBias(0.5f),
+	  m_LockOnInterpSpeedNear(8.f),
+	  m_JumpPressedTime(0.f),
+	  m_JumpHoldThreshold(0.2f),
+	  m_JumpZVelocityShort(1500.f),
+	  m_JumpZVelocityLong(800.f)
 {
-    PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = true;
 
-    //ƒWƒƒƒ“ƒv’i”İ’è
-    JumpMaxCount = 2;
+	//ï¿½Wï¿½ï¿½ï¿½ï¿½ï¿½vï¿½iï¿½ï¿½ï¿½İ’ï¿½
+	JumpMaxCount = 2;
 
-    //ƒRƒ“ƒgƒ[ƒ‰[‚Ì‰ñ“]‚ÅƒLƒƒƒ‰©‘Ì‚ª‰ñ‚ç‚È‚¢‚æ‚¤‚É
-    bUseControllerRotationPitch = false;
-    bUseControllerRotationYaw = false;
-    bUseControllerRotationRoll = false;
-    //ˆÚ“®•ûŒü‚ÉƒLƒƒƒ‰ƒNƒ^[‚ª©“®‚ÅƒXƒb‚ÆŒü‚­‚æ‚¤‚É‚·‚é
-    GetActionMovementComponent()->bOrientRotationToMovement = true;
+	//ï¿½Rï¿½ï¿½ï¿½gï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½[ï¿½Ì‰ï¿½]ï¿½ÅƒLï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì‚ï¿½ï¿½ï¿½ï¿½È‚ï¿½ï¿½æ‚¤ï¿½ï¿½
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationRoll = false;
+	//ï¿½Ú“ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÉƒLï¿½ï¿½ï¿½ï¿½ï¿½Nï¿½^ï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÅƒXï¿½bï¿½ÆŒï¿½ï¿½ï¿½ï¿½æ‚¤ï¿½É‚ï¿½ï¿½ï¿½
+	GetActionMovementComponent()->bOrientRotationToMovement = true;
 
-    //ƒLƒƒƒ‰ƒNƒ^[‚ÌˆÚ“®“ü—Í‚ª‚ ‚é•ûŒü‚ÖA©“®“I‚ÉŠŠ‚ç‚©‚ÉŒü‚«‚ğ•Ï‚¦‚éİ’è
-    if (UActionMovementComponent* MoveComp = GetActionMovementComponent())
-    {
-        MoveComp->bOrientRotationToMovement = true;
-        MoveComp->RotationRate = FRotator(0.f, 1000.f, 0.f);  //ù‰ñ‘¬“x
-    }
+	//ï¿½Lï¿½ï¿½ï¿½ï¿½ï¿½Nï¿½^ï¿½[ï¿½ÌˆÚ“ï¿½ï¿½ï¿½ï¿½Í‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÖAï¿½ï¿½ï¿½ï¿½ï¿½Iï¿½ÉŠï¿½ï¿½ç‚©ï¿½ÉŒï¿½ï¿½ï¿½ï¿½ï¿½Ï‚ï¿½ï¿½ï¿½İ’ï¿½
+	if (UActionMovementComponent* MoveComp = GetActionMovementComponent())
+	{
+		MoveComp->bOrientRotationToMovement = true;
+		MoveComp->RotationRate = FRotator(0.f, 1000.f, 0.f); //ï¿½ï¿½ï¿½ñ‘¬“x
+	}
 
-    CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
+	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
 
-    //Œ•‚ğ‰Eè‚Ìƒ\ƒPƒbƒg‚É•t‚¯‚é
-    WeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WeaponMesh"));
-    WeaponMesh->SetupAttachment(GetMesh(), TEXT("WeaponSocket"));
-    WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	//ï¿½ï¿½ï¿½ï¿½ï¿½Eï¿½ï¿½Ìƒ\ï¿½Pï¿½bï¿½gï¿½É•tï¿½ï¿½ï¿½ï¿½
+	WeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WeaponMesh"));
+	WeaponMesh->SetupAttachment(GetMesh(), TEXT("WeaponSocket"));
+	WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-    LockOnComponent = CreateDefaultSubobject<ULockOnComponent>(TEXT("LockOnComponent"));
+	LockOnComponent = CreateDefaultSubobject<ULockOnComponent>(TEXT("LockOnComponent"));
 
-    //ƒJƒƒ‰‚Ìİ’è
-    CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
-    CameraBoom->SetupAttachment(RootComponent);
-    CameraBoom->bUsePawnControlRotation = true;
+	//ï¿½Jï¿½ï¿½ï¿½ï¿½ï¿½Ìİ’ï¿½
+	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
+	CameraBoom->SetupAttachment(RootComponent);
+	CameraBoom->bUsePawnControlRotation = true;
 
-    CameraBoom->TargetArmLength = 400.f;
-    //•Ç‚ÌÕ“ËƒeƒXƒg
-    CameraBoom->bDoCollisionTest = true;
-    //ƒJƒƒ‰‚ª”½‰‚·‚éƒ`ƒƒƒ“ƒlƒ‹‚ğ‚ğWorldStatic‚Ì‚İ‚É‚·‚éi•Ï‚¦‚½‚¢j
-    CameraBoom->ProbeChannel = ECC_Camera;
-    //”»’è—p‚Ì‹…‚Ì‘å‚«‚³
-    CameraBoom->ProbeSize = 15.f;
-    //‰EŒ¨‰z‚µƒIƒtƒZƒbƒg
-    CameraBoom->SocketOffset = FVector(0.f, 60.f, 50.f);
-    //ƒJƒƒ‰ƒXƒ€[ƒWƒ“ƒO
-    CameraBoom->bEnableCameraLag = true;
-    CameraBoom->CameraLagSpeed = 10.f;
+	CameraBoom->TargetArmLength = 400.f;
+	//ï¿½Ç‚ÌÕ“Ëƒeï¿½Xï¿½g
+	CameraBoom->bDoCollisionTest = true;
+	//ï¿½Jï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½lï¿½ï¿½ï¿½ï¿½ï¿½ï¿½WorldStaticï¿½Ì‚İ‚É‚ï¿½ï¿½ï¿½iï¿½Ï‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½j
+	CameraBoom->ProbeChannel = ECC_Camera;
+	//ï¿½ï¿½ï¿½ï¿½pï¿½Ì‹ï¿½ï¿½Ì‘å‚«ï¿½ï¿½
+	CameraBoom->ProbeSize = 15.f;
+	//ï¿½Eï¿½ï¿½ï¿½zï¿½ï¿½ï¿½Iï¿½tï¿½Zï¿½bï¿½g
+	CameraBoom->SocketOffset = FVector(0.f, 60.f, 50.f);
+	//ï¿½Jï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½ï¿½ï¿½[ï¿½Wï¿½ï¿½ï¿½O
+	CameraBoom->bEnableCameraLag = true;
+	CameraBoom->CameraLagSpeed = 10.f;
 
-    FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
-    FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
-    FollowCamera->bUsePawnControlRotation = false;
+	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
+	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+	FollowCamera->bUsePawnControlRotation = false;
 
-    //GhostƒVƒXƒeƒ€
-    GhostRecorder = CreateDefaultSubobject<UGhostRecorderComponent>(TEXT("GhostRecorder"));
-    GhostManager = CreateDefaultSubobject<UGhostManagerComponent>(TEXT("GhostManager"));
+	//Ghostï¿½Vï¿½Xï¿½eï¿½ï¿½
+	GhostRecorder = CreateDefaultSubobject<UGhostRecorderComponent>(TEXT("GhostRecorder"));
+	GhostManager = CreateDefaultSubobject<UGhostManagerComponent>(TEXT("GhostManager"));
 }
 
 UActionMovementComponent* AActionCharacter::GetActionMovementComponent() const
 {
-    return Cast<UActionMovementComponent>(GetCharacterMovement());
+	return Cast<UActionMovementComponent>(GetCharacterMovement());
 }
 
 void AActionCharacter::BeginPlay()
 {
-    Super::BeginPlay();
+	Super::BeginPlay();
 
-    //Å‘åƒGƒlƒ‹ƒM[‚Íu1–{•ª ~ Å‘å–{”v‚ÅŒˆ‚ß‚é
-    m_MaxEnergy = m_EnergyPerStock * m_iMaxEnergyStock;
-    SetEnergy(0.f);
-    SetHP(m_MaxHP);
-    RefillHeals();
+	//ï¿½Å‘ï¿½Gï¿½lï¿½ï¿½ï¿½Mï¿½[ï¿½Íu1ï¿½{ï¿½ï¿½ ï¿½~ ï¿½Å‘ï¿½{ï¿½ï¿½ï¿½vï¿½ÅŒï¿½ï¿½ß‚ï¿½
+	m_MaxEnergy = m_EnergyPerStock * m_iMaxEnergyStock;
+	SetEnergy(0.f);
+	SetHP(m_MaxHP);
+	RefillHeals();
 
-    if (CombatComponent)
-    {
-        CombatComponent->OnHitEnemy.AddUObject(this, &AActionCharacter::OnHitEnemy);
-    }
+	if (CombatComponent)
+	{
+		CombatComponent->OnHitEnemy.AddUObject(this, &AActionCharacter::OnHitEnemy);
+	}
 
-    DefaultSocketOffset = CameraBoom->SocketOffset;
+	DefaultSocketOffset = CameraBoom->SocketOffset;
 
-    if (LockOnComponent)
-    {
-        LockOnComponent->OnLockOnChanged.AddUObject(this, &AActionCharacter::OnLockOnChanged);
-    }
+	if (LockOnComponent)
+	{
+		LockOnComponent->OnLockOnChanged.AddUObject(this, &AActionCharacter::OnLockOnChanged);
+	}
 
-    if (APlayerController* PC = Cast<APlayerController>(Controller))
-    {
-        if (UEnhancedInputLocalPlayerSubsystem* Sub =
-            ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
-        {
-            Sub->AddMappingContext(DefaultMappingContext, 0);
-        }
+	if (APlayerController* PC = Cast<APlayerController>(Controller))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Sub =
+			ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+		{
+			Sub->AddMappingContext(DefaultMappingContext, 0);
+		}
 
-        if (PC->PlayerCameraManager)
-        {
-            PC->PlayerCameraManager->ViewPitchMin = -60.f;   //Œ©‰º‚ë‚µ‚ÌŒÀŠE
-            PC->PlayerCameraManager->ViewPitchMax = 35.f;    //Œ©ã‚°‚ÌŒÀŠEi’n–Ê‚Éö‚è‚É‚­‚­‚È‚éj
-        }
-    }
+		if (PC->PlayerCameraManager)
+		{
+			PC->PlayerCameraManager->ViewPitchMin = -60.f; //ï¿½ï¿½ï¿½ï¿½ï¿½ë‚µï¿½ÌŒï¿½ï¿½E
+			PC->PlayerCameraManager->ViewPitchMax = 35.f; //ï¿½ï¿½ï¿½ã‚°ï¿½ÌŒï¿½ï¿½Eï¿½iï¿½nï¿½Ê‚Éï¿½ï¿½ï¿½É‚ï¿½ï¿½ï¿½ï¿½È‚ï¿½j
+		}
+	}
 
-    //GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::White,
-    //    FString::Printf(TEXT("GhostClass:%s  Recorder:%s"),
-    //    GhostCharacterClass ? *GhostCharacterClass->GetName() : TEXT("NULL"),
-    //    GhostRecorder ? TEXT("OK") : TEXT("NULL")));
+	//GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::White,
+	//    FString::Printf(TEXT("GhostClass:%s  Recorder:%s"),
+	//    GhostCharacterClass ? *GhostCharacterClass->GetName() : TEXT("NULL"),
+	//    GhostRecorder ? TEXT("OK") : TEXT("NULL")));
 }
 
 void AActionCharacter::Tick(float DeltaTime)
 {
-    Super::Tick(DeltaTime);
+	Super::Tick(DeltaTime);
 
-    //ƒƒbƒNƒIƒ“’†‚ÍƒJƒƒ‰‚ğƒ^[ƒQƒbƒg‚Ö’Ç]‚³‚¹‚é
-    if (LockOnComponent && LockOnComponent->IsLockedOn())
-    {
-        UpdateLockOnCamera(DeltaTime);
-    }
+	//ï¿½ï¿½ï¿½bï¿½Nï¿½Iï¿½ï¿½ï¿½ï¿½ï¿½ÍƒJï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½^ï¿½[ï¿½Qï¿½bï¿½gï¿½Ö’Ç]ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	if (LockOnComponent && LockOnComponent->IsLockedOn())
+	{
+		UpdateLockOnCamera(DeltaTime);
+	}
 
-    //í“¬’†‚©‚Ç‚¤‚©‚ğXV
-    UpdateCombatState(DeltaTime);
+	//ï¿½í“¬ï¿½ï¿½ï¿½ï¿½ï¿½Ç‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½V
+	UpdateCombatState(DeltaTime);
 
-    //ƒLƒƒƒ‰ƒNƒ^[‚ÌŒ»İ‚Ì•½sˆÚ“®‘¬“x‚ğæ“¾
-    const float Speed = GetVelocity().Size2D();
+	//ï¿½Lï¿½ï¿½ï¿½ï¿½ï¿½Nï¿½^ï¿½[ï¿½ÌŒï¿½ï¿½İ‚Ì•ï¿½ï¿½sï¿½Ú“ï¿½ï¿½ï¿½ï¿½xï¿½ï¿½ï¿½æ“¾
+	const float Speed = GetVelocity().Size2D();
 
-    //í“¬’†‚Å‚È‚­Aˆê’èˆÈã‚Ì‘¬“x‚Å‘–‚è‘±‚¯‚½‚çƒ_ƒbƒVƒ…
-    if (Speed > 10.f && !m_bInCombat)
-    {
-        m_CurrentRunTime += DeltaTime;
-        if (m_CurrentRunTime >= m_TimeToSprint) StartSprint();
-    }
-    else
-    {
-        //~‚Ü‚Á‚½A‚Ü‚½‚Íí“¬‚É“ü‚Á‚½‚çƒ_ƒbƒVƒ…‰ğœ
-        m_CurrentRunTime = 0.f;
-        StopSprint();
-    }
+	//ï¿½í“¬ï¿½ï¿½ï¿½Å‚È‚ï¿½ï¿½Aï¿½ï¿½ï¿½Èï¿½Ì‘ï¿½ï¿½xï¿½Å‘ï¿½ï¿½è‘±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½_ï¿½bï¿½Vï¿½ï¿½
+	if (Speed > 10.f && !m_bInCombat)
+	{
+		m_CurrentRunTime += DeltaTime;
+		if (m_CurrentRunTime >= m_TimeToSprint) StartSprint();
+	}
+	else
+	{
+		//ï¿½~ï¿½Ü‚ï¿½ï¿½ï¿½ï¿½Aï¿½Ü‚ï¿½ï¿½Íí“¬ï¿½É“ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½_ï¿½bï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		m_CurrentRunTime = 0.f;
+		StopSprint();
+	}
 }
 
 void AActionCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
-    if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent))
-    {
-        EIC->BindAction(AttackAction, ETriggerEvent::Started, this, &AActionCharacter::Attack);
-        EIC->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AActionCharacter::Move);
-        EIC->BindAction(MoveAction, ETriggerEvent::Completed, this, &AActionCharacter::MoveCompleted);
-        EIC->BindAction(LookAction, ETriggerEvent::Triggered, this, &AActionCharacter::Look);
-        EIC->BindAction(LockOnAction, ETriggerEvent::Started, this, &AActionCharacter::LockOn);
-        EIC->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
-        EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
-        EIC->BindAction(DodgeAction, ETriggerEvent::Started, this, &AActionCharacter::Dodge);
-        EIC->BindAction(SummonAction, ETriggerEvent::Started, this, &AActionCharacter::SummonGhost);
-        EIC->BindAction(HealAction, ETriggerEvent::Started, this, &AActionCharacter::Heal);
-    }
+	if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent))
+	{
+		EIC->BindAction(AttackAction, ETriggerEvent::Started, this, &AActionCharacter::Attack);
+		EIC->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AActionCharacter::Move);
+		EIC->BindAction(MoveAction, ETriggerEvent::Completed, this, &AActionCharacter::MoveCompleted);
+		EIC->BindAction(LookAction, ETriggerEvent::Triggered, this, &AActionCharacter::Look);
+		EIC->BindAction(LockOnAction, ETriggerEvent::Started, this, &AActionCharacter::LockOn);
+		EIC->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
+		EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+		EIC->BindAction(DodgeAction, ETriggerEvent::Started, this, &AActionCharacter::Dodge);
+		EIC->BindAction(SummonAction, ETriggerEvent::Started, this, &AActionCharacter::SummonGhost);
+		EIC->BindAction(HealAction, ETriggerEvent::Started, this, &AActionCharacter::Heal);
+	}
 }
 
 void AActionCharacter::Attack()
 {
-    if (IsHealing()) return;
-    if (m_bIsHitStunned) return;
-    if (CombatComponent) CombatComponent->ExecuteAttack();
+	if (IsHealing()) return;
+	if (m_bIsHitStunned) return;
+	if (CombatComponent) CombatComponent->ExecuteAttack();
 }
 
 float AActionCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
-    AController* EventInstigator, AActor* DamageCauser)
+                                   AController* EventInstigator, AActor* DamageCauser)
 {
-    if (m_bIsDead || DamageAmount <= 0.f) return 0.f;
+	if (m_bIsDead || DamageAmount <= 0.f) return 0.f;
 
-    //‰ñ”ğ’†‚Í–³“G
-    if (m_bDodgeInvincible && CombatComponent && CombatComponent->IsDodging())
-    {
-        if (m_bDebugHP) GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Cyan, TEXT("Dodge! No Damage"));
-        return 0.f;
-    }
+	//ï¿½ï¿½ğ’†‚Í–ï¿½ï¿½G
+	if (m_bDodgeInvincible && CombatComponent && CombatComponent->IsDodging())
+	{
+		if (m_bDebugHP) GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Cyan, TEXT("Dodge! No Damage"));
+		return 0.f;
+	}
 
-    //”í’e’¼Œã‚Ì–³“GŠÔ
-    const float Now = GetWorld()->GetTimeSeconds();
-    if (Now - m_LastDamageTime < m_HitInvincibleTime) return 0.f;
+	//ï¿½ï¿½eï¿½ï¿½ï¿½ï¿½Ì–ï¿½ï¿½Gï¿½ï¿½ï¿½ï¿½
+	const float Now = GetWorld()->GetTimeSeconds();
+	if (Now - m_LastDamageTime < m_HitInvincibleTime) return 0.f;
 
-    const float Actual = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
-    if (Actual <= 0.f) return 0.f;
+	const float Actual = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	if (Actual <= 0.f) return 0.f;
 
-    m_LastDamageTime = Now;
-    SetHP(m_CurrentHP - Actual);
-    InterruptHeal();
+	m_LastDamageTime = Now;
+	SetHP(m_CurrentHP - Actual);
+	InterruptHeal();
 
-    if (m_CurrentHP > 0.f)
-    {
-        PlayHitReaction(DamageCauser);
-    }
+	if (m_CurrentHP > 0.f)
+	{
+		PlayHitReaction(DamageCauser);
+	}
 
-    if (m_bDebugHP)
-    {
-        GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red,
-            FString::Printf(TEXT("Damage %.0f from %s"), Actual, *GetNameSafe(DamageCauser)));
-    }
+	if (m_bDebugHP)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red,
+		                                 FString::Printf(
+			                                 TEXT("Damage %.0f from %s"), Actual, *GetNameSafe(DamageCauser)));
+	}
 
-    if (m_CurrentHP <= 0.f) Die();
-    return Actual;
+	if (m_CurrentHP <= 0.f) Die();
+	return Actual;
 }
 
 void AActionCharacter::PlayHitReaction(AActor* DamageCauser)
 {
-    //UŒ‚’†‚È‚çƒRƒ“ƒ{‚ğ’†’f
-    if (CombatComponent) CombatComponent->CancelAttack();
+	//ï¿½Uï¿½ï¿½ï¿½ï¿½ï¿½È‚ï¿½Rï¿½ï¿½ï¿½{ï¿½ğ’†’f
+	if (CombatComponent) CombatComponent->CancelAttack();
 
-    //UŒ‚‚µ‚Ä‚«‚½‘Šè‚Ì•û‚ğŒü‚­i³–Ê‚©‚çH‚ç‚¤ƒ‚[ƒVƒ‡ƒ“‚È‚Ì‚Åj
-    if (DamageCauser && DamageCauser != this)
-    {
-        FVector ToCauser = DamageCauser->GetActorLocation() - GetActorLocation();
-        ToCauser.Z = 0.f;
-        if (!ToCauser.IsNearlyZero())
-        {
-            SetActorRotation(ToCauser.Rotation());
-        }
-    }
+	//ï¿½Uï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì•ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½iï¿½ï¿½ï¿½Ê‚ï¿½ï¿½ï¿½Hï¿½ç‚¤ï¿½ï¿½ï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½È‚Ì‚Åj
+	if (DamageCauser && DamageCauser != this)
+	{
+		FVector ToCauser = DamageCauser->GetActorLocation() - GetActorLocation();
+		ToCauser.Z = 0.f;
+		if (!ToCauser.IsNearlyZero())
+		{
+			SetActorRotation(ToCauser.Rotation());
+		}
+	}
 
-    //¨‚¢‚ğ~‚ß‚Äƒ‚[ƒVƒ‡ƒ“Ä¶
-    GetCharacterMovement()->StopMovementImmediately();
-    if (m_HitReactMontage)
-    {
-        PlayAnimMontage(m_HitReactMontage, m_HitReactPlayRate);
-    }
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½~ï¿½ß‚Äƒï¿½ï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½Äï¿½
+	GetCharacterMovement()->StopMovementImmediately();
+	if (m_HitReactMontage)
+	{
+		PlayAnimMontage(m_HitReactMontage, m_HitReactPlayRate);
+	}
 
-    //‚Ì‚¯‚¼‚èŠJn
-    m_bIsHitStunned = true;
-    GetWorldTimerManager().SetTimer(m_HitStunTimer, this, &AActionCharacter::EndHitStun, m_HitStunTime, false);
+	//ï¿½Ì‚ï¿½ï¿½ï¿½ï¿½ï¿½Jï¿½n
+	m_bIsHitStunned = true;
+	GetWorldTimerManager().SetTimer(m_HitStunTimer, this, &AActionCharacter::EndHitStun, m_HitStunTime, false);
 }
 
 void AActionCharacter::EndHitStun()
 {
-    m_bIsHitStunned = false;
+	m_bIsHitStunned = false;
 }
 
 void AActionCharacter::SetHP(float NewHP)
 {
-    m_CurrentHP = FMath::Clamp(NewHP, 0.f, m_MaxHP);
-    OnHPChanged.Broadcast(m_CurrentHP, m_MaxHP);
+	m_CurrentHP = FMath::Clamp(NewHP, 0.f, m_MaxHP);
+	OnHPChanged.Broadcast(m_CurrentHP, m_MaxHP);
 
-    if (m_bDebugHP && GEngine)
-    {
-        //ƒL[‚ğŒÅ’è‚·‚é‚Æ“¯‚¶s‚ªã‘‚«‚³‚ê‘±‚¯‚éi‰æ–Ê¶ã‚Éí‚É•\¦j
-        //GEngine->AddOnScreenDebugMessage(1001, 9999.f, FColor::Green,FString::Printf(TEXT("HP: %.0f / %.0f"), m_CurrentHP, m_MaxHP));
-    }
+	if (m_bDebugHP && GEngine)
+	{
+		//ï¿½Lï¿½[ï¿½ï¿½ï¿½Å’è‚·ï¿½ï¿½Æ“ï¿½ï¿½ï¿½ï¿½sï¿½ï¿½ï¿½ã‘ï¿½ï¿½ï¿½ï¿½ï¿½ê‘±ï¿½ï¿½ï¿½ï¿½iï¿½ï¿½Êï¿½ï¿½ï¿½Éï¿½É•\ï¿½ï¿½ï¿½j
+		//GEngine->AddOnScreenDebugMessage(1001, 9999.f, FColor::Green,FString::Printf(TEXT("HP: %.0f / %.0f"), m_CurrentHP, m_MaxHP));
+	}
 }
 
 void AActionCharacter::Die()
 {
-    if (m_bIsDead) return;
-    m_bIsDead = true;
+	if (m_bIsDead) return;
+	m_bIsDead = true;
 
-    EndHeal();
+	EndHeal();
 
-    //‚Æ‚è‚ ‚¦‚¸‘€ì•s”\‚É‚·‚é‚¾‚¯i‰‰o‚ÍŒã‚Åj
-    if (APlayerController* PC = Cast<APlayerController>(GetController())) DisableInput(PC);
-    GetCharacterMovement()->DisableMovement();
+	//ï¿½Æ‚è‚ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½sï¿½\ï¿½É‚ï¿½ï¿½é‚¾ï¿½ï¿½ï¿½iï¿½ï¿½ï¿½oï¿½ÍŒï¿½Åj
+	if (APlayerController* PC = Cast<APlayerController>(GetController())) DisableInput(PC);
+	GetCharacterMovement()->DisableMovement();
 
-    if (m_bDebugHP) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("PLAYER DEAD"));
+	if (m_bDebugHP) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("PLAYER DEAD"));
 }
 
 void AActionCharacter::DebugDamage(float Amount)
 {
-    UGameplayStatics::ApplyDamage(this, Amount, GetController(), this, nullptr);
+	UGameplayStatics::ApplyDamage(this, Amount, GetController(), this, nullptr);
+}
+
+void AActionCharacter::AddHp(float _hpAmount)
+{
+	if (m_CurrentHP == m_MaxHP)return;
+
+	m_CurrentHP += _hpAmount;
+
+	//æœ€å¤§HPã‚’è¶…ãˆãªã„ã‚ˆã†ã«
+	if (m_CurrentHP > m_MaxHP)
+	{
+		m_CurrentHP = m_MaxHP;
+	}
+
+	OnHPChanged.Broadcast(m_CurrentHP, m_MaxHP);
+}
+
+void AActionCharacter::OnRespawn()
+{
 }
 
 void AActionCharacter::UpdateCombatState(float DeltaTime)
 {
-    //–ˆƒtƒŒ[ƒ€‚Í•s—v‚È‚Ì‚Å0.25•b‚²‚Æ‚É”»’è‚·‚é
-    m_CombatCheckTimer -= DeltaTime;
-    if (m_CombatCheckTimer > 0.f) return;
-    m_CombatCheckTimer = 0.25f;
+	//ï¿½ï¿½ï¿½tï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½Í•sï¿½vï¿½È‚Ì‚ï¿½0.25ï¿½bï¿½ï¿½ï¿½Æ‚É”ï¿½ï¿½è‚·ï¿½ï¿½
+	m_CombatCheckTimer -= DeltaTime;
+	if (m_CombatCheckTimer > 0.f) return;
+	m_CombatCheckTimer = 0.25f;
 
-    const float Now = GetWorld()->GetTimeSeconds();
+	const float Now = GetWorld()->GetTimeSeconds();
 
-    //ƒƒbƒNƒIƒ“’†A‚Ü‚½‚ÍÅ‹ßUŒ‚‚ğ“–‚Ä‚Ä‚¢‚ê‚Îí“¬’†
-    bool bCombat = (LockOnComponent && LockOnComponent->IsLockedOn())
-        || (Now - m_LastCombatTime < m_CombatLingerTime);
+	//ï¿½ï¿½ï¿½bï¿½Nï¿½Iï¿½ï¿½ï¿½ï¿½ï¿½Aï¿½Ü‚ï¿½ï¿½ÍÅ‹ßUï¿½ï¿½ï¿½ğ“–‚Ä‚Ä‚ï¿½ï¿½ï¿½Îí“¬ï¿½ï¿½
+	bool bCombat = (LockOnComponent && LockOnComponent->IsLockedOn())
+		|| (Now - m_LastCombatTime < m_CombatLingerTime);
 
-    //‚»‚êˆÈŠO‚ÍA‹ß‚­‚Éu’N‚©‚ğ‘_‚Á‚Ä‚¢‚é“Gv‚ª‚¢‚é‚©‚Å”»’è
-    if (!bCombat)
-    {
-        TArray<FOverlapResult> Overlaps;
-        FCollisionQueryParams Params;
-        Params.AddIgnoredActor(this);
-        GetWorld()->OverlapMultiByObjectType(Overlaps, GetActorLocation(), FQuat::Identity,
-            FCollisionObjectQueryParams(ECC_Pawn), FCollisionShape::MakeSphere(m_CombatCheckRadius), Params);
+	//ï¿½ï¿½ï¿½ï¿½ÈŠOï¿½ÍAï¿½ß‚ï¿½ï¿½Éuï¿½Nï¿½ï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½Gï¿½vï¿½ï¿½ï¿½ï¿½ï¿½é‚©ï¿½Å”ï¿½ï¿½ï¿½
+	if (!bCombat)
+	{
+		TArray<FOverlapResult> Overlaps;
+		FCollisionQueryParams Params;
+		Params.AddIgnoredActor(this);
+		GetWorld()->OverlapMultiByObjectType(Overlaps, GetActorLocation(), FQuat::Identity,
+		                                     FCollisionObjectQueryParams(ECC_Pawn),
+		                                     FCollisionShape::MakeSphere(m_CombatCheckRadius), Params);
 
-        for (const FOverlapResult& Result : Overlaps)
-        {
-            if (EnemyQuery::IsEngaged(Result.GetActor()))
-            {
-                bCombat = true;
-                break;
-            }
-        }
-    }
+		for (const FOverlapResult& Result : Overlaps)
+		{
+			if (EnemyQuery::IsEngaged(Result.GetActor()))
+			{
+				bCombat = true;
+				break;
+			}
+		}
+	}
 
-    m_bInCombat = bCombat;
+	m_bInCombat = bCombat;
 }
 
 void AActionCharacter::OnHitEnemy(float EnergyGain)
 {
-    m_LastCombatTime = GetWorld()->GetTimeSeconds();
+	m_LastCombatTime = GetWorld()->GetTimeSeconds();
 
-    SetEnergy(m_CurrentEnergy + EnergyGain);
+	SetEnergy(m_CurrentEnergy + EnergyGain);
 
-    GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan,
-        FString::Printf(TEXT("Energy: %.1f / %.1f (Stock %d)"), m_CurrentEnergy, m_MaxEnergy, GetEnergyStock()));
+	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan,
+	                                 FString::Printf(
+		                                 TEXT("Energy: %.1f / %.1f (Stock %d)"), m_CurrentEnergy, m_MaxEnergy,
+		                                 GetEnergyStock()));
 }
 
 void AActionCharacter::Dodge()
 {
-    if (m_bIsHitStunned) return;
-    InterruptHeal();
-    if (CombatComponent) CombatComponent->ExecuteDodge();
+	if (m_bIsHitStunned) return;
+	InterruptHeal();
+	if (CombatComponent) CombatComponent->ExecuteDodge();
 }
 
 void AActionCharacter::Look(const FInputActionValue& Value)
 {
-    const FVector2D LookAxisVector = Value.Get<FVector2D>();
-    if (!Controller) return;
+	const FVector2D LookAxisVector = Value.Get<FVector2D>();
+	if (!Controller) return;
 
-    //ƒƒbƒNƒIƒ“’†‚Í‰EƒXƒeƒBƒbƒN‚ğƒ^[ƒQƒbƒgØ‚è‘Ö‚¦‚Ég‚¤
-    if (LockOnComponent && LockOnComponent->IsLockedOn())
-    {
-        LockOnComponent->TrySwitchTarget(LookAxisVector.X);
-        return;
-    }
+	//ï¿½ï¿½ï¿½bï¿½Nï¿½Iï¿½ï¿½ï¿½ï¿½ï¿½Í‰Eï¿½Xï¿½eï¿½Bï¿½bï¿½Nï¿½ï¿½ï¿½^ï¿½[ï¿½Qï¿½bï¿½gï¿½Ø‚ï¿½Ö‚ï¿½ï¿½Égï¿½ï¿½
+	if (LockOnComponent && LockOnComponent->IsLockedOn())
+	{
+		LockOnComponent->TrySwitchTarget(LookAxisVector.X);
+		return;
+	}
 
-    //¶‰E‚ÌƒJƒƒ‰‰ñ“]
-    AddControllerYawInput(LookAxisVector.X);
-    //ã‰º‚ÌƒJƒƒ‰‰ñ“]
-    AddControllerPitchInput(LookAxisVector.Y);
+	//ï¿½ï¿½ï¿½Eï¿½ÌƒJï¿½ï¿½ï¿½ï¿½ï¿½ï¿½]
+	AddControllerYawInput(LookAxisVector.X);
+	//ï¿½ã‰ºï¿½ÌƒJï¿½ï¿½ï¿½ï¿½ï¿½ï¿½]
+	AddControllerPitchInput(LookAxisVector.Y);
 }
 
 void AActionCharacter::LockOn()
 {
-    if (LockOnComponent)
-    {
-        LockOnComponent->ToggleLockOn();
-    }
+	if (LockOnComponent)
+	{
+		LockOnComponent->ToggleLockOn();
+	}
 }
 
-//ƒƒbƒNƒIƒ“ƒVƒXƒeƒ€‰ü—Ç’†
+//ï¿½ï¿½ï¿½bï¿½Nï¿½Iï¿½ï¿½ï¿½Vï¿½Xï¿½eï¿½ï¿½ï¿½ï¿½ï¿½Ç’ï¿½
 void AActionCharacter::OnLockOnChanged(AActor* NewTarget)
 {
-    if (NewTarget)
-    {
-        //ƒƒbƒNONFƒvƒŒƒCƒ„[‚ğƒRƒ“ƒgƒ[ƒ‰[‚ÌYaw‚É]‚í‚¹‚é
-        bUseControllerRotationYaw = true;
-        GetActionMovementComponent()->bOrientRotationToMovement = false;
+	if (NewTarget)
+	{
+		//ï¿½ï¿½ï¿½bï¿½NONï¿½Fï¿½vï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½Rï¿½ï¿½ï¿½gï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½[ï¿½ï¿½Yawï¿½É]ï¿½í‚¹ï¿½ï¿½
+		bUseControllerRotationYaw = true;
+		GetActionMovementComponent()->bOrientRotationToMovement = false;
 
-        //ƒJƒƒ‰‚ğ‰¡‚É‚¸‚ç‚µ‚ÄƒvƒŒƒCƒ„[‚Æƒ^[ƒQƒbƒg—¼•û‰f‚·
-        //CameraBoom->SocketOffset = FVector(
-        //	DefaultSocketOffset.X,
-        //	DefaultSocketOffset.Y + LockOnCameraOffsetY,
-        //	DefaultSocketOffset.Z
-        //);
+		//ï¿½Jï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É‚ï¿½ï¿½ç‚µï¿½Äƒvï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[ï¿½Æƒ^ï¿½[ï¿½Qï¿½bï¿½gï¿½ï¿½ï¿½ï¿½ï¿½fï¿½ï¿½
+		//CameraBoom->SocketOffset = FVector(
+		//	DefaultSocketOffset.X,
+		//	DefaultSocketOffset.Y + LockOnCameraOffsetY,
+		//	DefaultSocketOffset.Z
+		//);
 
-       // GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan, FString::Printf(TEXT("ƒƒbƒNƒIƒ“F %s"), *NewTarget->GetName()));
-    }
-    else
-    {
-        //ƒƒbƒNƒIƒ“OFFF’Êí‚ÌˆÚ“®•ûŒüŒü‚«‚É–ß‚·
-        bUseControllerRotationYaw = false;
-        GetActionMovementComponent()->bOrientRotationToMovement = true;
+		// GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan, FString::Printf(TEXT("ï¿½ï¿½ï¿½bï¿½Nï¿½Iï¿½ï¿½ï¿½F %s"), *NewTarget->GetName()));
+	}
+	else
+	{
+		//ï¿½ï¿½ï¿½bï¿½Nï¿½Iï¿½ï¿½OFFï¿½Fï¿½Êï¿½ÌˆÚ“ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É–ß‚ï¿½
+		bUseControllerRotationYaw = false;
+		GetActionMovementComponent()->bOrientRotationToMovement = true;
 
-        //ƒ\ƒPƒbƒgƒIƒtƒZƒbƒg‚ğŒ³‚É–ß‚·
-        CameraBoom->SocketOffset = DefaultSocketOffset;
+		//ï¿½\ï¿½Pï¿½bï¿½gï¿½Iï¿½tï¿½Zï¿½bï¿½gï¿½ï¿½ï¿½ï¿½ï¿½É–ß‚ï¿½
+		CameraBoom->SocketOffset = DefaultSocketOffset;
 
-        GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Purple, TEXT("FinithLockOn"));
-    }
+		GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Purple, TEXT("FinithLockOn"));
+	}
 }
 
 void AActionCharacter::UpdateLockOnCamera(float DeltaTime)
 {
-    AActor* Target = LockOnComponent->GetTarget();
-    if (!Target || !Controller) return;
+	AActor* Target = LockOnComponent->GetTarget();
+	if (!Target || !Controller) return;
 
-    FVector PlayerLocation = GetActorLocation();
-    FVector TargetLocation = Target->GetActorLocation();
+	FVector PlayerLocation = GetActorLocation();
+	FVector TargetLocation = Target->GetActorLocation();
 
-    //¶‰EƒIƒtƒZƒbƒg
-    FVector ToTarget = (TargetLocation - PlayerLocation).GetSafeNormal();
-    float RightDot = FVector::DotProduct(FollowCamera->GetRightVector(), ToTarget);
+	//ï¿½ï¿½ï¿½Eï¿½Iï¿½tï¿½Zï¿½bï¿½g
+	FVector ToTarget = (TargetLocation - PlayerLocation).GetSafeNormal();
+	float RightDot = FVector::DotProduct(FollowCamera->GetRightVector(), ToTarget);
 
-    //’†‰›•t‹ß‚ğ0•t‹ß‚Éû‘©‚³‚¹‚éBSideBlendRange ‚ğ‘å‚«‚­‚·‚é‚Ù‚ÇŠÉ‚â‚©‚É‚È‚é
-    float SideRatio = FMath::Clamp(RightDot / m_SideBlendRange, -1.f, 1.f);
-    float DesiredOffsetY = DefaultSocketOffset.Y + m_LockOnCameraOffsetY * SideRatio;
+	//ï¿½ï¿½ï¿½ï¿½ï¿½tï¿½ß‚ï¿½0ï¿½tï¿½ß‚Éï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½BSideBlendRange ï¿½ï¿½å‚«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù‚ÇŠÉ‚â‚©ï¿½É‚È‚ï¿½
+	float SideRatio = FMath::Clamp(RightDot / m_SideBlendRange, -1.f, 1.f);
+	float DesiredOffsetY = DefaultSocketOffset.Y + m_LockOnCameraOffsetY * SideRatio;
 
-    //‹}‚ÉƒIƒtƒZƒbƒg‚ª•Ï‚í‚é‚Æ‚«ŠŠ‚ç‚©‚ÉˆÚ“®
-    FVector NewOffset = CameraBoom->SocketOffset;
-    NewOffset.Y = FMath::FInterpTo(NewOffset.Y, DesiredOffsetY, DeltaTime, 6.f);
-    CameraBoom->SocketOffset = NewOffset;
+	//ï¿½}ï¿½ÉƒIï¿½tï¿½Zï¿½bï¿½gï¿½ï¿½ï¿½Ï‚ï¿½ï¿½Æ‚ï¿½ï¿½ï¿½ï¿½ç‚©ï¿½ÉˆÚ“ï¿½
+	FVector NewOffset = CameraBoom->SocketOffset;
+	NewOffset.Y = FMath::FInterpTo(NewOffset.Y, DesiredOffsetY, DeltaTime, 6.f);
+	CameraBoom->SocketOffset = NewOffset;
 
-    //ƒJƒƒ‰©g‚ÌˆÊ’u‚Å‚Í‚È‚­ SpringArm ‚ÌªŒ³‚ğŠî€‚É’‹“_‚ğİ’è
-    FVector Pivot = CameraBoom->GetComponentLocation();
-    FVector FocusPoint = FMath::Lerp(PlayerLocation, TargetLocation, m_TargetFocusBias);
+	//ï¿½Jï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½gï¿½ÌˆÊ’uï¿½Å‚Í‚È‚ï¿½ SpringArm ï¿½Ìï¿½ï¿½ï¿½ï¿½ï¿½ï¿½î€ï¿½É’ï¿½ï¿½ï¿½ï¿½_ï¿½ï¿½İ’ï¿½
+	FVector Pivot = CameraBoom->GetComponentLocation();
+	FVector FocusPoint = FMath::Lerp(PlayerLocation, TargetLocation, m_TargetFocusBias);
 
-    const FVector ToFocus = FocusPoint - Pivot;
-    //…•½‹——£‚ª‚Ù‚Ú0‚¾‚ÆYaw‚ª’è‹`‚Å‚«‚¸–\‚ê‚é
-    if (ToFocus.SizeSquared2D() < FMath::Square(20.f)) return;
+	const FVector ToFocus = FocusPoint - Pivot;
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù‚ï¿½0ï¿½ï¿½ï¿½ï¿½Yawï¿½ï¿½ï¿½ï¿½`ï¿½Å‚ï¿½ï¿½ï¿½ï¿½\ï¿½ï¿½ï¿½
+	if (ToFocus.SizeSquared2D() < FMath::Square(20.f)) return;
 
-    FRotator TargetRot = ToFocus.Rotation();
+	FRotator TargetRot = ToFocus.Rotation();
 
-    //‹——£‚É‰‚¶‚Ä•âŠ®‘¬“x‚ğ•Ï‚¦‚é
-    float Distance = FVector::Dist(PlayerLocation, TargetLocation);
-    float InterpSpeed = FMath::GetMappedRangeValueClamped(
-        FVector2D(200.f, 1500.f),  //‹——£ƒŒƒ“ƒW
-        FVector2D(m_LockOnInterpSpeedNear, m_LockOnCameraInterpSpeed),  //‘Î‰‚·‚é•âŠ®‘¬“xƒŒƒ“ƒW
-        Distance
-    );
+	//ï¿½ï¿½ï¿½ï¿½ï¿½É‰ï¿½ï¿½ï¿½ï¿½Ä•âŠ®ï¿½ï¿½ï¿½xï¿½ï¿½Ï‚ï¿½ï¿½ï¿½
+	float Distance = FVector::Dist(PlayerLocation, TargetLocation);
+	float InterpSpeed = FMath::GetMappedRangeValueClamped(
+		FVector2D(200.f, 1500.f), //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½W
+		FVector2D(m_LockOnInterpSpeedNear, m_LockOnCameraInterpSpeed), //ï¿½Î‰ï¿½ï¿½ï¿½ï¿½ï¿½âŠ®ï¿½ï¿½ï¿½xï¿½ï¿½ï¿½ï¿½ï¿½W
+		Distance
+	);
 
-    //‹É’[‚ÈŒ©ã‚°EŒ©‰º‚ë‚µ‚ğ–h‚®
-    FRotator NewRot = FMath::RInterpTo(Controller->GetControlRotation(), TargetRot, DeltaTime, InterpSpeed);
-    NewRot.Pitch = FMath::Clamp(NewRot.Pitch, m_LockOnPitchMin, m_LockOnPitchMax);
-    NewRot.Roll = 0.f;
-    Controller->SetControlRotation(NewRot);
+	//ï¿½É’[ï¿½ÈŒï¿½ï¿½ã‚°ï¿½Eï¿½ï¿½ï¿½ï¿½ï¿½ë‚µï¿½ï¿½hï¿½ï¿½
+	FRotator NewRot = FMath::RInterpTo(Controller->GetControlRotation(), TargetRot, DeltaTime, InterpSpeed);
+	NewRot.Pitch = FMath::Clamp(NewRot.Pitch, m_LockOnPitchMin, m_LockOnPitchMax);
+	NewRot.Roll = 0.f;
+	Controller->SetControlRotation(NewRot);
 
-    //ƒvƒŒƒCƒ„[‚ÌŒü‚«‚ğ“G‚Ì•ûŒü‚ÉŒÅ’è
-    FVector ToTargetFlat = TargetLocation - PlayerLocation;
-    ToTargetFlat.Z = 0.f;
-    if (!ToTargetFlat.IsNearlyZero())
-    {
-        SetActorRotation(FMath::RInterpTo(
-            GetActorRotation(), ToTargetFlat.GetSafeNormal().Rotation(), DeltaTime, 10.f));
-    }
+	//ï¿½vï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[ï¿½ÌŒï¿½ï¿½ï¿½ï¿½ï¿½Gï¿½Ì•ï¿½ï¿½ï¿½ï¿½ÉŒÅ’ï¿½
+	FVector ToTargetFlat = TargetLocation - PlayerLocation;
+	ToTargetFlat.Z = 0.f;
+	if (!ToTargetFlat.IsNearlyZero())
+	{
+		SetActorRotation(FMath::RInterpTo(
+			GetActorRotation(), ToTargetFlat.GetSafeNormal().Rotation(), DeltaTime, 10.f));
+	}
 }
 
 void AActionCharacter::Move(const FInputActionValue& Value)
 {
-    //“ü—Í’l‚ğ2DƒxƒNƒgƒ‹‚Æ‚µ‚Äæ“¾
-    const FVector2D MovementVector = Value.Get<FVector2D>();
+	//ï¿½ï¿½ï¿½Í’lï¿½ï¿½2Dï¿½xï¿½Nï¿½gï¿½ï¿½ï¿½Æ‚ï¿½ï¿½Äæ“¾
+	const FVector2D MovementVector = Value.Get<FVector2D>();
 
-    if (!Controller) return;
+	if (!Controller) return;
 
-    const FRotator Yaw(0.f, Controller->GetControlRotation().Yaw, 0.f);
-    const FVector Forward = FRotationMatrix(Yaw).GetUnitAxis(EAxis::X);
-    const FVector Right = FRotationMatrix(Yaw).GetUnitAxis(EAxis::Y);
+	const FRotator Yaw(0.f, Controller->GetControlRotation().Yaw, 0.f);
+	const FVector Forward = FRotationMatrix(Yaw).GetUnitAxis(EAxis::X);
+	const FVector Right = FRotationMatrix(Yaw).GetUnitAxis(EAxis::Y);
 
-    //UŒ‚‚ÌŒü‚«•â³—p‚ÉA“ü—Í•ûŒü‚Íí‚É‹L˜^‚µ‚Ä‚¨‚­
-    if (CombatComponent)
-    {
-        CombatComponent->SetDesiredDirection(Forward * MovementVector.Y + Right * MovementVector.X);
-    }
+	//ï¿½Uï¿½ï¿½ï¿½ÌŒï¿½ï¿½ï¿½ï¿½â³ï¿½pï¿½ÉAï¿½ï¿½ï¿½Í•ï¿½ï¿½ï¿½ï¿½Íï¿½É‹Lï¿½^ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½
+	if (CombatComponent)
+	{
+		CombatComponent->SetDesiredDirection(Forward * MovementVector.Y + Right * MovementVector.X);
+	}
 
-    //UŒ‚’†‚ÍˆÚ“®‚µ‚È‚¢
-    if (CombatComponent && CombatComponent->IsPlayingAttackMontage()) return;
+	//ï¿½Uï¿½ï¿½ï¿½ï¿½ï¿½ÍˆÚ“ï¿½ï¿½ï¿½ï¿½È‚ï¿½
+	if (CombatComponent && CombatComponent->IsPlayingAttackMontage()) return;
 
-    //‚Ì‚¯‚¼‚è’†‚ÍˆÚ“®‚µ‚È‚¢
-    if (m_bIsHitStunned) return;
+	//ï¿½Ì‚ï¿½ï¿½ï¿½ï¿½è’†ï¿½ÍˆÚ“ï¿½ï¿½ï¿½ï¿½È‚ï¿½
+	if (m_bIsHitStunned) return;
 
-    //‰ñ”ğ’†‚ÍˆÚ“®‚µ‚È‚¢iŠù‘¶‚Ìˆ—j
-    if (UActionMovementComponent* MoveComp = GetActionMovementComponent())
-    {
-        if (MoveComp->IsDodging()) return;
-    }
+	//ï¿½ï¿½ğ’†‚ÍˆÚ“ï¿½ï¿½ï¿½ï¿½È‚ï¿½ï¿½iï¿½ï¿½ï¿½ï¿½ï¿½Ìï¿½ï¿½ï¿½ï¿½j
+	if (UActionMovementComponent* MoveComp = GetActionMovementComponent())
+	{
+		if (MoveComp->IsDodging()) return;
+	}
 
-    AddMovementInput(FRotationMatrix(Yaw).GetUnitAxis(EAxis::X), MovementVector.Y);
-    AddMovementInput(FRotationMatrix(Yaw).GetUnitAxis(EAxis::Y), MovementVector.X);
+	AddMovementInput(FRotationMatrix(Yaw).GetUnitAxis(EAxis::X), MovementVector.Y);
+	AddMovementInput(FRotationMatrix(Yaw).GetUnitAxis(EAxis::Y), MovementVector.X);
 }
 
 void AActionCharacter::MoveCompleted(const FInputActionValue& Value)
 {
-    if (CombatComponent) CombatComponent->SetDesiredDirection(FVector::ZeroVector);
+	if (CombatComponent) CombatComponent->SetDesiredDirection(FVector::ZeroVector);
 }
 
 void AActionCharacter::StartSprint()
 {
-    if (UActionMovementComponent* MC = GetActionMovementComponent())
-        if(!MC->IsSprinting()) MC->SetSprinting(true);
+	if (UActionMovementComponent* MC = GetActionMovementComponent())
+		if (!MC->IsSprinting()) MC->SetSprinting(true);
 }
 
 void AActionCharacter::StopSprint()
 {
-    if (UActionMovementComponent* MC = GetActionMovementComponent())
-        if (MC->IsSprinting()) MC->SetSprinting(false);
+	if (UActionMovementComponent* MC = GetActionMovementComponent())
+		if (MC->IsSprinting()) MC->SetSprinting(false);
 }
 
 
 void AActionCharacter::OnJumped_Implementation()
 {
-    Super::OnJumped_Implementation();
+	Super::OnJumped_Implementation();
 
-    UActionMovementComponent* MoveComp = GetActionMovementComponent();
-    if (!MoveComp) return;
+	UActionMovementComponent* MoveComp = GetActionMovementComponent();
+	if (!MoveComp) return;
 
-    //Œ»İ‚ÌƒWƒƒƒ“ƒv‰ñ”‚ğŠm”F
-    //JumpCurrentCount ‚ÍACharacter‚É•W€‚Å—pˆÓ‚³‚ê‚Ä‚¢‚éuŒ»İ‰½‰ñ–Ú‚ÌƒWƒƒƒ“ƒv‚©v‚ğ‚Â•Ï”
-    if (JumpCurrentCount == 1)
-    {
-        //y1’i–Ú‚ÌƒWƒƒƒ“ƒv‚Ìˆ—z
-        MoveComp->AirControl = MoveComp->m_AirControlFirstJump;
+	//ï¿½ï¿½ï¿½İ‚ÌƒWï¿½ï¿½ï¿½ï¿½ï¿½vï¿½ñ”‚ï¿½ï¿½mï¿½F
+	//JumpCurrentCount ï¿½ï¿½ACharacterï¿½É•Wï¿½ï¿½ï¿½Å—pï¿½Ó‚ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½uï¿½ï¿½ï¿½İ‰ï¿½ï¿½ï¿½Ú‚ÌƒWï¿½ï¿½ï¿½ï¿½ï¿½vï¿½ï¿½ï¿½vï¿½ï¿½ï¿½ï¿½ï¿½Â•Ïï¿½
+	if (JumpCurrentCount == 1)
+	{
+		//ï¿½y1ï¿½iï¿½Ú‚ÌƒWï¿½ï¿½ï¿½ï¿½ï¿½vï¿½ï¿½ï¿½Ìï¿½ï¿½ï¿½ï¿½z
+		MoveComp->AirControl = MoveComp->m_AirControlFirstJump;
 
 
-        //’n–Ê‚ğR‚é“y‰Œ‚ÌƒGƒtƒFƒNƒg(Niagara)‚ğ‘«Œ³‚Éo‚·
-        //uƒnƒbIv‚Æ‚¢‚¤’ÊíƒWƒƒƒ“ƒv‚Ìƒ{ƒCƒX‚âSE‚ğÄ¶‚·‚é
-    }
-    else if (JumpCurrentCount == 2)
-    {
-        //y2’i–Ú‚ÌƒWƒƒƒ“ƒviƒGƒAƒnƒCƒNj‚Ìˆ—z
-        MoveComp->AirControl = MoveComp->m_AirControlSecondJump;
+		//ï¿½nï¿½Ê‚ï¿½ï¿½Rï¿½ï¿½yï¿½ï¿½ï¿½ÌƒGï¿½tï¿½Fï¿½Nï¿½g(Niagara)ï¿½ğ‘«Œï¿½ï¿½Éoï¿½ï¿½
+		//ï¿½uï¿½nï¿½bï¿½Iï¿½vï¿½Æ‚ï¿½ï¿½ï¿½ï¿½Êï¿½Wï¿½ï¿½ï¿½ï¿½ï¿½vï¿½Ìƒ{ï¿½Cï¿½Xï¿½ï¿½SEï¿½ï¿½ï¿½Äï¿½ï¿½ï¿½ï¿½ï¿½
+	}
+	else if (JumpCurrentCount == 2)
+	{
+		//ï¿½y2ï¿½iï¿½Ú‚ÌƒWï¿½ï¿½ï¿½ï¿½ï¿½vï¿½iï¿½Gï¿½Aï¿½nï¿½Cï¿½Nï¿½jï¿½ï¿½ï¿½Ìï¿½ï¿½ï¿½ï¿½z
+		MoveComp->AirControl = MoveComp->m_AirControlSecondJump;
 
-        FVector Vel = MoveComp->Velocity;
-        Vel.Z = MoveComp->m_SecondJumpZVelocity;
-        MoveComp->Velocity = Vel;
+		FVector Vel = MoveComp->Velocity;
+		Vel.Z = MoveComp->m_SecondJumpZVelocity;
+		MoveComp->Velocity = Vel;
 
-        //“ñ’iƒWƒƒƒ“ƒv‚Å‹ó’†UŒ‚‚ğ‚à‚¤ˆê“xg‚¦‚é‚æ‚¤‚É‚·‚é
-        if (CombatComponent) CombatComponent->ResetAirAttack();
+		//ï¿½ï¿½iï¿½Wï¿½ï¿½ï¿½ï¿½ï¿½vï¿½Å‹ó’†Uï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½xï¿½gï¿½ï¿½ï¿½ï¿½æ‚¤ï¿½É‚ï¿½ï¿½ï¿½
+		if (CombatComponent) CombatComponent->ResetAirAttack();
 
-        //“ü—Í•ûŒü‚Éˆê“x‚¾‚¯•ûŒü“]Š·
-        FVector InputVector = MoveComp->GetLastInputVector();
-        if (!InputVector.IsNearlyZero())
-        {
-            FVector InputDir = InputVector.GetSafeNormal2D();
-            SetActorRotation(InputDir.Rotation());
+		//ï¿½ï¿½ï¿½Í•ï¿½ï¿½ï¿½ï¿½Éˆï¿½xï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½]ï¿½ï¿½
+		FVector InputVector = MoveComp->GetLastInputVector();
+		if (!InputVector.IsNearlyZero())
+		{
+			FVector InputDir = InputVector.GetSafeNormal2D();
+			SetActorRotation(InputDir.Rotation());
 
-            float HorizontalSpeed = FVector(Vel.X, Vel.Y, 0.f).Size();
-            MoveComp->Velocity.X = InputDir.X * HorizontalSpeed;
-            MoveComp->Velocity.Y = InputDir.Y * HorizontalSpeed;
-        }
+			float HorizontalSpeed = FVector(Vel.X, Vel.Y, 0.f).Size();
+			MoveComp->Velocity.X = InputDir.X * HorizontalSpeed;
+			MoveComp->Velocity.Y = InputDir.Y * HorizontalSpeed;
+		}
 
-        if (m_SecondJumpMontage)
-        {
-            PlayAnimMontage(m_SecondJumpMontage, m_SecondJumpPlayRate);
-        }
-    }
+		if (m_SecondJumpMontage)
+		{
+			PlayAnimMontage(m_SecondJumpMontage, m_SecondJumpPlayRate);
+		}
+	}
 }
 
 bool AActionCharacter::CanJumpInternal_Implementation() const
 {
-    //UŒ‚ƒ‚[ƒVƒ‡ƒ“’†‚ÍƒWƒƒƒ“ƒv•s‰Â
-    if (CombatComponent && CombatComponent->IsPlayingAttackMontage()) return false;
-    //‰ñ•œ’†‚ÍƒWƒƒƒ“ƒv•s‰Â
-    if (IsHealing()) return false;
+	//ï¿½Uï¿½ï¿½ï¿½ï¿½ï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÍƒWï¿½ï¿½ï¿½ï¿½ï¿½vï¿½sï¿½ï¿½
+	if (CombatComponent && CombatComponent->IsPlayingAttackMontage()) return false;
+	//ï¿½ñ•œ’ï¿½ï¿½ÍƒWï¿½ï¿½ï¿½ï¿½ï¿½vï¿½sï¿½ï¿½
+	if (IsHealing()) return false;
 
-    if (m_bIsHitStunned) return false;
+	if (m_bIsHitStunned) return false;
 
-    return Super::CanJumpInternal_Implementation();
+	return Super::CanJumpInternal_Implementation();
 }
 
 void AActionCharacter::OnJumpPressed()
 {
-    m_JumpPressedTime = GetWorld()->GetTimeSeconds();
-    Jump();
+	m_JumpPressedTime = GetWorld()->GetTimeSeconds();
+	Jump();
 }
 
 void AActionCharacter::OnJumpReleased()
 {
-    StopJumping();
+	StopJumping();
 
-    // “ñ’iƒWƒƒƒ“ƒv’†‚ÍZ‘¬“x‚ğG‚ç‚È‚¢
-    if (JumpCurrentCount >= 2) return;
+	// ï¿½ï¿½iï¿½Wï¿½ï¿½ï¿½ï¿½ï¿½vï¿½ï¿½ï¿½ï¿½Zï¿½ï¿½ï¿½xï¿½ï¿½Gï¿½ï¿½È‚ï¿½
+	if (JumpCurrentCount >= 2) return;
 
-    //ƒ{ƒ^ƒ“‚ğ‰Ÿ‚µ‚Ä‚¢‚½ŠÔ‚ğZo
-    float HoldDuration = GetWorld()->GetTimeSeconds() - m_JumpPressedTime;
+	//ï¿½{ï¿½^ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô‚ï¿½ï¿½Zï¿½o
+	float HoldDuration = GetWorld()->GetTimeSeconds() - m_JumpPressedTime;
 
-    UActionMovementComponent* MoveComp = GetActionMovementComponent();
-    if (!MoveComp) return;
+	UActionMovementComponent* MoveComp = GetActionMovementComponent();
+	if (!MoveComp) return;
 
-    //‹ó’†‚Åƒ{ƒ^ƒ“‚ª‘¦À‚É—£‚³‚ê‚½ê‡Aã¸‘¬“x‚ÌãŒÀ‚ğ’á‚­ƒJƒbƒg‚·‚é‚±‚Æ‚Å¬ƒWƒƒƒ“ƒv‚ğ•\Œ»‚·‚é
-    if (MoveComp->IsFalling())
-    {
-        FVector Vel = MoveComp->Velocity;
-        if (HoldDuration < m_JumpHoldThreshold)
-        {
-            Vel.Z = FMath::Min(Vel.Z, m_JumpZVelocityShort);
-        }
-        MoveComp->Velocity = Vel;
-    }
+	//ï¿½ó’†‚Åƒ{ï¿½^ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É—ï¿½ï¿½ï¿½ï¿½ê‚½ï¿½ê‡ï¿½Aï¿½ã¸ï¿½ï¿½ï¿½xï¿½Ìï¿½ï¿½ï¿½ï¿½á‚­ï¿½Jï¿½bï¿½gï¿½ï¿½ï¿½é‚±ï¿½Æ‚Åï¿½ï¿½Wï¿½ï¿½ï¿½ï¿½ï¿½vï¿½ï¿½\ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	if (MoveComp->IsFalling())
+	{
+		FVector Vel = MoveComp->Velocity;
+		if (HoldDuration < m_JumpHoldThreshold)
+		{
+			Vel.Z = FMath::Min(Vel.Z, m_JumpZVelocityShort);
+		}
+		MoveComp->Velocity = Vel;
+	}
 }
 
 void AActionCharacter::Landed(const FHitResult& Hit)
 {
-    Super::Landed(Hit);
+	Super::Landed(Hit);
 
-    //’…’n•œ‹Aˆ—
-    UActionMovementComponent* MoveComp = GetActionMovementComponent();
-    if (MoveComp)
-    {
-        MoveComp->AirControl = 0.05f;
-        MoveComp->StartLandingRecovery();
-    }
+	//ï¿½ï¿½ï¿½nï¿½ï¿½ï¿½Aï¿½ï¿½ï¿½ï¿½
+	UActionMovementComponent* MoveComp = GetActionMovementComponent();
+	if (MoveComp)
+	{
+		MoveComp->AirControl = 0.05f;
+		MoveComp->StartLandingRecovery();
+	}
 
-    if (CombatComponent)
-    {
-        CombatComponent->ResetAirDodge();
-        CombatComponent->ResetAirAttack();
-    }
+	if (CombatComponent)
+	{
+		CombatComponent->ResetAirDodge();
+		CombatComponent->ResetAirAttack();
+	}
 
-    if (m_SecondJumpMontage)
-    {
-        if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
-        {
-            if (Anim->Montage_IsPlaying(m_SecondJumpMontage))
-            {
-                StopAnimMontage(m_SecondJumpMontage);
-            }
-        }
-    }
+	if (m_SecondJumpMontage)
+	{
+		if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
+		{
+			if (Anim->Montage_IsPlaying(m_SecondJumpMontage))
+			{
+				StopAnimMontage(m_SecondJumpMontage);
+			}
+		}
+	}
 }
 
 // -----------------------------------------------------------------------
-// •ªg‚Ì¢Š«
+// ï¿½ï¿½ï¿½gï¿½Ìï¿½ï¿½ï¿½
 // -----------------------------------------------------------------------
 void AActionCharacter::SummonGhost()
 {
-    //ƒXƒgƒbƒN•s‘«ƒ`ƒFƒbƒNi¢Š«‚É‚ÍƒXƒgƒbƒN1–{‚ª•K—vj
-    if (GetEnergyStock() < 1)
-    {
-        GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("Not enough energy stock"));
-        return;
-    }
+	//ï¿½Xï¿½gï¿½bï¿½Nï¿½sï¿½ï¿½ï¿½`ï¿½Fï¿½bï¿½Nï¿½iï¿½ï¿½ï¿½ï¿½ï¿½É‚ÍƒXï¿½gï¿½bï¿½N1ï¿½{ï¿½ï¿½ï¿½Kï¿½vï¿½j
+	if (GetEnergyStock() < 1)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("Not enough energy stock"));
+		return;
+	}
 
-    //Å‘å”ƒ`ƒFƒbƒN
-    if (m_ActiveGhosts.Num() >= m_iMaxGhostCount)
-    {
-        GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Orange, TEXT("MaxGhostCount!"));
-        return;
-    }
+	//ï¿½Å‘å”ï¿½`ï¿½Fï¿½bï¿½N
+	if (m_ActiveGhosts.Num() >= m_iMaxGhostCount)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Orange, TEXT("MaxGhostCount!"));
+		return;
+	}
 
-    if (!GhostRecorder || !GhostCharacterClass)
-    {
-        GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("Recorder or GhostClass is NULL"));
-        return;
-    }
+	if (!GhostRecorder || !GhostCharacterClass)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("Recorder or GhostClass is NULL"));
+		return;
+	}
 
-    //’¼‹ß20•b‚Ìs“®‹L˜^‚ğæ“¾
-    const TArray<FGhostActionData> Snapshot = GhostRecorder->GetSnapshot(20.f);
-    if (Snapshot.IsEmpty())
-    {
-        GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow, TEXT("NO Data MoveMore"));
-        return;
-    }
+	//ï¿½ï¿½ï¿½ï¿½20ï¿½bï¿½Ìsï¿½ï¿½ï¿½Lï¿½^ï¿½ï¿½ï¿½æ“¾
+	const TArray<FGhostActionData> Snapshot = GhostRecorder->GetSnapshot(20.f);
+	if (Snapshot.IsEmpty())
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow, TEXT("NO Data MoveMore"));
+		return;
+	}
 
-    //ƒXƒ|[ƒ“ˆÊ’uiƒvƒŒƒCƒ„[‚Ì¶‰¡j
-    const FVector  SpawnLoc = GetActorLocation() + GetActorRightVector() * -100.f;
-    const FRotator SpawnRot = GetActorRotation();
+	//ï¿½Xï¿½|ï¿½[ï¿½ï¿½ï¿½Ê’uï¿½iï¿½vï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[ï¿½Ìï¿½ï¿½ï¿½ï¿½j
+	const FVector SpawnLoc = GetActorLocation() + GetActorRightVector() * -100.f;
+	const FRotator SpawnRot = GetActorRotation();
 
-    FActorSpawnParameters Params;
-    Params.Owner = this;
-    Params.SpawnCollisionHandlingOverride =
-        ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	FActorSpawnParameters Params;
+	Params.Owner = this;
+	Params.SpawnCollisionHandlingOverride =
+		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
-    AGhostCharacter* Ghost = GetWorld()->SpawnActor<AGhostCharacter>(
-        GhostCharacterClass, SpawnLoc, SpawnRot, Params);
-    if (!Ghost)
-    {
-        GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("SpawnActor failed"));
-        return;
-    }
+	AGhostCharacter* Ghost = GetWorld()->SpawnActor<AGhostCharacter>(
+		GhostCharacterClass, SpawnLoc, SpawnRot, Params);
+	if (!Ghost)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("SpawnActor failed"));
+		return;
+	}
 
-    //‹L˜^ƒf[ƒ^‚ğ“n‚µ‚Äs“®ŠJn
-    Ghost->InitializeGhost(Snapshot, GhostRecorder);
+	//ï¿½Lï¿½^ï¿½fï¿½[ï¿½^ï¿½ï¿½nï¿½ï¿½ï¿½Äsï¿½ï¿½ï¿½Jï¿½n
+	Ghost->InitializeGhost(Snapshot, GhostRecorder);
 
-    //•ªg‚ªÁ‚¦‚½‚çƒŠƒXƒg‚©‚çŠO‚·
-    Ghost->OnDestroyed.AddDynamic(this, &AActionCharacter::OnGhostDestroyed);
+	//ï¿½ï¿½ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½çƒŠï¿½Xï¿½gï¿½ï¿½ï¿½ï¿½Oï¿½ï¿½
+	Ghost->OnDestroyed.AddDynamic(this, &AActionCharacter::OnGhostDestroyed);
 
-    //•ªg‚ÌUŒ‚‚Å‚àƒGƒlƒ‹ƒM[‚ğ“¾‚é
-    if (Ghost->CombatComponent)
-    {
-        Ghost->CombatComponent->OnHitEnemy.AddUObject(this, &AActionCharacter::OnGhostHitEnemy);
-    }
+	//ï¿½ï¿½ï¿½gï¿½ÌUï¿½ï¿½ï¿½Å‚ï¿½ï¿½Gï¿½lï¿½ï¿½ï¿½Mï¿½[ï¿½ğ“¾‚ï¿½
+	if (Ghost->CombatComponent)
+	{
+		Ghost->CombatComponent->OnHitEnemy.AddUObject(this, &AActionCharacter::OnGhostHitEnemy);
+	}
 
-    //•ªg‚Ìó‘ÔiÁ‚¦‚é’¼‘O‚È‚Çj‚Ì•Ï‰»‚ğUI‚É“`‚¦‚é
-    if (Ghost->EnemyComponent)
-    {
-        Ghost->EnemyComponent->OnStateChanged.AddDynamic(this, &AActionCharacter::OnGhostStateChanged);
-    }
+	//ï¿½ï¿½ï¿½gï¿½Ìï¿½Ôiï¿½ï¿½ï¿½ï¿½ï¿½é’¼ï¿½Oï¿½È‚Çjï¿½Ì•Ï‰ï¿½ï¿½ï¿½UIï¿½É“`ï¿½ï¿½ï¿½ï¿½
+	if (Ghost->EnemyComponent)
+	{
+		Ghost->EnemyComponent->OnStateChanged.AddDynamic(this, &AActionCharacter::OnGhostStateChanged);
+	}
 
-    //ƒXƒgƒbƒN‚ğ1–{Á”ï
-    SetEnergy(m_CurrentEnergy - m_EnergyPerStock);
+	//ï¿½Xï¿½gï¿½bï¿½Nï¿½ï¿½1ï¿½{ï¿½ï¿½ï¿½ï¿½
+	SetEnergy(m_CurrentEnergy - m_EnergyPerStock);
 
-    m_ActiveGhosts.Add(Ghost);
-    m_iActiveGhostCount = m_ActiveGhosts.Num();
-    OnGhostsChanged.Broadcast();
+	m_ActiveGhosts.Add(Ghost);
+	m_iActiveGhostCount = m_ActiveGhosts.Num();
+	OnGhostsChanged.Broadcast();
 }
 
 void AActionCharacter::SetEnergy(float NewEnergy)
 {
-    m_CurrentEnergy = FMath::Clamp(NewEnergy, 0.f, m_MaxEnergy);
-    OnEnergyChanged.Broadcast(m_CurrentEnergy, m_MaxEnergy);
+	m_CurrentEnergy = FMath::Clamp(NewEnergy, 0.f, m_MaxEnergy);
+	OnEnergyChanged.Broadcast(m_CurrentEnergy, m_MaxEnergy);
 }
 
 void AActionCharacter::OnGhostStateChanged(EGhostLifecycleState NewState)
 {
-    OnGhostsChanged.Broadcast();
+	OnGhostsChanged.Broadcast();
 }
 
 void AActionCharacter::GetGhostStates(TArray<EGhostLifecycleState>& OutStates) const
 {
-    OutStates.Reset();
-    for (const TWeakObjectPtr<AGhostCharacter>& G : m_ActiveGhosts)
-    {
-        if (const AGhostCharacter* Ghost = G.Get())
-        {
-            OutStates.Add(Ghost->EnemyComponent
-                ? Ghost->EnemyComponent->GetLifecycleState()
-                : EGhostLifecycleState::Friendly);
-        }
-    }
+	OutStates.Reset();
+	for (const TWeakObjectPtr<AGhostCharacter>& G : m_ActiveGhosts)
+	{
+		if (const AGhostCharacter* Ghost = G.Get())
+		{
+			OutStates.Add(Ghost->EnemyComponent
+				              ? Ghost->EnemyComponent->GetLifecycleState()
+				              : EGhostLifecycleState::Friendly);
+		}
+	}
 }
 
 void AActionCharacter::OnGhostHitEnemy(float EnergyGain)
 {
-    OnHitEnemy(EnergyGain * m_GhostEnergyRate);
+	OnHitEnemy(EnergyGain * m_GhostEnergyRate);
 }
 
 void AActionCharacter::OnGhostDestroyed(AActor* DestroyedActor)
 {
-    m_ActiveGhosts.RemoveAll([DestroyedActor](const TWeakObjectPtr<AGhostCharacter>& G)
-        {
-            return !G.IsValid() || G.Get() == DestroyedActor;
-        });
-    m_iActiveGhostCount = m_ActiveGhosts.Num();
-    OnGhostsChanged.Broadcast();
+	m_ActiveGhosts.RemoveAll([DestroyedActor](const TWeakObjectPtr<AGhostCharacter>& G)
+	{
+		return !G.IsValid() || G.Get() == DestroyedActor;
+	});
+	m_iActiveGhostCount = m_ActiveGhosts.Num();
+	OnGhostsChanged.Broadcast();
 }
 
 void AActionCharacter::Heal()
 {
-    if (m_bIsDead || IsHealing()) return;
+	if (m_bIsDead || IsHealing()) return;
 
-    if (m_bIsHitStunned) return;
+	if (m_bIsHitStunned) return;
 
-    if (m_iHealCount <= 0)
-    {
-        if (m_bDebugHP) GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Orange, TEXT("No Heal Left"));
-        return;
-    }
-    if (m_CurrentHP >= m_MaxHP) return;
-    if (GetCharacterMovement()->IsFalling()) return;
-    if (CombatComponent && (CombatComponent->IsAttacking() || CombatComponent->IsDodging())) return;
+	if (m_iHealCount <= 0)
+	{
+		if (m_bDebugHP) GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Orange, TEXT("No Heal Left"));
+		return;
+	}
+	if (m_CurrentHP >= m_MaxHP) return;
+	if (GetCharacterMovement()->IsFalling()) return;
+	if (CombatComponent && (CombatComponent->IsAttacking() || CombatComponent->IsDodging())) return;
 
-    //\‚¦ŠJnFˆÚ“®‘¬“x‚ğ—‚Æ‚·
-    m_HealPhase = EHealPhase::Windup;
-    if (UActionMovementComponent* Move = Cast<UActionMovementComponent>(GetCharacterMovement()))
-    {
-        Move->SetSpeedMultiplier(m_HealMoveSpeedRate);
-    }
-    //TODOF‚±‚±‚Å‰ñ•œƒ‚[ƒVƒ‡ƒ“i•r‚ğˆù‚Şj‚ğÄ¶‚·‚é
+	//ï¿½\ï¿½ï¿½ï¿½Jï¿½nï¿½Fï¿½Ú“ï¿½ï¿½ï¿½ï¿½xï¿½ğ—‚Æ‚ï¿½
+	m_HealPhase = EHealPhase::Windup;
+	if (UActionMovementComponent* Move = Cast<UActionMovementComponent>(GetCharacterMovement()))
+	{
+		Move->SetSpeedMultiplier(m_HealMoveSpeedRate);
+	}
+	//TODOï¿½Fï¿½ï¿½ï¿½ï¿½ï¿½Å‰ñ•œƒï¿½ï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½iï¿½rï¿½ï¿½ï¿½ï¿½ï¿½Şjï¿½ï¿½ï¿½Äï¿½ï¿½ï¿½ï¿½ï¿½
 
-    GetWorldTimerManager().SetTimer(m_HealTimer, this, &AActionCharacter::ApplyHeal, m_HealWindupTime, false);
+	GetWorldTimerManager().SetTimer(m_HealTimer, this, &AActionCharacter::ApplyHeal, m_HealWindupTime, false);
 
-    if (m_bDebugHP) GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Green, TEXT("Heal Start..."));
+	if (m_bDebugHP) GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Green, TEXT("Heal Start..."));
 }
 
 void AActionCharacter::ApplyHeal()
 {
-    //‚±‚±‚Å‰‚ß‚Ä‰ñ”‚ğÁ”ï‚µ‚Ä‰ñ•œ
-    --m_iHealCount;
-    SetHP(m_CurrentHP + m_HealAmount);
-    OnHealCountChanged.Broadcast(m_iHealCount, m_iMaxHealCount);
+	//ï¿½ï¿½ï¿½ï¿½ï¿½Åï¿½ï¿½ß‚Ä‰ñ”‚ï¿½ï¿½ï¿½ï¿½ï‚µï¿½Ä‰ï¿½
+	--m_iHealCount;
+	SetHP(m_CurrentHP + m_HealAmount);
+	OnHealCountChanged.Broadcast(m_iHealCount, m_iMaxHealCount);
 
-    if (m_bDebugHP)
-    {
-        GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Green,
-            FString::Printf(TEXT("Heal +%.0f  (Left %d / %d)"), m_HealAmount, m_iHealCount, m_iMaxHealCount));
-    }
+	if (m_bDebugHP)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Green,
+		                                 FString::Printf(
+			                                 TEXT("Heal +%.0f  (Left %d / %d)"), m_HealAmount, m_iHealCount,
+			                                 m_iMaxHealCount));
+	}
 
-    //ŒãŒ„F‘¬“x‚Í—‚Æ‚µ‚½‚Ü‚Ü
-    m_HealPhase = EHealPhase::Recovery;
-    GetWorldTimerManager().SetTimer(m_HealTimer, this, &AActionCharacter::EndHeal, m_HealRecoveryTime, false);
+	//ï¿½ãŒ„ï¿½Fï¿½ï¿½ï¿½xï¿½Í—ï¿½ï¿½Æ‚ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½
+	m_HealPhase = EHealPhase::Recovery;
+	GetWorldTimerManager().SetTimer(m_HealTimer, this, &AActionCharacter::EndHeal, m_HealRecoveryTime, false);
 }
 
 void AActionCharacter::EndHeal()
 {
-    GetWorldTimerManager().ClearTimer(m_HealTimer);
-    m_HealPhase = EHealPhase::None;
+	GetWorldTimerManager().ClearTimer(m_HealTimer);
+	m_HealPhase = EHealPhase::None;
 
-    if (UActionMovementComponent* Move = Cast<UActionMovementComponent>(GetCharacterMovement()))
-    {
-        Move->SetSpeedMultiplier(1.f);
-    }
-    //TODOF‰ñ•œƒ‚[ƒVƒ‡ƒ“‚ğ~‚ß‚éi’†’fj
+	if (UActionMovementComponent* Move = Cast<UActionMovementComponent>(GetCharacterMovement()))
+	{
+		Move->SetSpeedMultiplier(1.f);
+	}
+	//TODOï¿½Fï¿½ñ•œƒï¿½ï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½~ï¿½ß‚ï¿½iï¿½ï¿½ï¿½fï¿½ï¿½ï¿½j
 }
 
 void AActionCharacter::InterruptHeal()
 {
-    if (!IsHealing()) return;
+	if (!IsHealing()) return;
 
-    if (m_bDebugHP)
-    {
-        //\‚¦’†‚È‚ç¸”sAŒãŒ„’†‚È‚ç“®ì‚¾‚¯’†’fi‰ñ•œ‚ÍÏ‚ñ‚Å‚¢‚éj
-        const bool bFailed = (m_HealPhase == EHealPhase::Windup);
-        GEngine->AddOnScreenDebugMessage(-1, 2.f, bFailed ? FColor::Red : FColor::Yellow,
-            bFailed ? TEXT("Heal Failed (Not consumed)") : TEXT("Heal Motion Interrupted"));
-    }
-    EndHeal();
+	if (m_bDebugHP)
+	{
+		//ï¿½\ï¿½ï¿½ï¿½ï¿½ï¿½È‚ç¸ï¿½sï¿½Aï¿½ãŒ„ï¿½ï¿½ï¿½È‚ç“®ï¿½ì‚¾ï¿½ï¿½ï¿½ï¿½ï¿½fï¿½iï¿½ñ•œ‚ÍÏ‚ï¿½Å‚ï¿½ï¿½ï¿½j
+		const bool bFailed = (m_HealPhase == EHealPhase::Windup);
+		GEngine->AddOnScreenDebugMessage(-1, 2.f, bFailed ? FColor::Red : FColor::Yellow,
+		                                 bFailed
+			                                 ? TEXT("Heal Failed (Not consumed)")
+			                                 : TEXT("Heal Motion Interrupted"));
+	}
+	EndHeal();
 }
+
 void AActionCharacter::RefillHeals()
 {
-    m_iHealCount = m_iMaxHealCount;
-    OnHealCountChanged.Broadcast(m_iHealCount, m_iMaxHealCount);
+	m_iHealCount = m_iMaxHealCount;
+	OnHealCountChanged.Broadcast(m_iHealCount, m_iMaxHealCount);
 }

@@ -6,6 +6,8 @@
 #include "GameFramework/GameModeBase.h"
 #include "EchoesGameMode.generated.h"
 
+class AActionCharacter;
+
 UCLASS(abstract)
 class AEchoesGameMode : public AGameModeBase
 {
@@ -13,7 +15,13 @@ class AEchoesGameMode : public AGameModeBase
 
 public:
 	AEchoesGameMode();
+
+	void RespawnPlayer(AActionCharacter* _player);
+
+	// リスポーン位置を設定
+	void SetRespawnTransform(const FTransform& _transform) { m_RespawnTransform = _transform; };
+
+protected:
+	//現在の復帰地点
+	FTransform m_RespawnTransform = FTransform::Identity;
 };
-
-
-

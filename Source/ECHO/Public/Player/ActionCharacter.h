@@ -1,6 +1,6 @@
 // ActionCharacter.h
-// ƒvƒŒƒCƒ„[‚ÌƒRƒAƒNƒ‰ƒX
-// “ü—ÍEƒJƒƒ‰§ŒäEŠeƒRƒ“ƒ|[ƒlƒ“ƒg‚Ö‚ÌˆÏ÷
+// ï¿½vï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[ï¿½ÌƒRï¿½Aï¿½Nï¿½ï¿½ï¿½X
+// ï¿½ï¿½ï¿½ÍEï¿½Jï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Eï¿½eï¿½Rï¿½ï¿½ï¿½|ï¿½[ï¿½lï¿½ï¿½ï¿½gï¿½Ö‚ÌˆÏï¿½
 
 #pragma once
 
@@ -18,13 +18,13 @@ class UCameraComponent;
 class UGhostManagerComponent;
 class UBatManagerComponent;
 
-//ƒGƒlƒ‹ƒM[‚ª•Ï‚í‚Á‚½‚Æ‚«iŒ»İ’l, Å‘å’lj
+//ï¿½Gï¿½lï¿½ï¿½ï¿½Mï¿½[ï¿½ï¿½ï¿½Ï‚ï¿½ï¿½ï¿½ï¿½ï¿½Æ‚ï¿½ï¿½iï¿½ï¿½ï¿½İ’l, ï¿½Å‘ï¿½lï¿½j
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnEnergyChanged, float, float);
-//•ªg‚Ì”Eó‘Ô‚ª•Ï‚í‚Á‚½‚Æ‚«
+//ï¿½ï¿½ï¿½gï¿½Ìï¿½ï¿½Eï¿½ï¿½Ô‚ï¿½ï¿½Ï‚ï¿½ï¿½ï¿½ï¿½ï¿½Æ‚ï¿½
 DECLARE_MULTICAST_DELEGATE(FOnGhostsChanged);
-//UI—piŒ»İHP, Å‘åHPj
+//UIï¿½pï¿½iï¿½ï¿½ï¿½ï¿½HP, ï¿½Å‘ï¿½HPï¿½j
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnHPChanged, float, float);
-//UI—pic‚è‰ñ”, Å‘å‰ñ”j
+//UIï¿½pï¿½iï¿½cï¿½ï¿½ï¿½, ï¿½Å‘ï¿½ñ”j
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnHealCountChanged, int32, int32);
 
 UCLASS()
@@ -37,16 +37,16 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-	//ƒI[ƒgƒ_ƒbƒVƒ…‚ÌŒv‘ª‚Ég‚¤
+	//ï¿½Iï¿½[ï¿½gï¿½_ï¿½bï¿½Vï¿½ï¿½ï¿½ÌŒvï¿½ï¿½ï¿½Égï¿½ï¿½
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	//ƒWƒƒƒ“ƒv‚ª¬Œ÷‚µ‚½‚Æ‚«‚ÉŒÄ‚Î‚ê‚éŠÖ”
+	//ï¿½Wï¿½ï¿½ï¿½ï¿½ï¿½vï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ‚ï¿½ï¿½ÉŒÄ‚Î‚ï¿½ï¿½Öï¿½
 	virtual void OnJumped_Implementation() override;
-	//’n–Ê‚È‚Ç‚É’…’n‚µ‚½‚Æ‚«‚ÉŒÄ‚Î‚ê‚éŠÖ”
+	//ï¿½nï¿½Ê‚È‚Ç‚É’ï¿½ï¿½nï¿½ï¿½ï¿½ï¿½ï¿½Æ‚ï¿½ï¿½ÉŒÄ‚Î‚ï¿½ï¿½Öï¿½
 	virtual void Landed(const FHitResult& Hit) override;
 
 	// -----------------------------------------------------------------------
-	// “ü—Í
+	// ï¿½ï¿½ï¿½ï¿½
 	// -----------------------------------------------------------------------
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	class UInputMappingContext* DefaultMappingContext;
@@ -74,34 +74,35 @@ protected:
 	class UInputAction* DodgeAction;
 	void Dodge();
 
-	//¢Š«ƒAƒNƒVƒ‡ƒ“
+	//ï¿½ï¿½ï¿½ï¿½ï¿½Aï¿½Nï¿½Vï¿½ï¿½ï¿½ï¿½
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	class UInputAction* SummonAction;
 
-	//‰ñ•œƒAƒNƒVƒ‡ƒ“
+	//ï¿½ñ•œƒAï¿½Nï¿½Vï¿½ï¿½ï¿½ï¿½
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	class UInputAction* HealAction;
 	void Heal();
-
+	
+	
 	// -----------------------------------------------------------------------
-	// ˆÚ“®
+	// ï¿½Ú“ï¿½
 	// -----------------------------------------------------------------------
 
-	//ƒI[ƒgƒ_ƒbƒVƒ…‚Ö‚ÌˆÚsŠÔ
+	//ï¿½Iï¿½[ï¿½gï¿½_ï¿½bï¿½Vï¿½ï¿½ï¿½Ö‚ÌˆÚsï¿½ï¿½ï¿½ï¿½
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float m_TimeToSprint;
 
-	//‘–‚è‘±‚¯‚Ä‚¢‚éŠÔ‚ğŒv‘ª‚·‚é•Ï”
+	//ï¿½ï¿½ï¿½è‘±ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½éï¿½Ô‚ï¿½ï¿½vï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ïï¿½
 	float m_CurrentRunTime;
-	//‘–‚èŠJn‚ÆI—¹
+	//ï¿½ï¿½ï¿½ï¿½Jï¿½nï¿½ÆIï¿½ï¿½
 	void StartSprint();
 	void StopSprint();
 
-	//ƒXƒeƒBƒbƒN‚ğ—£‚µ‚½‚Æ‚É•Û‘¶‚µ‚½•ûŒü‚ğƒNƒŠƒA‚·‚éŠÖ”
+	//ï¿½Xï¿½eï¿½Bï¿½bï¿½Nï¿½ğ—£‚ï¿½ï¿½ï¿½ï¿½Æï¿½ï¿½É•Û‘ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Nï¿½ï¿½ï¿½Aï¿½ï¿½ï¿½ï¿½Öï¿½
 	void MoveCompleted(const FInputActionValue& Value);
 
 	// -----------------------------------------------------------------------
-	// ƒJƒƒ‰
+	// ï¿½Jï¿½ï¿½ï¿½ï¿½
 	// -----------------------------------------------------------------------
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	USpringArmComponent* CameraBoom;
@@ -110,12 +111,12 @@ protected:
 	UCameraComponent* FollowCamera;
 
 	// -----------------------------------------------------------------------
-	// í“¬
+	// ï¿½í“¬
 	// -----------------------------------------------------------------------
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent* CombatComponent;
 
-	//è‚É‚½‚¹‚éŒ•‚ÌƒƒbƒVƒ…
+	//ï¿½ï¿½Éï¿½ï¿½ï¿½ï¿½ï¿½ï¿½éŒ•ï¿½Ìƒï¿½ï¿½bï¿½Vï¿½ï¿½
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	UStaticMeshComponent* WeaponMesh;
 
@@ -129,10 +130,17 @@ public:
 
 	FOnHPChanged OnHPChanged;
 
-	//ƒfƒoƒbƒO—pFƒRƒ“ƒ\[ƒ‹‚ÅuDebugDamage 30v‚Æ‘Å‚Â‚Æƒ_ƒ[ƒW‚ğó‚¯‚é
+	//ï¿½fï¿½oï¿½bï¿½Oï¿½pï¿½Fï¿½Rï¿½ï¿½ï¿½\ï¿½[ï¿½ï¿½ï¿½ÅuDebugDamage 30ï¿½vï¿½Æ‘Å‚Â‚Æƒ_ï¿½ï¿½ï¿½[ï¿½Wï¿½ï¿½ï¿½ó‚¯‚ï¿½
 	UFUNCTION(Exec)
 	void DebugDamage(float Amount = 10.f);
 
+	//ä½ã€…æœ¨å¤‰æ›´ç‚¹------------------------------------------------------------------------------------------------------
+	//HpåŠ ç®—ãƒ¡ã‚½ãƒƒãƒ‰
+	void AddHp(float  _hpAmount);
+	
+	//ãƒªã‚¹ãƒãƒ¼ãƒ³æ™‚ã«å‘¼ã°ã‚Œã‚‹ãƒ¡ã‚½ãƒƒãƒ‰ï¼ˆè‡ªç”±ã«æ›¸ãæ›ãˆã¦ãã‚Œï¼‰
+	void OnRespawn();
+	//----------------------------------------------------------------------------------------------------------------
 private:
 	UPROPERTY(EditAnywhere, Category = "Health", meta = (AllowPrivateAccess = "true", ClampMin = "1"))
 	float m_MaxHP = 100.f;
@@ -140,11 +148,11 @@ private:
 	UPROPERTY(VisibleInstanceOnly, Category = "Health", meta = (AllowPrivateAccess = "true"))
 	float m_CurrentHP = 0.f;
 
-	//”í’eŒã‚Ì–³“GŠÔi‘½’iƒqƒbƒg–h~j
+	//ï¿½ï¿½eï¿½ï¿½Ì–ï¿½ï¿½Gï¿½ï¿½ï¿½Ôiï¿½ï¿½ï¿½iï¿½qï¿½bï¿½gï¿½hï¿½~ï¿½j
 	UPROPERTY(EditAnywhere, Category = "Health", meta = (AllowPrivateAccess = "true"))
 	float m_HitInvincibleTime = 0.5f;
 
-	//‰ñ”ğ’†‚Í–³“G‚É‚·‚é‚©
+	//ï¿½ï¿½ğ’†‚Í–ï¿½ï¿½Gï¿½É‚ï¿½ï¿½é‚©
 	UPROPERTY(EditAnywhere, Category = "Health", meta = (AllowPrivateAccess = "true"))
 	bool m_bDodgeInvincible = true;
 
@@ -161,15 +169,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Movement")
 	class UActionMovementComponent* GetActionMovementComponent() const;
 
-	//í“¬’†‚©‚Ç‚¤‚©iƒ_ƒbƒVƒ…‚Ì§ŒÀ‚È‚Ç‚Ég‚¤j
+	//ï¿½í“¬ï¿½ï¿½ï¿½ï¿½ï¿½Ç‚ï¿½ï¿½ï¿½ï¿½iï¿½_ï¿½bï¿½Vï¿½ï¿½ï¿½Ìï¿½ï¿½ï¿½ï¿½È‚Ç‚Égï¿½ï¿½ï¿½j
 	bool IsInCombat() const { return m_bInCombat; }
 
 private:
-	//‚±‚Ì”ÍˆÍ“à‚Éu’N‚©‚ğ‘_‚Á‚Ä‚¢‚é“Gv‚ª‚¢‚½‚çí“¬’†
+	//ï¿½ï¿½ï¿½Ì”ÍˆÍ“ï¿½ï¿½Éuï¿½Nï¿½ï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½Gï¿½vï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½í“¬ï¿½ï¿½
 	UPROPERTY(EditAnywhere, Category = "Movement|Combat")
 	float m_CombatCheckRadius = 1500.f;
 
-	//ÅŒã‚ÉUŒ‚‚ğ“–‚Ä‚Ä‚©‚çA‚±‚Ì•b”‚Íí“¬’†‚Æ‚İ‚È‚·
+	//ï¿½ÅŒï¿½ÉUï¿½ï¿½ï¿½ğ“–‚Ä‚Ä‚ï¿½ï¿½ï¿½Aï¿½ï¿½ï¿½Ì•bï¿½ï¿½ï¿½Íí“¬ï¿½ï¿½ï¿½Æ‚İ‚È‚ï¿½
 	UPROPERTY(EditAnywhere, Category = "Movement|Combat")
 	float m_CombatLingerTime = 4.f;
 
@@ -180,54 +188,54 @@ private:
 	void UpdateCombatState(float DeltaTime);
 
 	// -----------------------------------------------------------------------
-	// ƒƒbƒNƒIƒ“ˆ—
+	// ï¿½ï¿½ï¿½bï¿½Nï¿½Iï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	// -----------------------------------------------------------------------
 public:
-	//ƒƒbƒNƒIƒ“ƒRƒ“ƒ|[ƒlƒ“ƒg
+	//ï¿½ï¿½ï¿½bï¿½Nï¿½Iï¿½ï¿½ï¿½Rï¿½ï¿½ï¿½|ï¿½[ï¿½lï¿½ï¿½ï¿½g
 	UPROPERTY(VisibleAnywhere)
 	ULockOnComponent* LockOnComponent;
 
-	//ƒƒbƒNƒIƒ“ó‘Ô‚ğØ‚è‘Ö‚¦‚éŠÖ”
+	//ï¿½ï¿½ï¿½bï¿½Nï¿½Iï¿½ï¿½ï¿½ï¿½Ô‚ï¿½Ø‚ï¿½Ö‚ï¿½ï¿½ï¿½Öï¿½
 	void OnLockOnChanged(AActor* NewTarget);
 
-	//ƒƒbƒNƒIƒ“’†‚ÌƒJƒƒ‰•âŠÔ‘¬“x
+	//ï¿½ï¿½ï¿½bï¿½Nï¿½Iï¿½ï¿½ï¿½ï¿½ï¿½ÌƒJï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô‘ï¿½ï¿½x
 	UPROPERTY(EditAnywhere, Category = "LockOn")
 	float m_LockOnCameraInterpSpeed;
 
-	//ƒƒbƒNƒIƒ“’†‚ÌƒJƒƒ‰‚Ì‹——£ƒIƒtƒZƒbƒg
+	//ï¿½ï¿½ï¿½bï¿½Nï¿½Iï¿½ï¿½ï¿½ï¿½ï¿½ÌƒJï¿½ï¿½ï¿½ï¿½ï¿½Ì‹ï¿½ï¿½ï¿½ï¿½Iï¿½tï¿½Zï¿½bï¿½g
 	UPROPERTY(EditAnywhere, Category = "LockOn")
 	float m_LockOnCameraOffsetY;
 
-	//ƒƒbƒNƒIƒ“’†ƒJƒƒ‰Pitch‚Ì‰ºŒÀ
+	//ï¿½ï¿½ï¿½bï¿½Nï¿½Iï¿½ï¿½ï¿½ï¿½ï¿½Jï¿½ï¿½ï¿½ï¿½Pitchï¿½Ì‰ï¿½ï¿½ï¿½
 	UPROPERTY(EditAnywhere, Category = "LockOn")
 	float m_LockOnPitchMin;
 
-	//ƒƒbƒNƒIƒ“’†ƒJƒƒ‰Pitch‚ÌãŒÀ
+	//ï¿½ï¿½ï¿½bï¿½Nï¿½Iï¿½ï¿½ï¿½ï¿½ï¿½Jï¿½ï¿½ï¿½ï¿½Pitchï¿½Ìï¿½ï¿½
 	UPROPERTY(EditAnywhere, Category = "LockOn")
 	float m_LockOnPitchMax;
 
-	//¶‰EƒIƒtƒZƒbƒg‚ªÅ‘å‚É‚È‚é“àÏ‚Ìâ‘Î’lA¬‚³‚¢‚Ù‚ÇØ‚è‘Ö‚¦‚ª‹@•q
+	//ï¿½ï¿½ï¿½Eï¿½Iï¿½tï¿½Zï¿½bï¿½gï¿½ï¿½ï¿½Å‘ï¿½É‚È‚ï¿½ï¿½ï¿½Ï‚Ìï¿½Î’lï¿½Aï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù‚ÇØ‚ï¿½Ö‚ï¿½ï¿½ï¿½ï¿½@ï¿½q
 	UPROPERTY(EditAnywhere, Category = "LockOn")
 	float m_SideBlendRange = 0.5f;
 
-	//’‹“X‚ğ‚Ç‚ê‚¾‚¯“G‘¤‚É‚æ‚¹‚é‚©(0=ƒvƒŒƒCƒ„[ 1=“G)
+	//ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½ï¿½ï¿½Ç‚ê‚¾ï¿½ï¿½ï¿½Gï¿½ï¿½ï¿½É‚æ‚¹ï¿½é‚©(0=ï¿½vï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[ 1=ï¿½G)
 	UPROPERTY(EditAnywhere, Category = "LockOn")
 	float m_TargetFocusBias = 0.5f;
 
-	//Š‹ß‹——£‚Å‚Ì’Ç]‘¬“x
+	//ï¿½ï¿½ï¿½ß‹ï¿½ï¿½ï¿½ï¿½Å‚Ì’Ç]ï¿½ï¿½ï¿½x
 	UPROPERTY(EditAnywhere, Category = "LockOn")
 	float m_LockOnInterpSpeedNear = 12.f;
 
 	FVector DefaultSocketOffset;
 
-	//ƒƒbƒNƒIƒ“’†‚Ì‚©‚Ç‚¤‚©‚Ìƒtƒ‰ƒO
+	//ï¿½ï¿½ï¿½bï¿½Nï¿½Iï¿½ï¿½ï¿½ï¿½ï¿½Ì‚ï¿½ï¿½Ç‚ï¿½ï¿½ï¿½ï¿½Ìƒtï¿½ï¿½ï¿½O
 	bool m_bsLockedOn;
 
-	//ƒƒbƒNƒIƒ“’†‚ÌƒJƒƒ‰‚ÌXV
+	//ï¿½ï¿½ï¿½bï¿½Nï¿½Iï¿½ï¿½ï¿½ï¿½ï¿½ÌƒJï¿½ï¿½ï¿½ï¿½ï¿½ÌXï¿½V
 	void UpdateLockOnCamera(float DeltaTime);
 
 	// -----------------------------------------------------------------------
-	// •ªgƒVƒXƒeƒ€
+	// ï¿½ï¿½ï¿½gï¿½Vï¿½Xï¿½eï¿½ï¿½
 	// -----------------------------------------------------------------------
 	UFUNCTION(BlueprintCallable, Category = "Ghost")
 	void SummonGhost();
@@ -235,62 +243,62 @@ public:
 	UFUNCTION()
 	void OnGhostDestroyed(AActor* DestroyedActor);
 
-	//ƒGƒlƒ‹ƒM[iUI •\¦—p‚É publicj
+	//ï¿½Gï¿½lï¿½ï¿½ï¿½Mï¿½[ï¿½iUI ï¿½\ï¿½ï¿½ï¿½pï¿½ï¿½ publicï¿½j
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ghost")
 	float m_CurrentEnergy;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ghost")
 	float m_MaxEnergy;
 
-	//Œ»İ¢Š«’†‚Ì•ªg”iUI •\¦—pj
+	//ï¿½ï¿½ï¿½İï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì•ï¿½ï¿½gï¿½ï¿½ï¿½iUI ï¿½\ï¿½ï¿½ï¿½pï¿½j
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ghost")
 	int32 m_iActiveGhostCount;
 
-	//•ªg‚ÌÅ‘å¢Š«”
+	//ï¿½ï¿½ï¿½gï¿½ÌÅ‘å¢ï¿½ï¿½ï¿½ï¿½
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ghost")
 	int32 m_iMaxGhostCount;
 
 private:
-	//“G‚ÉUŒ‚‚ªƒqƒbƒg‚µ‚½Û‚É’Ê’m‚ğó‚¯æ‚èAƒGƒlƒ‹ƒM[‚ğƒ`ƒƒ[ƒW‚·‚é
+	//ï¿½Gï¿½ÉUï¿½ï¿½ï¿½ï¿½ï¿½qï¿½bï¿½gï¿½ï¿½ï¿½ï¿½ï¿½Û‚É’Ê’mï¿½ï¿½ï¿½ó‚¯ï¿½ï¿½Aï¿½Gï¿½lï¿½ï¿½ï¿½Mï¿½[ï¿½ï¿½ï¿½`ï¿½ï¿½ï¿½[ï¿½Wï¿½ï¿½ï¿½ï¿½
 	void OnHitEnemy(float EnergyGain);
 
-	//ƒvƒŒƒCƒ„[s“®‚ğ‹L˜^‚·‚éƒRƒ“ƒ|[ƒlƒ“ƒg
+	//ï¿½vï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[ï¿½sï¿½ï¿½ï¿½ï¿½ï¿½Lï¿½^ï¿½ï¿½ï¿½ï¿½Rï¿½ï¿½ï¿½|ï¿½[ï¿½lï¿½ï¿½ï¿½g
 	UPROPERTY(VisibleAnywhere, Category = "Ghost")
 	UGhostRecorderComponent* GhostRecorder;
 
-	//•ªg‚Ì¢Š«EŠÇ—ƒRƒ“ƒ|[ƒlƒ“ƒgiTrySummon Œo—R‚Å—˜—p‰Â”\j
+	//ï¿½ï¿½ï¿½gï¿½Ìï¿½ï¿½ï¿½ï¿½Eï¿½Ç—ï¿½ï¿½Rï¿½ï¿½ï¿½|ï¿½[ï¿½lï¿½ï¿½ï¿½gï¿½iTrySummon ï¿½oï¿½Rï¿½Å—ï¿½ï¿½pï¿½Â”\ï¿½j
 	UPROPERTY(VisibleAnywhere, Category = "Ghost")
 	UGhostManagerComponent* GhostManager;
 
-	//¢Š«ƒRƒXƒg
+	//ï¿½ï¿½ï¿½ï¿½ï¿½Rï¿½Xï¿½g
 	UPROPERTY(EditAnywhere, Category = "Ghost")
 	float m_GhostSummonCost;
 
-	//ƒqƒbƒg‚ÌƒGƒlƒ‹ƒM[‘‰Á—Ê
+	//ï¿½qï¿½bï¿½gï¿½ï¿½ï¿½ÌƒGï¿½lï¿½ï¿½ï¿½Mï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	UPROPERTY(EditAnywhere, Category = "Ghost")
 	float m_EnergyGainPerHit;
 
-	// ƒXƒ|[ƒ“‚·‚é GhostCharacter ƒNƒ‰ƒXiBP ‚Å BP_GhostCharacter ‚ğİ’èj
+	// ï¿½Xï¿½|ï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ GhostCharacter ï¿½Nï¿½ï¿½ï¿½Xï¿½iBP ï¿½ï¿½ BP_GhostCharacter ï¿½ï¿½İ’ï¿½j
 	UPROPERTY(EditAnywhere, BlueprintReadWrite,
 		meta = (AllowPrivateAccess = "true"), Category = "Ghost")
 	TSubclassOf<AGhostCharacter> GhostCharacterClass;
 
-	//•ªg‚ÌUŒ‚‚Å“¾‚ç‚ê‚éƒGƒlƒ‹ƒM[‚Ì”{—¦i1.0‚ÅƒvƒŒƒCƒ„[‚Æ“¯‚¶j
+	//ï¿½ï¿½ï¿½gï¿½ÌUï¿½ï¿½ï¿½Å“ï¿½ï¿½ï¿½ï¿½ï¿½Gï¿½lï¿½ï¿½ï¿½Mï¿½[ï¿½Ì”{ï¿½ï¿½ï¿½i1.0ï¿½Åƒvï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[ï¿½Æ“ï¿½ï¿½ï¿½ï¿½j
 	UPROPERTY(EditAnywhere, Category = "Ghost")
 	float m_GhostEnergyRate = 1.f;
 
-	// private ‚ÌŠÖ”‚É’Ç‰Á
-		//•ªg‚ª“G‚ÉUŒ‚‚ğ“–‚Ä‚½‚Æ‚«‚Ì’Ê’m‚ğó‚¯æ‚é
+	// private ï¿½ÌŠÖï¿½ï¿½É’Ç‰ï¿½
+		//ï¿½ï¿½ï¿½gï¿½ï¿½ï¿½Gï¿½ÉUï¿½ï¿½ï¿½ğ“–‚Ä‚ï¿½ï¿½Æ‚ï¿½ï¿½Ì’Ê’mï¿½ï¿½ï¿½ó‚¯ï¿½ï¿½
 	void OnGhostHitEnemy(float EnergyGain);
 
 	// -----------------------------------------------------------------------
-	// ‰ñ•œ 
+	// ï¿½ï¿½ 
 	// -----------------------------------------------------------------------
 public:
 	int32 GetHealCount()    const { return m_iHealCount; }
 	int32 GetMaxHealCount() const { return m_iMaxHealCount; }
 
-	//‰ñ”‚ğ‘S‰ñ•œiƒ`ƒFƒbƒNƒ|ƒCƒ“ƒg‚È‚Ç‚Åg‚¤—\’èj
+	//ï¿½ñ”‚ï¿½Sï¿½ñ•œiï¿½`ï¿½Fï¿½bï¿½Nï¿½|ï¿½Cï¿½ï¿½ï¿½gï¿½È‚Ç‚Ågï¿½ï¿½ï¿½\ï¿½ï¿½j
 	void RefillHeals();
 
 	FOnHealCountChanged OnHealCountChanged;
@@ -310,30 +318,30 @@ private:
 	EHealPhase m_HealPhase = EHealPhase::None;
 	FTimerHandle m_HealTimer;
 
-	//ƒ{ƒ^ƒ“‚ğ‰Ÿ‚µ‚Ä‚©‚ç‰ñ•œ‚·‚é‚Ü‚Åi‚±‚ÌŠÔ‚É”í’e‚·‚é‚Æ¸”sj
+	//ï¿½{ï¿½^ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½ñ•œ‚ï¿½ï¿½ï¿½Ü‚Åiï¿½ï¿½ï¿½ÌŠÔ‚É”ï¿½eï¿½ï¿½ï¿½ï¿½Æï¿½ï¿½sï¿½j
 	UPROPERTY(EditAnywhere, Category = "Health|Heal", meta = (AllowPrivateAccess = "true", ClampMin = "0"))
 	float m_HealWindupTime = 0.5f;
 
-	//‰ñ•œ‚µ‚Ä‚©‚ç“®ì‚ªI‚í‚é‚Ü‚Åi”í’e‚·‚é‚Æ“®ì‚¾‚¯’†’fj
+	//ï¿½ñ•œ‚ï¿½ï¿½Ä‚ï¿½ï¿½ç“®ï¿½ì‚ªï¿½Iï¿½ï¿½ï¿½Ü‚Åiï¿½ï¿½eï¿½ï¿½ï¿½ï¿½Æ“ï¿½ï¿½ì‚¾ï¿½ï¿½ï¿½ï¿½ï¿½fï¿½j
 	UPROPERTY(EditAnywhere, Category = "Health|Heal", meta = (AllowPrivateAccess = "true", ClampMin = "0"))
 	float m_HealRecoveryTime = 0.5f;
 
-	//‰ñ•œ“®ì’†‚ÌˆÚ“®‘¬“x‚Ì”{—¦
+	//ï¿½ñ•œ“ï¿½ï¿½ì’†ï¿½ÌˆÚ“ï¿½ï¿½ï¿½ï¿½xï¿½Ì”{ï¿½ï¿½
 	UPROPERTY(EditAnywhere, Category = "Health|Heal", meta = (AllowPrivateAccess = "true", ClampMin = "0", ClampMax = "1"))
 	float m_HealMoveSpeedRate = 0.5f;
 
-	void ApplyHeal();      //\‚¦‚ªI‚í‚Á‚½uŠÔ‚É‰ñ•œ‚·‚é
-	void EndHeal();        //‰ñ•œ“®ì‚ÌI—¹i’†’f‚Å‚àŒÄ‚Ôj
-	void InterruptHeal();  //”í’eE‰ñ”ğ‚ÅŠ„‚è‚Ü‚ê‚½‚Æ‚«
+	void ApplyHeal();      //ï¿½\ï¿½ï¿½ï¿½ï¿½ï¿½Iï¿½ï¿½ï¿½ï¿½ï¿½ï¿½uï¿½Ô‚É‰ñ•œ‚ï¿½ï¿½ï¿½
+	void EndHeal();        //ï¿½ñ•œ“ï¿½ï¿½ï¿½ÌIï¿½ï¿½ï¿½iï¿½ï¿½ï¿½fï¿½Å‚ï¿½ï¿½Ä‚Ôj
+	void InterruptHeal();  //ï¿½ï¿½eï¿½Eï¿½ï¿½ï¿½ï¿½ÅŠï¿½ï¿½èï¿½Ü‚ê‚½ï¿½Æ‚ï¿½
 
-	//”í’eƒ‚[ƒVƒ‡ƒ“
+	//ï¿½ï¿½eï¿½ï¿½ï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½
 	UPROPERTY(EditAnywhere, Category = "Health|HitReact", meta = (AllowPrivateAccess = "true"))
 	class UAnimMontage* m_HitReactMontage;
 
 	UPROPERTY(EditAnywhere, Category = "Health|HitReact", meta = (AllowPrivateAccess = "true", ClampMin = "0.1"))
 	float m_HitReactPlayRate = 1.f;
 
-	//‚Ì‚¯‚¼‚èŠÔi‚±‚ÌŠÔ‚Í‘€ì‚Å‚«‚È‚¢j
+	//ï¿½Ì‚ï¿½ï¿½ï¿½ï¿½èï¿½Ôiï¿½ï¿½ï¿½ÌŠÔ‚Í‘ï¿½ï¿½ï¿½Å‚ï¿½ï¿½È‚ï¿½ï¿½j
 	UPROPERTY(EditAnywhere, Category = "Health|HitReact", meta = (AllowPrivateAccess = "true", ClampMin = "0"))
 	float m_HitStunTime = 0.4f;
 
@@ -347,7 +355,7 @@ public:
 	bool IsHealing() const { return m_HealPhase != EHealPhase::None; }
 
 	// -----------------------------------------------------------------------
-	// UI —p
+	// UI ï¿½p
 	// -----------------------------------------------------------------------
 	FOnEnergyChanged OnEnergyChanged;
 	FOnGhostsChanged OnGhostsChanged;
@@ -358,7 +366,7 @@ public:
 	int32 GetMaxEnergyStock() const { return m_iMaxEnergyStock; }
 	int32 GetMaxGhostCount() const { return m_iMaxGhostCount; }
 
-	//¡‚ÌƒXƒgƒbƒN”iƒQ[ƒW‚ª‰½–{—­‚Ü‚Á‚Ä‚¢‚é‚©j
+	//ï¿½ï¿½ï¿½ÌƒXï¿½gï¿½bï¿½Nï¿½ï¿½ï¿½iï¿½Qï¿½[ï¿½Wï¿½ï¿½ï¿½ï¿½ï¿½{ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½Ä‚ï¿½ï¿½é‚©ï¿½j
 	int32 GetEnergyStock() const
 	{
 		return (m_EnergyPerStock > 0.f)
@@ -366,55 +374,55 @@ public:
 			: 0;
 	}
 
-	//¢Š«’†‚Ì•ªg‚Ìó‘Ô‚ğA¢Š«‚µ‚½‡‚É•Ô‚·
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì•ï¿½ï¿½gï¿½Ìï¿½Ô‚ï¿½ï¿½Aï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É•Ô‚ï¿½
 	void GetGhostStates(TArray<EGhostLifecycleState>& OutStates) const;
 
 private:
-	//ƒQ[ƒW1–{•ª‚ÌƒGƒlƒ‹ƒM[—Ê
+	//ï¿½Qï¿½[ï¿½W1ï¿½{ï¿½ï¿½ï¿½ÌƒGï¿½lï¿½ï¿½ï¿½Mï¿½[ï¿½ï¿½
 	UPROPERTY(EditAnywhere, Category = "Ghost")
 	float m_EnergyPerStock = 100.f;
 
-	//ƒXƒgƒbƒN‚Å‚«‚éÅ‘å–{”
+	//ï¿½Xï¿½gï¿½bï¿½Nï¿½Å‚ï¿½ï¿½ï¿½Å‘ï¿½{ï¿½ï¿½
 	UPROPERTY(EditAnywhere, Category = "Ghost")
 	int32 m_iMaxEnergyStock = 5;
 
-	//¢Š«’†‚Ì•ªg‚Ìˆê——iUI‚ÅƒJƒvƒZƒ‹‚ÌF‚ğŒˆ‚ß‚é‚Ì‚Ég‚¤j
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì•ï¿½ï¿½gï¿½Ìˆê——ï¿½iUIï¿½ÅƒJï¿½vï¿½Zï¿½ï¿½ï¿½ÌFï¿½ï¿½ï¿½ï¿½ï¿½ß‚ï¿½Ì‚Égï¿½ï¿½ï¿½j
 	TArray<TWeakObjectPtr<AGhostCharacter>> m_ActiveGhosts;
 
-	//ƒGƒlƒ‹ƒM[‚ğ•ÏX‚·‚é‘‹Œûi•ÏX‚µ‚½‚ç•K‚¸UI‚É’Ê’m‚·‚éj
+	//ï¿½Gï¿½lï¿½ï¿½ï¿½Mï¿½[ï¿½ï¿½ÏXï¿½ï¿½ï¿½é‘‹ï¿½ï¿½ï¿½iï¿½ÏXï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Kï¿½ï¿½UIï¿½É’Ê’mï¿½ï¿½ï¿½ï¿½j
 	void SetEnergy(float NewEnergy);
 
-	//•ªg‚Ìó‘Ô‚ª•Ï‚í‚Á‚½‚Æ‚«iÁ‚¦‚é’¼‘O‚È‚Çj
+	//ï¿½ï¿½ï¿½gï¿½Ìï¿½Ô‚ï¿½ï¿½Ï‚ï¿½ï¿½ï¿½ï¿½ï¿½Æ‚ï¿½ï¿½iï¿½ï¿½ï¿½ï¿½ï¿½é’¼ï¿½Oï¿½È‚Çj
 	UFUNCTION()
 	void OnGhostStateChanged(EGhostLifecycleState NewState);
 
 	// -----------------------------------------------------------------------
-	// ƒWƒƒƒ“ƒv‹““®‚ÌƒJƒXƒ^ƒ}ƒCƒYi’·‰Ÿ‚µ§Œä‚È‚Çj
+	// ï¿½Wï¿½ï¿½ï¿½ï¿½ï¿½vï¿½ï¿½ï¿½ï¿½ï¿½ÌƒJï¿½Xï¿½^ï¿½}ï¿½Cï¿½Yï¿½iï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È‚Çj
 	// -----------------------------------------------------------------------
 protected:
-	//ƒWƒƒƒ“ƒv‰Â”\‚©‚Ç‚¤‚©‚Ì”»’èiUŒ‚’†‚ÍƒWƒƒƒ“ƒv‚³‚¹‚È‚¢j
+	//ï¿½Wï¿½ï¿½ï¿½ï¿½ï¿½vï¿½Â”\ï¿½ï¿½ï¿½Ç‚ï¿½ï¿½ï¿½ï¿½Ì”ï¿½ï¿½ï¿½iï¿½Uï¿½ï¿½ï¿½ï¿½ï¿½ÍƒWï¿½ï¿½ï¿½ï¿½ï¿½vï¿½ï¿½ï¿½ï¿½ï¿½È‚ï¿½ï¿½j
 	virtual bool CanJumpInternal_Implementation() const override;
 
 private:
-	//ƒWƒƒƒ“ƒvƒ{ƒ^ƒ“‚ª‰Ÿ‚³‚ê‚½ŠÔ
+	//ï¿½Wï¿½ï¿½ï¿½ï¿½ï¿½vï¿½{ï¿½^ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ê‚½ï¿½ï¿½ï¿½ï¿½
 	float m_JumpPressedTime;
 
-	//’·ƒWƒƒƒ“ƒv‚Æ”»’è‚·‚é‚½‚ß‚Ìƒ{ƒ^ƒ“’·‰Ÿ‚µŠÔ
+	//ï¿½ï¿½ï¿½Wï¿½ï¿½ï¿½ï¿½ï¿½vï¿½Æ”ï¿½ï¿½è‚·ï¿½é‚½ï¿½ß‚Ìƒ{ï¿½^ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	UPROPERTY(EditAnywhere, Category = "Jump")
 	float m_JumpHoldThreshold;
 
-	//’ZƒWƒƒƒ“ƒv‚Ìã•ûŒüÅ‘å‘¬“x
+	//ï¿½Zï¿½Wï¿½ï¿½ï¿½ï¿½ï¿½vï¿½Ìï¿½ï¿½ï¿½ï¿½ï¿½Å‘å‘¬ï¿½x
 	UPROPERTY(EditAnywhere, Category = "Jump")
 	float m_JumpZVelocityShort;
 
-	//’·‰Ÿ‚µ‚Ìã•ûŒüÅ‘å‘¬“x
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ìï¿½ï¿½ï¿½ï¿½ï¿½Å‘å‘¬ï¿½x
 	UPROPERTY(EditAnywhere, Category = "Jump")
 	float m_JumpZVelocityLong;
 
-	void OnJumpPressed();	//ƒ{ƒ^ƒ“‚ğ“ü—Í
-	void OnJumpReleased();	//ƒ{ƒ^ƒ“‚ğ—£‚µ‚½‚Æ‚«
+	void OnJumpPressed();	//ï¿½{ï¿½^ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Íï¿½
+	void OnJumpReleased();	//ï¿½{ï¿½^ï¿½ï¿½ï¿½ğ—£‚ï¿½ï¿½ï¿½ï¿½Æ‚ï¿½
 
-	//“ñ’iƒWƒƒƒ“ƒv‚ÉÄ¶‚·‚éƒ‚[ƒVƒ‡ƒ“
+	//ï¿½ï¿½iï¿½Wï¿½ï¿½ï¿½ï¿½ï¿½vï¿½ï¿½ï¿½ÉÄï¿½ï¿½ï¿½ï¿½éƒ‚ï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½
 	UPROPERTY(EditAnywhere, Category = "Jump", meta = (AllowPrivateAccess = "true"))
 	class UAnimMontage* m_SecondJumpMontage;
 
