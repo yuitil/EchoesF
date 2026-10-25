@@ -9,6 +9,7 @@
 class AActionCharacter;
 class UBoxComponent;
 class UStaticMeshComponent;
+class UNiagaraComponent;
 
 UCLASS()
 class ECHO_API ARespawnPoint : public AActor
@@ -49,4 +50,8 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "Collision")
 	TObjectPtr<UBoxComponent> m_PlayerDitectionBox;
+	
+	// 回復オーラ
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Effect")
+	TObjectPtr<UNiagaraComponent> m_HealAura;
 };
