@@ -3,9 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Event/Events/EventData.h"
 #include "GameFramework/Actor.h"
 #include "EventTriggerVolume.generated.h"
 
+class UEventBase;
 class UBoxComponent;
 
 UCLASS()
@@ -24,13 +26,24 @@ protected:
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+	TSubclassOf<UEventBase> GetEventClass() const { return m_UseEventClass; }
+	FEventData GetEventData() const { return m_EventData; }
+
 protected:
 	UFUNCTION()
-	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
+	                    int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UBoxComponent> m_TriggerBox;
 
 	//イベント実行したかのフラグ
 	bool m_IsEventExecution = false;
+
+	UPROPERTY(EditAnywhere, Category="Data")
+	TSubclassOf<UEventBase> m_UseEventClass;
+
+	UPROPERTY(EditAnywhere, Category="Data")
+	FEventData m_EventData;
 };

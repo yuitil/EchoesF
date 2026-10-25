@@ -3,6 +3,7 @@
 
 #include "Event/EventTriggerVolume/EventTriggerVolume.h"
 #include "Components/BoxComponent.h"
+#include "Event/StageEventSubsystem/StageEventSubsystem.h"
 
 // Sets default values
 AEventTriggerVolume::AEventTriggerVolume()
@@ -14,7 +15,6 @@ AEventTriggerVolume::AEventTriggerVolume()
 	RootComponent = m_TriggerBox;
 	m_TriggerBox->SetCollisionProfileName(TEXT("Trigger"));
 	m_TriggerBox->SetGenerateOverlapEvents(true);
-
 }
 
 // Called when the game starts or when spawned
@@ -30,13 +30,16 @@ void AEventTriggerVolume::BeginPlay()
 void AEventTriggerVolume::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
-void AEventTriggerVolume::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void AEventTriggerVolume::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+                                         UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
+                                         const FHitResult& SweepResult)
 {
-	if (GEngine) {
-		GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Blue, TEXT("Event Start"));
-	}
+	UStageEventSubsystem* EventSubsystem = GetWorld()->GetSubsystem<UStageEventSubsystem>();
+	if (!EventSubsystem)return;
+
+	EventSubsystem->EventStart(this);
 }
 
+;

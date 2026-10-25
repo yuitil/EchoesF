@@ -24,6 +24,7 @@ struct FOnAttributeChangeData;
 
 //状態の変化をBPや他の処理へ知らせる通知を用意する。
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEnemyHealthEvent, float, health, float, maxHealth);
+
 //状態の変化をBPや他の処理へ知らせる通知を用意する。
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEnemyStateEvent, EEnemyState, state);
 
@@ -41,7 +42,8 @@ public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 	//防御を確認して体力を減らす。
-	virtual float TakeDamage(float _damage, const FDamageEvent& _damageEvent, AController* _instigator, AActor* _causer) override;
+	virtual float TakeDamage(float _damage, const FDamageEvent& _damageEvent, AController* _instigator,
+	                         AActor* _causer) override;
 
 	//攻撃を防がれた結果を受け取る。
 	virtual void AttackDefended_Implementation(AActor* _defender, EDefenseResult _result) override;
@@ -50,7 +52,9 @@ public:
 	virtual float GetSpecialDefenseChance() const;
 
 	//相手の攻撃や移動を観察する。
-	virtual void ObserveTarget(AActor* _target){}
+	virtual void ObserveTarget(AActor* _target)
+	{
+	}
 
 	//状況に合わせて次のコンボを選ぶ。
 	static FName SelectComboBranch(const FEnemyActionData& _action, bool _hit, bool _blocked);
@@ -84,6 +88,9 @@ public:
 
 	//突進攻撃を開始できるか調べる。
 	bool CanRushAttack(float _distance) const;
+
+	//イベントフラグのセッター
+	void SetIsEventEnemy(const bool _isEventEnemy) { m_IsEventEnemy = _isEventEnemy; }
 
 public:
 	//ガード崩れの演出を表示する。
@@ -199,11 +206,13 @@ public:
 	bool m_airCombo = false;
 
 	//近接攻撃を始める基本の間合い。
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Movement", meta = (ClampMin = "1", DisplayName = "Melee Distance"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Movement",
+		meta = (ClampMin = "1", DisplayName = "Melee Distance"))
 	float m_meleeDist = 160.f;
 
 	//体が重ならないための余裕。
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Movement", meta = (ClampMin = "0", DisplayName = "Body Margin"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Movement",
+		meta = (ClampMin = "0", DisplayName = "Body Margin"))
 	float m_bodyMargin = 30.f;
 
 	//能力とタグを管理する部品。
@@ -274,13 +283,19 @@ protected:
 	virtual float GetActionWeightMultiplier(const FEnemyActionData& _action) const { return 1.0f; }
 
 	//ダメージを受けた後の反応を行う。
-	virtual void OnAcceptedHit(AActor* _attacker){}
+	virtual void OnAcceptedHit(AActor* _attacker)
+	{
+	}
 
 	//行動終了後の状態を整える。
-	virtual void OnActionEnded(){}
+	virtual void OnActionEnded()
+	{
+	}
 
 	//攻撃終了後の次の行動を準備する。
-	virtual void OnAttackFinished() {}
+	virtual void OnAttackFinished()
+	{
+	}
 
 	//体力の変化を受けて死亡などを確認する。
 	void HealthChanged(const FOnAttributeChangeData& _data);
@@ -354,6 +369,9 @@ protected:
 
 	//体力変更の通知を解除するための記録。
 	FDelegateHandle m_healthHandle;
+
+	UPROPERTY(VisibleAnywhere, Category="Event")
+	bool m_IsEventEnemy = false;
 
 protected:
 	//減速しているモンタージュ。
