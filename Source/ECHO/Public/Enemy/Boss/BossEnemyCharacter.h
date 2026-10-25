@@ -11,6 +11,7 @@ class UBossApproach;
 class UBossSpacing;
 class UBossPosture;
 class UEnemyAfterimageTrail;
+class UBossShadowSummon;
 
 //状態の変化をBPや他の処理へ知らせる通知を用意する。
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FBossLifeEvent, EBossPhase, lifePhase);
@@ -61,6 +62,10 @@ public:
 	//抜刀と接近を管理する部品。
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Boss")
 	TObjectPtr<UBossApproach> m_approach;
+
+	//フェーズ2でプレイヤーの分身に対抗する影を呼ぶ。
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Boss")
+	TObjectPtr<UBossShadowSummon> m_summon;
 
 	//HPと別に体勢を管理する部品。
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Boss")

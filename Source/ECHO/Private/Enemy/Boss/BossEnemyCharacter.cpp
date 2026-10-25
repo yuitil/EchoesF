@@ -1,4 +1,5 @@
 #include "Enemy/Boss/BossEnemyCharacter.h"
+#include "Enemy/Boss/BossShadowSummon.h"
 #include "Enemy/Boss/BossObservation.h"
 #include "Enemy/Boss/BossPosture.h"
 #include "Enemy/Animation/EnemyAfterimageTrail.h"
@@ -22,6 +23,7 @@ namespace BossEnemyCharacterTuning
 //初期設定と必要な部品を用意する。
 ABossEnemyCharacter::ABossEnemyCharacter()
 {
+	m_summon = CreateDefaultSubobject<UBossShadowSummon>(TEXT("ShadowSummon"));
 	m_posture = CreateDefaultSubobject<UBossPosture>(TEXT("Posture"));
 	m_afterimage = CreateDefaultSubobject<UEnemyAfterimageTrail>(TEXT("Afterimage"));
 	m_approach = CreateDefaultSubobject<UBossApproach>(TEXT("Approach"));
@@ -192,6 +194,7 @@ void ABossEnemyCharacter::ResetEncounter()
 
 	GetWorld()->GetTimerManager().ClearTimer(m_transitionTimer);
 	Super::ResetEncounter();
+	m_summon->Reset();
 	m_observation->Reset();
 	m_approach->Reset();
 

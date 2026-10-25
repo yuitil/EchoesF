@@ -413,4 +413,11 @@ private:
 
 	void OnJumpPressed();	//ボタンを入力時
 	void OnJumpReleased();	//ボタンを離したとき
+
+	//二段ジャンプ時に再生するモーション
+	UPROPERTY(EditAnywhere, Category = "Jump", meta = (AllowPrivateAccess = "true"))
+	class UAnimMontage* m_SecondJumpMontage;
+
+	UPROPERTY(EditAnywhere, Category = "Jump", meta = (AllowPrivateAccess = "true", ClampMin = "0.1"))
+	float m_SecondJumpPlayRate = 1.f;
 };

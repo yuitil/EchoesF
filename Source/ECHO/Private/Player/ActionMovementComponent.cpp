@@ -10,7 +10,7 @@ UActionMovementComponent::UActionMovementComponent() :
     m_bIsDodging(false),
     m_AirControlFirstJump(0.3f),
     m_AirControlSecondJump(0.1f),
-    m_SecondJumpZVelocity(2200.f),
+    m_SecondJumpZVelocity(1700.f),
     m_AirPushForce(1500.f),
     m_AirMaxHorizontalSpeed(800.f),
     m_LandingRecoveryTime(0.2f),
@@ -24,7 +24,7 @@ UActionMovementComponent::UActionMovementComponent() :
     MaxAcceleration = 2048.f;             //加速度を高くし、レスポンスを向上
     GroundFriction = 8.f;                 //地面摩擦を高め、滑りを抑える
     BrakingDecelerationWalking = 2048.f;  //歩行時のブレーキ力を強める
-    GravityScale = 6.f;                   //重力を強くし、もっさりした滞空時間を減らす
+    GravityScale = 5.5f;                   //重力を強くし、もっさりした滞空時間を減らす
     BrakingDecelerationFalling = 2048.f;  //空中でのブレーキ力
 
     MaxWalkSpeed = m_BaseWalkSpeed;

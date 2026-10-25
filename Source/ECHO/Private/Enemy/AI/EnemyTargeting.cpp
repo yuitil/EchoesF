@@ -27,6 +27,8 @@ bool UEnemyTargeting::IsCandidate(AActor* _actor) const
 //狙う相手を選ぶ。
 AActor* UEnemyTargeting::SelectTarget()
 {
+    //影は担当の分身以外へ攻撃を向けない。
+    if(m_lockTarget) { return IsCandidate(m_fixedTarget.Get()) ? m_fixedTarget.Get() : nullptr; }
     //処理の対象となる敵。
     auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
     if(!enemy) { return nullptr; }
@@ -69,6 +71,8 @@ AActor* UEnemyTargeting::SelectTarget()
 //戦闘の役割を考えて雑魚敵の相手を選ぶ。
 AActor* UEnemyTargeting::SelectMinionTarget()
 {
+    //専用の相手が指定されていれば集団戦の選択を使わない。
+    if(m_lockTarget) { return SelectTarget(); }
     //処理の対象となる敵。
     auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
     if(!enemy) { return nullptr; }

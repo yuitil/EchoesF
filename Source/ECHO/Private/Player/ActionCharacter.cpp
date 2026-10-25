@@ -543,6 +543,9 @@ void AActionCharacter::OnJumped_Implementation()
         Vel.Z = MoveComp->m_SecondJumpZVelocity;
         MoveComp->Velocity = Vel;
 
+        //二段ジャンプで空中攻撃をもう一度使えるようにする
+        if (CombatComponent) CombatComponent->ResetAirAttack();
+
         //入力方向に一度だけ方向転換
         FVector InputVector = MoveComp->GetLastInputVector();
         if (!InputVector.IsNearlyZero())
@@ -555,9 +558,10 @@ void AActionCharacter::OnJumped_Implementation()
             MoveComp->Velocity.Y = InputDir.Y * HorizontalSpeed;
         }
 
-        //空中に魔法陣や衝撃波のエフェクトを出す
-        //キャラクターが空中でクルッと回転するような専用のモンタージュを再生する
-        //Z軸（上方向）に少し追加の初速を与えて、滞空時間を伸ばす
+        if (m_SecondJumpMontage)
+        {
+            PlayAnimMontage(m_SecondJumpMontage, m_SecondJumpPlayRate);
+        }
     }
 }
 
@@ -622,9 +626,16 @@ void AActionCharacter::Landed(const FHitResult& Hit)
         CombatComponent->ResetAirAttack();
     }
 
-    //【着地時の処理】
-    //着地した瞬間に「ドスッ」という重いSEと、足元に砂埃エフェクトを出す
-    //高い場所から落ちた場合（落下速度 Z が一定以上だった場合）、数フレームだけ移動入力を無視して「着地硬直」のアニメーションを入れる
+    if (m_SecondJumpMontage)
+    {
+        if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
+        {
+            if (Anim->Montage_IsPlaying(m_SecondJumpMontage))
+            {
+                StopAnimMontage(m_SecondJumpMontage);
+            }
+        }
+    }
 }
 
 // -----------------------------------------------------------------------

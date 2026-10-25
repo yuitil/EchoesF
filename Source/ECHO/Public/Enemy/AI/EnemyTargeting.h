@@ -19,6 +19,14 @@ public:
 	AActor* SelectMinionTarget();
 
 public:
+	//指定された分身だけを狙う。消えた後にプレイヤーへ切り替えない。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Target")
+	bool m_lockTarget = false;
+
+	//影が担当する分身。消滅後は参照を残さない。
+	UPROPERTY(Transient, BlueprintReadWrite, Category="Enemy|Target")
+	TWeakObjectPtr<AActor> m_fixedTarget;
+
 	//分身を優先して狙うか。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Target")
 	bool m_preferClones = true;

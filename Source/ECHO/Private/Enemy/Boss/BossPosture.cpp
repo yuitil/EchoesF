@@ -52,15 +52,15 @@ void UBossPosture::Hit(float _damage)
 void UBossPosture::TickComponent(float _delta, ELevelTick _type, FActorComponentTickFunction* _tick)
 {
     Super::TickComponent(_delta, _type, _tick);
-    //体勢が崩れている間は回復せず、終了後に少しずつ戻す。
+    //体勢が崩れている間は回復せず、終了時に全回復する。
     auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
     if(!m_enabled || !enemy || !enemy->HasAuthority() || !enemy->IsCombatActive() || !enemy->m_defense) { return; }
 
     if(enemy->m_defense->m_bGuardBroken) { m_value = 0.f; m_wasBroken = true; return; }
     if(m_wasBroken)
     {
-        m_wasBroken = false;
-        m_lastHit = GetWorld()->GetTimeSeconds() - FMath::Max(0.f, m_healDelay);
+        Reset();
+        return;
     }
 
     //最後の被弾から待ち時間を過ぎた分だけ回復する。
