@@ -1,23 +1,14 @@
 
 #include "Enemy/AI/BossUpdateCombat.h"
 
-#include "Enemy/AI/BossAIController.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
 #include "Enemy/Core/EnemyTraversal.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
 #include "Enemy/Combat/Defense.h"
-#include "Kismet/GameplayStatics.h"
-#include "Engine/World.h"
 
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Navigation/PathFollowingComponent.h"
-#include "Animation/AnimInstance.h"
-#include "Enemy/Animation/BossAnimation.h"
-#include "NavigationSystem.h"
-#include "NavigationPath.h"
-#include "Components/CapsuleComponent.h"
-#include "Components/SkeletalMeshComponent.h"
+#include "AIController.h"
 
 #include "Enemy/AI/EnemyTargeting.h"
 
@@ -66,15 +57,22 @@ void UBossUpdateCombat::TickNode(UBehaviorTreeComponent& _ownerComp, uint8* _nod
 	enemy->m_combatTarget = target;
 	
 	//生きていて戦闘できるか。
-	bool alive = enemy->IsCombatActive();
+	const bool alive = enemy->IsCombatActive();
 
 	blackboard->SetValueAsObject(TEXT("TargetActor"), target);
 	
-	//攻撃に参加できるか。
-	const bool turn=true;
-	blackboard->SetValueAsBool(TEXT("CanDecide"), turn && enemy->CanDecide());
-	blackboard->SetValueAsBool(TEXT("CanMove"), turn && !enemy->m_stationary && enemy->CanDecide() && !enemy->m_traversal->IsTraversing() && !enemy->IsActing() && !enemy->m_defense->IsBusy() && enemy->GetPendingComboId().IsNone() && IsValid(target) && FVector::Dist2D(enemy->GetActorLocation(), target->GetActorLocation()) > enemy->GetMeleeDistance() + BossUpdateCombatTuning::rangeMargin);
-	blackboard->SetValueAsFloat(TEXT("Distance"), target ? FVector::Dist2D(enemy->GetActorLocation(), target->GetActorLocation()) : BossUpdateCombatTuning::noTargetRange);
+	//行動の共通条件は敵本体で一度だけ調べる。
+	const bool canDecide = enemy->CanDecide();
+	//相手までの距離を、攻撃と追跡で共有する。
+	const float distance = IsValid(target)
+		? FVector::Dist2D(enemy->GetActorLocation(), target->GetActorLocation())
+		: BossUpdateCombatTuning::noTargetRange;
+	//コンボ中でなく、剣が届かない時は近づく。
+	const bool canMove = canDecide && !enemy->m_stationary && enemy->GetPendingComboId().IsNone()
+		&& distance > enemy->GetMeleeDistance() + BossUpdateCombatTuning::rangeMargin;
+	blackboard->SetValueAsBool(TEXT("CanDecide"), canDecide);
+	blackboard->SetValueAsBool(TEXT("CanMove"), canMove);
+	blackboard->SetValueAsFloat(TEXT("Distance"), distance);
 
 	if (alive && target && aiController->LineOfSightTo(target))
 	{

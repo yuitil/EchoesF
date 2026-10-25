@@ -121,12 +121,21 @@ UBossPeformAction::UBossPeformAction()
 //選んだ攻撃を開始する。
 bool UBossPeformAction::StartAttack(UBehaviorTreeComponent& _ownerComp)
 {
+	//操作するAIが消えた場合は攻撃を始めない。
+	auto* ai = _ownerComp.GetAIOwner();
 	//処理の対象となる敵。
-	auto* enemy = Cast<AEnemyCharacterBase>(_ownerComp.GetAIOwner()->GetPawn());
+	auto* enemy = ai ? Cast<AEnemyCharacterBase>(ai->GetPawn()) : nullptr;
+	if(!enemy || !IsValid(enemy->m_combatTarget)) { return false; }
 
-	if(!enemy || !IsValid(enemy->m_combatTarget) || (!enemy->m_stationary && FVector::Dist2D(enemy->GetActorLocation(), enemy->m_combatTarget->GetActorLocation()) > FMath::Max(m_attackDist, enemy->GetMeleeDistance()) + BossPeformActionTuning::rangeMargin) ||
-		(!enemy->m_stationary && !enemy->GetCharacterMovement()->IsFalling() && FVector::Dist2D(enemy->GetActorLocation(), enemy->m_combatTarget->GetActorLocation()) < enemy->GetMeleeDistance() - BossPeformActionTuning::closeMargin && HasRetreatSpace(enemy)) ||
-		!enemy->RequestAction()) { return false; }
+	//固定砲台以外は、剣が届く間合いに入ってから攻撃する。
+	if(!enemy->m_stationary)
+	{
+		const float distance = FVector::Dist2D(enemy->GetActorLocation(), enemy->m_combatTarget->GetActorLocation());
+		if(distance > FMath::Max(m_attackDist, enemy->GetMeleeDistance()) + BossPeformActionTuning::rangeMargin) { return false; }
+		const bool tooClose = distance < enemy->GetMeleeDistance() - BossPeformActionTuning::closeMargin;
+		if(tooClose && !enemy->GetCharacterMovement()->IsFalling() && HasRetreatSpace(enemy)) { return false; }
+	}
+	if(!enemy->RequestAction()) { return false; }
 
 	m_serial = enemy->m_actionSerial;
 	
@@ -139,6 +148,7 @@ bool UBossPeformAction::StartAttack(UBehaviorTreeComponent& _ownerComp)
 //突進で相手に追いつけるか調べる。
 bool UBossPeformAction::CanCatch(AEnemyCharacterBase* _enemy, float& _hitEnd, float& _moveStart) const
 {
+	if(!_enemy || !IsValid(_enemy->m_combatTarget) || m_rushSpeed <= 0.f) { return false; }
 	//使用する行動の設定。
 	const auto* action = _enemy->GetReadyAction(m_rushAction);
 	if(!action || !action->m_montage || !_enemy->GetPendingComboId().IsNone()) { return false; }
@@ -318,7 +328,7 @@ EBTNodeResult::Type UBossPeformAction::ExecuteTask(UBehaviorTreeComponent& _owne
 	m_fast = false;
 	m_serial = INDEX_NONE;
 	m_nextCheck = 0.;
-	if(!enemy || !enemy->CanDecide()) { return EBTNodeResult::Failed; }
+	if(!enemy || !IsValid(enemy->m_combatTarget) || !enemy->CanDecide()) { return EBTNodeResult::Failed; }
 	if(const auto* formation=enemy->FindComponentByClass<UMinionFormation>(); formation && !formation->HasTurn()) { return EBTNodeResult::Failed; }
 
 	if(enemy->m_stationary) { return StartAttack(_ownerComp) ? EBTNodeResult::InProgress : EBTNodeResult::Failed; }

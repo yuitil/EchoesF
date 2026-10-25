@@ -96,10 +96,7 @@ void UBossSpacing::Queue()
     auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
     
     //抜刀と接近を管理する部品。
-    const auto* approach = enemy ? enemy->FindComponentByClass<UBossApproach>() : nullptr;
-    if(approach && approach->IsDrawing()) { return; }
-    if(!m_enabled || m_active || !enemy || !enemy->HasAuthority() || !enemy->IsCombatActive() || enemy->IsActing() || !enemy->GetPendingComboId().IsNone()
-        || !enemy->GetCharacterMovement()->IsMovingOnGround() || GetWorld()->GetTimeSeconds() < m_next) { return; }
+    if(!CanSpace(enemy) || m_active || GetWorld()->GetTimeSeconds() < m_next) { return; }
 
     if(m_onlyDown && !IsTargetDown(enemy->m_combatTarget) && !m_watching) { return; }
 
@@ -112,6 +109,8 @@ void UBossSpacing::Queue()
         //退避に使う行動。
         const bool retreat=!m_retreatAction.IsNone() && enemy->RequestAction(m_retreatAction);
         m_next=GetWorld()->GetTimeSeconds()+(retreat ? FMath::Max(BossSpacingTuning::minDuration,m_cooldown) : BossSpacingTuning::retryDelay);
+        //様子見中の退避は一回で終え、次は攻撃を選ぶ。
+        if(m_watching) { m_press = true; }
         return;
     }
     m_active = true;
@@ -146,6 +145,63 @@ void UBossSpacing::Reset()
     m_next = 0.;
     m_idleSince = -1.;
     m_watching = false;
+    m_press = false;
+    m_watched.Reset();
+}
+
+//周回と、攻撃・抜刀・ガードが同時に動かないようにする。
+bool UBossSpacing::CanSpace(AEnemyCharacterBase* _enemy) const
+{
+    if(!m_enabled || !_enemy || !_enemy->HasAuthority() || !_enemy->IsCombatActive()) { return false; }
+    if(!IsValid(_enemy->m_combatTarget)) { return false; }
+    if(m_press && !IsTargetDown(_enemy->m_combatTarget)) { return false; }
+    if(_enemy->IsActing() || !_enemy->GetPendingComboId().IsNone()) { return false; }
+    if(_enemy->m_defense->IsBusy() || _enemy->m_traversal->IsTraversing()) { return false; }
+    if(!_enemy->GetCharacterMovement()->IsMovingOnGround()) { return false; }
+
+    //抜刀中は接近する処理に任せる。
+    const auto* approach = _enemy->FindComponentByClass<UBossApproach>();
+    return !approach || !approach->IsDrawing();
+}
+
+//プレイヤーが攻撃しなくても、一定時間で攻撃する側へ戻る。
+void UBossSpacing::UpdateWatch(AEnemyCharacterBase* _enemy, double _now)
+{
+    //今回観察する相手。
+    AActor* target = _enemy ? _enemy->m_combatTarget.Get() : nullptr;
+    if(m_watched.Get() != target)
+    {
+        m_watched = target;
+        m_idleSince = -1.;
+        m_press = false;
+    }
+    m_watching = false;
+    if(!_enemy || !IsValid(target) || !_enemy->IsCombatActive()) { m_idleSince = -1.; return; }
+
+    //攻撃を始めたら、次の様子見を新しく数える。
+    if(_enemy->IsActing())
+    {
+        const auto* action = _enemy->GetActiveAction();
+        if(action && action->m_kind != EEnemyAction::Guard && action->m_kind != EEnemyAction::Dodge)
+        {
+            m_press = false;
+        }
+        m_idleSince = -1.;
+        return;
+    }
+
+    //動いている相手や攻撃中の相手を、静止とみなさない。
+    const bool quiet = m_watchIdle && !_enemy->m_defense->IsTargetAttacking(target)
+        && target->GetVelocity().Size2D() <= m_idleSpeed
+        && FVector::Dist2D(_enemy->GetActorLocation(), target->GetActorLocation()) <= m_watchRange;
+    if(!quiet) { m_idleSince = -1.; return; }
+    if(m_idleSince < 0.) { m_idleSince = _now; }
+
+    //様子見には上限を設ける。再び周回するには一度攻撃する必要がある。
+    const double wait = FMath::Max(BossSpacingTuning::minIdleTime, m_idleDelay);
+    const double elapsed = _now - m_idleSince;
+    if(elapsed >= wait + FMath::Max(BossSpacingTuning::minDuration, m_duration)) { m_press = true; }
+    m_watching = !m_press && elapsed >= wait;
 }
 
 //経過時間に合わせて敵の状態を更新する。
@@ -156,18 +212,10 @@ void UBossSpacing::TickComponent(float _delta, ELevelTick _type, FActorComponent
     //相手の行動を観察する部品。
     auto* observer = Cast<AEnemyCharacterBase>(GetOwner());
     
-    //観察している相手。
-    auto* watched = observer ? observer->m_combatTarget.Get() : nullptr;
-    
     //現在の時刻。
     const double clock = GetWorld()->GetTimeSeconds();
-    
-    //相手が攻撃せず静止しているか。
-    const bool quiet = m_watchIdle && observer && IsValid(watched) && !observer->m_defense->IsTargetAttacking(watched)
-        && watched->GetVelocity().Size2D() <= m_idleSpeed && FVector::Dist2D(observer->GetActorLocation(),watched->GetActorLocation()) <= m_watchRange;
-    if (!quiet) m_idleSince = -1.;
-    else if (m_idleSince < 0.) m_idleSince = clock;
-    m_watching = quiet && clock-m_idleSince >= FMath::Max(BossSpacingTuning::minIdleTime,m_idleDelay);
+    if(!observer || !observer->HasAuthority()) { return; }
+    UpdateWatch(observer, clock);
     if (!m_active && m_onlyDown) { Queue(); }
 
     if(!m_active) { return; }
@@ -183,15 +231,19 @@ void UBossSpacing::TickComponent(float _delta, ELevelTick _type, FActorComponent
    
     //現在の時刻。
     const double now = GetWorld()->GetTimeSeconds();
-    if (!m_enabled || !enemy || !enemy->HasAuthority() || !IsValid(target) || !ai || !enemy->IsCombatActive() || enemy->IsActing() 
-        || enemy->m_defense->IsBusy() || enemy->m_traversal->IsTraversing() || !enemy->GetCharacterMovement()->IsMovingOnGround()
-        || (m_onlyDown ? (!IsTargetDown(target) && (!m_watching || now-m_start >= FMath::Max(BossSpacingTuning::minDuration,m_duration))) : now - m_start >= FMath::Max(BossSpacingTuning::minDuration, m_duration))) { Stop(); return; }
+    if(!CanSpace(enemy) || !ai) { Stop(); return; }
+    //ダウン中以外の周回は、設定時間で必ず終える。
+    const bool down = IsTargetDown(target);
+    const bool timedOut = now - m_start >= FMath::Max(BossSpacingTuning::minDuration, m_duration);
+    if(!down && timedOut) { m_press = true; Stop(); return; }
+    if(m_onlyDown && !down && !m_watching) { Stop(); return; }
     
     //相手までの距離。
     const float distance = FVector::Dist2D(enemy->GetActorLocation(), target->GetActorLocation());
     if (!IsTargetDown(target) && distance < FMath::Max(enemy->GetMeleeDistance()+BossSpacingTuning::rangeMargin,m_distance)*m_retreatRatio)
     {
         Stop();
+        m_press = true;
         enemy->SetActorRotation((target->GetActorLocation()-enemy->GetActorLocation()).GetSafeNormal2D().Rotation());
         if (!m_retreatAction.IsNone()) enemy->RequestAction(m_retreatAction);
         return;

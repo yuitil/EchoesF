@@ -10,6 +10,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Player/CombatComponent.h"
+#include "Enemy/AI/EnemyTargeting.h"
 
 //判定に使う幅や待ち時間。
 namespace CombatTuning
@@ -113,9 +114,13 @@ void UCombat::EndPlay(const EEndPlayReason::Type _reason)
 }
 
 //剣の攻撃判定を有効にする。
-void UCombat::BeginHitWindow(float _damageScale)
+void UCombat::BeginHitWindow(float _damageScale, FName _bone, FVector _tip)
 {
     BindWeapon();
+
+    //左右の武器を、一振りごとの通知で切り替える。
+    m_hitBone = _bone;
+    m_tipOffset = _tip;
 	m_hitScale = FMath::Max(0.0f, _damageScale);
 	//前の命中記録を消して、次の判定に備える。
 	m_hitActors.Empty();
@@ -180,11 +185,11 @@ void UCombat::TickComponent(float _deltaTime, ELevelTick _type, FActorComponentT
 	if(!enemy || !enemy->HasAuthority() || !m_bHitWindow || !action || !enemy->IsCombatActive()) { return; }
 
     //相手の体の当たり判定。
-    const bool body = !action->m_hitBase.IsNone() && !action->m_hitTip.IsNone();
+    const bool body = !m_hitBone.IsNone() || (!action->m_hitBase.IsNone() && !action->m_hitTip.IsNone());
     //剣の根元の位置。
-    const FName base = body ? action->m_hitBase : m_baseSocket;
+    const FName base = !m_hitBone.IsNone() ? m_hitBone : (body ? action->m_hitBase : m_baseSocket);
     //剣先の位置。
-    const FName tip = body ? action->m_hitTip : m_tipSocket;
+    const FName tip = !m_hitBone.IsNone() ? m_hitBone : (body ? action->m_hitTip : m_tipSocket);
     //対象のモデル。
     UMeshComponent* mesh = body ? enemy->GetMesh() : (m_useWeapon ? m_weapon.Get() : enemy->GetMesh());
 
@@ -195,11 +200,13 @@ void UCombat::TickComponent(float _deltaTime, ELevelTick _type, FActorComponentT
 	}
 
 	//調べ始める位置。
-	FVector start = mesh->GetSocketLocation(base);
+	FVector start = body && m_hitBone.IsNone() ? mesh->GetSocketTransform(base).TransformPosition(action->m_hitBaseOffset) : mesh->GetSocketLocation(base);
 	//調べ終える位置。
-	FVector end = mesh->GetSocketLocation(tip);
+	FVector end = body ? mesh->GetSocketTransform(tip).TransformPosition(m_hitBone.IsNone() ? action->m_hitTipOffset : m_tipOffset) : mesh->GetSocketLocation(tip);
 	//判定の対象とする種類。
 	FCollisionObjectQueryParams objects;
+	//分身はPawnと別の種類なので、巻き込み時は動く物も調べる。
+	if(m_hitNearby) { objects = FCollisionObjectQueryParams(FCollisionObjectQueryParams::AllDynamicObjects); }
 	objects.AddObjectTypesToQuery(ECC_Pawn);
 	//ターゲットのオブジェクトタイプも対象にする（Player プリセット対応）
 	if (const UPrimitiveComponent* targetRoot = IsValid(target) ? Cast<UPrimitiveComponent>(target->GetRootComponent()) : nullptr)
@@ -263,10 +270,12 @@ void UCombat::TickComponent(float _deltaTime, ELevelTick _type, FActorComponentT
 	{
 		//攻撃が当たった相手。
 		AActor* hitActor = hit.GetActor();
-		if (!IsValid(hitActor) || m_hitActors.Contains(hitActor) || hitActor != enemy->m_combatTarget)
+		if (!IsValid(hitActor) || m_hitActors.Contains(hitActor))
 		{
 			continue;
 		}
+		//敵同士は傷つけず、狙い以外への命中はBPの設定で許可する。
+		if(hitActor != target && (!m_hitNearby || !enemy->m_targeting->IsCandidate(hitActor))) { continue; }
 
 		//障害物との接触結果。
 		FHitResult wallHit;
@@ -276,7 +285,9 @@ void UCombat::TickComponent(float _deltaTime, ELevelTick _type, FActorComponentT
 		}
 
 		m_hitActors.Add(hitActor);
-		if (dodging || enemy->IsAttackSlowed()) { continue; }
+		//別の相手に当たった場合は、その相手自身の回避を確認する。
+		const auto* hitCombat = hitActor->FindComponentByClass<UCombatComponent>();
+		if ((hitCombat && hitCombat->IsDodging()) || enemy->IsAttackSlowed()) { continue; }
 		//防御の結果。
 		const EDefenseResult response = enemy->ResolveTargetDefense(hitActor);
 
@@ -303,7 +314,13 @@ void UCombat::TickComponent(float _deltaTime, ELevelTick _type, FActorComponentT
 		if (actualDamage > 0.0f)
 		{
 			enemy->RecordAttackHit();
-			if (action->m_launch && enemy->IsActing() && !enemy->WasAttackBlocked()) { BeginLift(Cast<ACharacter>(hitActor), *action); }
+			if (hitActor == target && action->m_launch && enemy->IsActing() && !enemy->WasAttackBlocked()) { BeginLift(Cast<ACharacter>(hitActor), *action); }
+
+			//空中で当たった時は、相手と上下の速さを合わせる。
+			if(action->m_airFollow && action->m_airOnly && m_liftEnd > 0. && hitActor == m_liftTarget.Get())
+			{
+				enemy->GetCharacterMovement()->Velocity.Z = hitActor->GetVelocity().Z;
+			}
 
 		}
 

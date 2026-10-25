@@ -1,4 +1,4 @@
-#include "Enemy/Spawning/BossEncounterSpawner.h"
+﻿#include "Enemy/Spawning/BossEncounterSpawner.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
@@ -7,10 +7,14 @@
 #include "Kismet/GameplayStatics.h"
 #include "NavigationSystem.h"
 #include "Components/CapsuleComponent.h"
+#include "TimerManager.h"
 
 //動作を確かめるための幅や待ち時間。
 namespace BossEncounterSpawnerTuning
 {
+    //範囲の確認を細かくしすぎないための下限。
+    constexpr float minCheckDelay = 0.1f;
+
     //開始範囲の半分の大きさ。
     constexpr auto triggerHalfSize = 150.f;
    
@@ -55,12 +59,44 @@ ABossEncounterSpawner::ABossEncounterSpawner()
 void ABossEncounterSpawner::BeginPlay()
 {
 	Super::BeginPlay();
+	if(!HasAuthority()) { return; }
 	m_trigger->OnComponentBeginOverlap.AddDynamic(this, &ABossEncounterSpawner::PlayerEntered);
+	//Overlapが登録より先に発生した場合や、プレイヤーの準備が遅れた場合も確認する。
+	GetWorldTimerManager().SetTimer(m_entryTimer, this, &ABossEncounterSpawner::CheckEntry,
+		FMath::Max(BossEncounterSpawnerTuning::minCheckDelay, m_checkDelay), true);
 
 	if (m_bAutoStart)
 	{
 		StartEncounter();
 	}
+}
+
+//開始範囲内にいるかを確認する。プレイヤー側の設定変更は不要。
+void ABossEncounterSpawner::CheckEntry()
+{
+	if(!HasAuthority() || m_bBusy || m_bEnding || IsValid(m_boss)) { return; }
+	if(m_state != EBossEncounterState::Idle && !(m_state == EBossEncounterState::Failed && m_retrySpawn)) { return; }
+	if(GetWorld()->GetTimeSeconds() < m_retryTime) { return; }
+	if(m_bAutoStart) { StartEncounter(); return; }
+	if(!m_bStartOnEnter) { return; }
+
+	const auto* player = UGameplayStatics::GetPlayerPawn(this, 0);
+	if(!IsValid(player) || !player->IsPlayerControlled()) { return; }
+	//衝突チャンネルやOverlap通知に依存せず、BPで決めた箱の中か確認する。
+	const FVector local = m_trigger->GetComponentTransform().InverseTransformPosition(player->GetActorLocation());
+	const FVector extent = m_trigger->GetUnscaledBoxExtent();
+	const bool inside = FMath::Abs(local.X) <= extent.X && FMath::Abs(local.Y) <= extent.Y && FMath::Abs(local.Z) <= extent.Z;
+	if(inside || m_trigger->IsOverlappingActor(player)) { StartEncounter(); }
+}
+
+//床が未準備、プレイヤーが近い、生成場所が塞がっている場合は再試行できるようにする。
+void ABossEncounterSpawner::RetrySpawn(const FString& _message)
+{
+	m_bBusy = false;
+	m_retrySpawn = true;
+	m_retryTime = GetWorld()->GetTimeSeconds() + FMath::Max(BossEncounterSpawnerTuning::minCheckDelay, m_retryDelay);
+	//待機中に同じ失敗ログを大量に出さない。
+	if(m_state != EBossEncounterState::Failed) { ChangeState(EBossEncounterState::Failed, _message); }
 }
 
 //プレイヤーの侵入を受けて生成を開始する。
@@ -91,8 +127,9 @@ void ABossEncounterSpawner::ChangeState(EBossEncounterState _state, const FStrin
 //ボスを生成して戦闘を開始する。
 bool ABossEncounterSpawner::StartEncounter()
 {
-	if(!HasAuthority() || m_bBusy || m_bEnding || m_state != EBossEncounterState::Idle || IsValid(m_boss)) { return false; }
+	if(!HasAuthority() || m_bBusy || m_bEnding || (m_state != EBossEncounterState::Idle && !(m_state == EBossEncounterState::Failed && m_retrySpawn)) || IsValid(m_boss)) { return false; }
 
+	m_retrySpawn = false;
 	if (!m_bossClass || m_bossClass->HasAnyClassFlags(CLASS_Abstract))
 	{
 		ChangeState(EBossEncounterState::Failed, TEXT("Set Boss Class to a valid enemy Blueprint."));
@@ -112,8 +149,7 @@ bool ABossEncounterSpawner::StartEncounter()
 		FNavLocation point;
 		if (!nav || !nav->ProjectPointToNavigation(spawnTransform.GetLocation(), point, FVector(BossEncounterSpawnerTuning::navWidth, BossEncounterSpawnerTuning::navWidth, BossEncounterSpawnerTuning::navHeight)))
 		{
-			m_bBusy = false;
-			ChangeState(EBossEncounterState::Failed, TEXT("Spawn Anchor requires a built NavMesh. Reset Encounter after fixing placement."));
+			RetrySpawn(TEXT("Waiting for NavMesh at Spawn Anchor."));
 			return false;
 		}
 		
@@ -125,8 +161,7 @@ bool ABossEncounterSpawner::StartEncounter()
 	{
 		if (FVector::Dist2D(player->GetActorLocation(), spawnTransform.GetLocation()) < m_clearance)
 		{
-			m_bBusy = false;
-			ChangeState(EBossEncounterState::Failed, TEXT("Spawn point is too close to the player. Reset Encounter after moving it."));
+			RetrySpawn(TEXT("Waiting for player clearance at spawn point."));
 			return false;
 		}
 	}
@@ -134,8 +169,7 @@ bool ABossEncounterSpawner::StartEncounter()
 	m_boss = GetWorld()->SpawnActorDeferred<AEnemyCharacterBase>(m_bossClass, spawnTransform, this, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding);
 	if (!IsValid(m_boss))
 	{
-		m_bBusy = false;
-		ChangeState(EBossEncounterState::Failed, TEXT("Boss spawn failed. Check the spawn position and collision."));
+		RetrySpawn(TEXT("Waiting for space at boss spawn point."));
 		return false;
 	}
 
@@ -232,13 +266,16 @@ void ABossEncounterSpawner::ResetEncounter()
 	m_bBusy = true;
 	ClearBoss();
 	m_bBusy = false;
-	ChangeState(EBossEncounterState::Idle, TEXT("Encounter reset. Call Start Encounter to retry."));
+	m_retrySpawn = false;
+	m_retryTime = 0.;
+	ChangeState(EBossEncounterState::Idle, TEXT("Encounter reset. Waiting for start conditions."));
 }
 
 //終了時にタイマーや登録を解除する。
 void ABossEncounterSpawner::EndPlay(const EEndPlayReason::Type _reason)
 {
 	m_bEnding = true;
+	GetWorldTimerManager().ClearTimer(m_entryTimer);
 	m_trigger->OnComponentBeginOverlap.RemoveDynamic(this, &ABossEncounterSpawner::PlayerEntered);
 	if (HasAuthority())
 	{

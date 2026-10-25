@@ -43,11 +43,11 @@ void UBossCombatWindow::NotifyBegin(USkeletalMeshComponent* _mesh, UAnimSequence
 
 	//処理の対象となる敵。
 	AEnemyCharacterBase* enemy = _mesh ? Cast<AEnemyCharacterBase>(_mesh->GetOwner()) : nullptr;
-	if(!enemy || !enemy->IsActing()) { return; }
+	if(!enemy || _mesh != enemy->GetMesh() || !enemy->IsActing()) { return; }
 
 	if (m_window == EBossWindow::Damage)
 	{
-		enemy->m_combat->BeginHitWindow(m_damageScale);
+		enemy->m_combat->BeginHitWindow(m_damageScale, m_hitBone, m_tipOffset);
 	}
 
 	if (m_window == EBossWindow::DodgeInvulnerability)
@@ -68,7 +68,7 @@ void UBossCombatWindow::NotifyEnd(USkeletalMeshComponent* _mesh, UAnimSequenceBa
 
 	//処理の対象となる敵。
 	AEnemyCharacterBase* enemy = _mesh ? Cast<AEnemyCharacterBase>(_mesh->GetOwner()) : nullptr;
-	if(!enemy) { return; }
+	if(!enemy || _mesh != enemy->GetMesh()) { return; }
 
 	if (m_window == EBossWindow::Damage)
 	{

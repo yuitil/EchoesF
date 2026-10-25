@@ -164,8 +164,9 @@ void UMinionCombatDirector::Update()
             for(auto* member:group)
             {
                 member->m_gapSince=-1.; 
-                continue;
             }
+            //待つ条件の間は、次の敵を選ばない。
+            continue;
         }
         //今までで最も適した候補。
         UMinionFormation* best = nullptr; float score = TNumericLimits<float>::Max();

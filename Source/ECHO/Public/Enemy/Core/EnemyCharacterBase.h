@@ -38,6 +38,9 @@ public:
 	//敵に共通する体力、攻撃、移動を管理する。
 	AEnemyCharacterBase();
 
+	//通知で指定した区間だけ、攻撃の移動を相手へ合わせる。
+	void SetAttackAim(bool _enabled, float _range);
+
 	//敵の能力を管理する部品を返す。
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
@@ -367,11 +370,24 @@ protected:
 	//各攻撃を再使用できる時刻。
 	TMap<FName, double> m_actionCooldowns;
 
+    //次に打ち上げを使える時刻。
+    double m_nextLift = 0.;
+
 	//体力変更の通知を解除するための記録。
 	FDelegateHandle m_healthHandle;
 
 	UPROPERTY(VisibleAnywhere, Category="Event")
 	bool m_IsEventEnemy = false;
+
+private:
+	//素材の移動を剣の間合いまでに抑える。
+	FTransform AimAttackMove(const FTransform& _move, UCharacterMovementComponent* _movement, float _delta);
+
+	//攻撃の移動を相手へ合わせているか。
+	bool m_aimMove = false;
+
+	//攻撃中に相手との間へ残す距離。
+	float m_aimRange = 140.f;
 
 protected:
 	//減速しているモンタージュ。

@@ -32,6 +32,10 @@ public:
 	UFUNCTION(BlueprintPure, Category="Boss|Spacing")
 	bool IsSpacing() const { return m_active; }
 
+	//様子見を終えて攻撃を優先しているか。
+	UFUNCTION(BlueprintPure, Category="Boss|Spacing")
+	bool IsPressing() const { return m_press; }
+
 public:
 	//相手のダウン中だけ周回するか。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing")
@@ -113,6 +117,19 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type _reason) override;
 
 private:
+	//相手が静止している時間と、攻撃へ移る時期を調べる。
+	void UpdateWatch(class AEnemyCharacterBase* _enemy, double _now);
+
+	//周回を始めてもほかの行動を邪魔しないか。
+	bool CanSpace(class AEnemyCharacterBase* _enemy) const;
+
+private:
+	//一度様子を見たら、攻撃するまで周回を繰り返さない。
+	bool m_press = false;
+
+	//相手が変わった時は様子見の時間を数え直す。
+	TWeakObjectPtr<AActor> m_watched;
+
 	//相手が様子見を始めた時刻。
 	double m_idleSince = -1.;
 

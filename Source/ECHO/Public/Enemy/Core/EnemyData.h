@@ -65,6 +65,14 @@ struct ECHO_API FEnemyActionData
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Combat", meta=(DisplayName="Hit Tip Bone"))
     FName m_hitTip;
 
+    //根元のボーンから判定をずらす位置。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Combat", meta=(DisplayName="Hit Base Offset"))
+    FVector m_hitBaseOffset = FVector::ZeroVector;
+
+    //先端のボーンから剣先までの位置。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Combat", meta=(DisplayName="Hit Tip Offset"))
+    FVector m_hitTipOffset = FVector::ZeroVector;
+
     //攻撃中に付けるタグ。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|GAS", meta=(DisplayName="Active Tags"))
     FGameplayTagContainer m_activeTags;
@@ -84,6 +92,10 @@ struct ECHO_API FEnemyActionData
 	//相手が空中にいる時だけ使うか。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy | Air", meta = (DisplayName = "Target Must Be Airborne"))
 	bool m_targetAir = false;
+
+	//空中の命中時に、相手と上下の速さを合わせる。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy | Air", meta = (DisplayName = "Follow Air Hit"))
+	bool m_airFollow = false;
 
 	//相手が地上にいる時だけ使うか。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy | Air", meta = (DisplayName = "Target Must Be Grounded"))
@@ -177,6 +189,10 @@ struct ECHO_API FEnemyActionData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy | Combo", meta = (DisplayName = "HitNextId"))
 	FName m_hitNextId;
 
+    //命中後の候補。空欄ならHitNextIdを使う。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Combo", meta=(DisplayName="Hit Follow Ups"))
+    TArray<FName> m_hitChoices;
+
 	//外れた時につなぐ攻撃名。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy | Combo", meta = (DisplayName = "MissNextId"))
 	FName m_missNextId;
@@ -241,6 +257,10 @@ public:
 	//コンボを続ける最大段数。
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Combo", meta = (DisplayName = "MaxComboSteps", ClampMin = "1", ClampMax = "10"))
 	int32 m_maxComboSteps = 3;
+
+    //打ち上げ成功後、別の打ち上げも待たせる秒数。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Air", meta=(DisplayName="Launch Cooldown", ClampMin="0"))
+    float m_liftCooldown = 0.f;
 
 	//通常のガードを使うか。
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Defense", meta = (DisplayName = "EnableNormalGuard"))

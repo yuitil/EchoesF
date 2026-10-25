@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Enemy/Boss/BossEnemyCharacter.h"
@@ -9,7 +9,7 @@ class UMaterialInstanceDynamic;
 class UNiagaraSystem;
 class UNiagaraComponent;
 
-//ボスと同じ動きで、指定された分身だけと戦う影。
+//分身との戦闘、または本体との一度の連携を行う影。
 UCLASS()
 class ECHO_API ABossShadow : public ABossEnemyCharacter
 {
@@ -21,6 +21,8 @@ public:
 
     //生成直後に相手と活動時間を決める。
     void Setup(AActor* _target, float _life);
+    //本体の攻撃に続く、一度だけの連携を始める。
+    void StartJoin(FName _action, float _delay, float _range);
     //攻撃を止めて影を消し始める。
     void FadeOut();
     //出現中と消滅中は移動や攻撃を待たせる。
@@ -65,6 +67,10 @@ public:
     //消えていく時間。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shadow|Look", meta=(ClampMin="0.1"))
     float m_fadeTime = .6f;
+    //近づけない時などに連携を打ち切る時間。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shadow|Combat", meta=(ClampMin="1"))
+    float m_joinLimit = 12.f;
+
     //コンボ終了後に追加する待ち時間の最小値。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shadow|Combat", meta=(ClampMin="0"))
     float m_waitMin = .2f;
@@ -85,8 +91,13 @@ protected:
     virtual float GetActionWeightMultiplier(const FEnemyActionData& _action) const override;
     //コンボの後に短いランダムな間を入れる。
     virtual void OnAttackFinished() override;
+    //中断された場合も連携を終えて片付ける。
+    virtual void OnActionEnded() override;
 
 private:
+    //活動中のプレイヤーの分身を探す。
+    AActor* FindClone() const;
+
     //足元の地面へ煙を一度だけ出す。
     void PlaySmoke();
 
@@ -96,6 +107,17 @@ private:
     TArray<TObjectPtr<UMaterialInstanceDynamic>> m_mats;
 
 private:
+    //連携で最初に使う攻撃。未設定なら既存の候補から選ぶ。
+    FName m_joinAction;
+    //連携中だけ指定した攻撃で開始する。
+    bool m_join = false;
+    //連携のコンボを終えたか。
+    bool m_joinDone = false;
+    //攻撃を始めてよい時刻。
+    float m_joinDelay = 0.f;
+    //分身を探す距離。
+    float m_cloneRange = 0.f;
+
     //生成されてからの時間。
     float m_age = 0.f;
     //消えるまでの活動時間。

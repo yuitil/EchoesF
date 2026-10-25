@@ -55,6 +55,22 @@ bool UDefense::IsFrontFacing(AActor* _attacker) const
 	return FVector::DotProduct(enemy->GetActorForwardVector().GetSafeNormal2D(), direction) >= FMath::Cos(FMath::DegreesToRadians(halfAngle));
 }
 
+//相手の向き、距離、間にある壁を確認する。
+bool UDefense::IsThreat_Implementation(AActor* _target) const
+{
+	const auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
+	if(!enemy || !enemy->m_definition || !IsValid(_target)) { return false; }
+
+	//相手から敵へ向かう方向。
+	const FVector offset = enemy->GetActorLocation() - _target->GetActorLocation();
+	if(offset.Size2D() > enemy->m_definition->m_guardRange || FMath::Abs(offset.Z) > m_threatHeight) { return false; }
+	const float facing = FVector::DotProduct(_target->GetActorForwardVector().GetSafeNormal2D(), offset.GetSafeNormal2D());
+	if(facing < FMath::Cos(FMath::DegreesToRadians(m_threatAngle))) { return false; }
+
+	const auto* ai = Cast<AAIController>(enemy->GetController());
+	return !ai || ai->LineOfSightTo(_target);
+}
+
 //相手の攻撃に備えてガードするか調べる。
 bool UDefense::ShouldStartGuard() const
 {
@@ -63,8 +79,7 @@ bool UDefense::ShouldStartGuard() const
 	if(!enemy || !enemy->m_definition || !enemy->m_definition->m_useGuard || IsBusy() || enemy->IsActing() || enemy->GetCharacterMovement()->IsFalling()
 		|| !IsFrontFacing(enemy->m_combatTarget)) { return false; }
 
-	return (IsTargetAttacking(enemy->m_combatTarget) || HasGuardRequest())
-		&& FVector::Dist2D(enemy->GetActorLocation(), enemy->m_combatTarget->GetActorLocation()) <= FMath::Max(0.0f, enemy->m_definition->m_guardRange);
+	return IsTargetAttacking(enemy->m_combatTarget) && IsThreat(enemy->m_combatTarget);
 
 }
 
@@ -102,10 +117,8 @@ EDefenseResult UDefense::ResolveHit(AActor* _attacker, bool _unblockable, bool _
 	//BPから設定した敵のデータ。
 	const UEnemyData* data = enemy->m_definition;
 
-	//前の攻撃を覚えている相手か。
-	const bool remembered = m_guardTarget.Get() == _attacker && GetWorld()->GetTimeSeconds() < m_guardUntil;
 	//通常ガードで防げる状態か。
-	const bool guard = data->m_useGuard && (enemy->m_combat->m_bGuarding || remembered);
+	const bool guard = data->m_useGuard && (enemy->m_combat->m_bGuarding || GetWorld()->GetTimeSeconds() < m_guardPose);
 
 	//使用する行動の設定。
 	const FEnemyActionData* action = enemy->GetActiveAction();

@@ -63,7 +63,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Target", meta=(ClampMin="0"))
 	float m_chaseRange = 20000.f;
 
-private:
+public:
 	//攻撃対象にできる相手か調べる。
 	bool IsCandidate(AActor* _actor) const;
 };

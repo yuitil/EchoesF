@@ -243,6 +243,9 @@ void AEnemyCharacterBase::Tick(float _delta)
 
 	if (time >= action->m_backStart && time < action->m_backEnd)
 	{
+		//再生が遅くなった時は移動も遅くし、足だけ置いていかれないようにする。
+		const float rate = FMath::Abs(anim->Montage_GetPlayRate(action->m_montage) * action->m_montage->RateScale);
+		const float speed = action->m_backSpeed * rate;
 		//地面に当たった情報。
 		FNavLocation floor;
 
@@ -250,7 +253,7 @@ void AEnemyCharacterBase::Tick(float _delta)
 		auto* nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
 
 		//次に使う区間または候補。
-		const FVector next = GetActorLocation() + EvadeDirection(*action) * action->m_backSpeed * FMath::Max(
+		const FVector next = GetActorLocation() + EvadeDirection(*action) * speed * FMath::Max(
 			_delta, EnemyCharacterBaseTuning::minStep);
 
 		//足元の位置。
@@ -264,7 +267,7 @@ void AEnemyCharacterBase::Tick(float _delta)
 			GetCharacterMovement()->StopMovementImmediately();
 			return;
 		}
-		GetCharacterMovement()->MaxWalkSpeed = action->m_backSpeed;
+		GetCharacterMovement()->MaxWalkSpeed = speed;
 		AddMovementInput(EvadeDirection(*action), 1.f);
 	}
 	else
@@ -291,6 +294,11 @@ UAbilitySystemComponent* AEnemyCharacterBase::GetAbilitySystemComponent() const
 void AEnemyCharacterBase::BeginPlay()
 {
 	Super::BeginPlay();
+	//別の移動補正がある時は、その設定を上書きしない。
+	if(!GetCharacterMovement()->ProcessRootMotionPostConvertToWorld.IsBound())
+	{
+		GetCharacterMovement()->ProcessRootMotionPostConvertToWorld.BindUObject(this, &AEnemyCharacterBase::AimAttackMove);
+	}
 
 	GetCharacterMovement()->MaxWalkSpeed = m_moveSpeed;
 	m_abilitySystemComponent->InitializeCombat(this, this, m_attributeSet);
@@ -530,6 +538,7 @@ bool AEnemyCharacterBase::CanUseAction(int32 _actionIndex, float _distance) cons
 	if (action.m_targetAir && (!character || !character->GetCharacterMovement()->IsFalling())) { return false; }
 	if (FMath::Abs(GetActorLocation().Z - m_combatTarget->GetActorLocation().Z) > action.m_heightGap) { return false; }
 	if (action.m_launch && !CanLiftTarget(m_combatTarget)) { return false; }
+    if (action.m_launch && GetWorld()->GetTimeSeconds() < m_nextLift) { return false; }
 	if (action.m_backSpeed > 0.f && !CanEvade(action)) { return false; }
 
 	//再使用までの待ち時間。
@@ -815,6 +824,7 @@ const FEnemyActionData* AEnemyCharacterBase::GetActiveAction() const
 //攻撃を終えて次の行動に備える。
 void AEnemyCharacterBase::FinishAction(bool _cancelled)
 {
+	m_aimMove = false;
 	//使用する行動の設定。
 	const FEnemyActionData* action = GetActiveAction();
 
@@ -839,10 +849,27 @@ void AEnemyCharacterBase::FinishAction(bool _cancelled)
 		}
 		m_actionCooldowns.Add(action->m_actionId, GetWorld()->GetTimeSeconds() + action->m_cooldown);
 
+        //成功した打ち上げの後は、次の打ち上げまで待つ。
+        if(action->m_launch && m_bActionHit)
+        {
+            m_nextLift = GetWorld()->GetTimeSeconds() + FMath::Max(0.f, m_definition->m_liftCooldown);
+        }
+
 		if (!_cancelled && !dodged && m_definition && m_comboSteps < FMath::Clamp(
 			m_definition->m_maxComboSteps, 1, EnemyCharacterBaseTuning::maxComboSteps))
 		{
 			m_nextActionId = SelectComboBranch(*action, m_bActionHit, m_bActionBlocked);
+            //今の高さや距離で使える続きだけを抽選する。
+            if(m_bActionHit && !m_bActionBlocked && !action->m_hitChoices.IsEmpty())
+            {
+                //今使える追撃の候補。
+                TArray<FName> choices;
+                for(const FName next : action->m_hitChoices)
+                {
+                    if(FindComboAction(next) != INDEX_NONE) { choices.AddUnique(next); }
+                }
+                if(!choices.IsEmpty()) { m_nextActionId = choices[FMath::RandRange(0, choices.Num() - 1)]; }
+            }
 		}
 
 		if (FindComboAction(m_nextActionId) == INDEX_NONE)
@@ -903,6 +930,7 @@ void AEnemyCharacterBase::ResetEncounter()
 	CancelAction();
 	StopAnimMontage();
 	m_actionCooldowns.Empty();
+    m_nextLift = 0.;
 
 	m_lastAction = NAME_None;
 
@@ -926,10 +954,37 @@ void AEnemyCharacterBase::ResetEncounter()
 //終了時にタイマーや登録を解除する。
 void AEnemyCharacterBase::EndPlay(const EEndPlayReason::Type _reason)
 {
+	if(GetCharacterMovement()->ProcessRootMotionPostConvertToWorld.IsBoundToObject(this))
+	{
+		GetCharacterMovement()->ProcessRootMotionPostConvertToWorld.Unbind();
+	}
 	m_abilitySystemComponent->GetGameplayAttributeValueChangeDelegate(m_attributeSet->GetHealthAttribute()).
 	                          Remove(m_healthHandle);
 	CancelAction();
 	Super::EndPlay(_reason);
+}
+
+//通知の区間と、相手に残す距離を受け取る。
+void AEnemyCharacterBase::SetAttackAim(bool _enabled, float _range)
+{
+	m_aimMove = _enabled;
+	m_aimRange = FMath::Max(0.f, _range);
+}
+
+//ワープせず、通常の衝突判定へ渡す移動量だけを調整する。
+FTransform AEnemyCharacterBase::AimAttackMove(const FTransform& _move, UCharacterMovementComponent* _movement, float _delta)
+{
+	if(!m_aimMove || !IsActing() || !IsValid(m_combatTarget)) { return _move; }
+	//相手に近づきすぎない範囲だけ進む。
+	const FVector toward = m_combatTarget->GetActorLocation() - GetActorLocation();
+	const float gap = FMath::Max(0.f, toward.Size2D() - m_aimRange);
+	FVector step = toward.GetSafeNormal2D() * FMath::Min(_move.GetTranslation().Size2D(), gap);
+	step.Z = _move.GetTranslation().Z;
+	//向きは通知で少しずつ変え、素材の旋回と二重に回さない。
+	FTransform result = _move;
+	result.SetTranslation(step);
+	result.SetRotation(FQuat::Identity);
+	return result;
 }
 
 //回避する方向を求める。
@@ -949,16 +1004,12 @@ bool AEnemyCharacterBase::CanEvade(const FEnemyActionData& _action) const
 	auto* nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
 	if (!nav || !_action.m_montage || !GetCharacterMovement()->IsMovingOnGround()) { return false; }
 
-	//使用する再生速度。
-	const float rate = FMath::Max(EnemyCharacterBaseTuning::minStep,
-	                              GetAttackRate(_action) * _action.m_montage->RateScale);
-
 	//調べ始める位置。
 	const FVector start = GetActorLocation();
 
 	//前回からの経過時間や値の差。
 	const FVector delta = EvadeDirection(_action) * _action.m_backSpeed * FMath::Max(
-		0.f, _action.m_backEnd - _action.m_backStart) / rate;
+		0.f, _action.m_backEnd - _action.m_backStart);
 
 	//足元の位置。
 	const float feet = start.Z - GetCapsuleComponent()->GetScaledCapsuleHalfHeight();

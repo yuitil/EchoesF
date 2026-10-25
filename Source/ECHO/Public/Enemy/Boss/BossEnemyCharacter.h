@@ -63,7 +63,7 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Boss")
 	TObjectPtr<UBossApproach> m_approach;
 
-	//フェーズ2でプレイヤーの分身に対抗する影を呼ぶ。
+	//分身への応戦や、本体との連携に使う影を呼ぶ。
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Boss")
 	TObjectPtr<UBossShadowSummon> m_summon;
 

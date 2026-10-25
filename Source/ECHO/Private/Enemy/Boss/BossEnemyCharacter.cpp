@@ -160,7 +160,13 @@ bool ABossEnemyCharacter::IsActionAllowed(const FEnemyActionData& _action) const
 //状況に合わせて攻撃の選びやすさを返す。
 float ABossEnemyCharacter::GetActionWeightMultiplier(const FEnemyActionData& _action) const
 {
-	return m_bossPhase == EBossPhase::PhaseTwo ? m_observation->AdaptWeight(uint8(_action.m_kind)) : 1.0f;
+	//フェーズ2は観察した癖を使い、分身が多ければ広い攻撃も選ぶ。
+	float weight = m_bossPhase == EBossPhase::PhaseTwo ? m_observation->AdaptWeight(uint8(_action.m_kind)) : 1.0f;
+	if(m_summon->GetCloneCount() >= m_summon->m_cloneLimit && m_summon->m_crowdMoves.Contains(_action.m_actionId))
+	{
+		weight *= m_summon->m_crowdWeight;
+	}
+	return weight;
 }
 
 //相手の攻撃や移動を観察する。

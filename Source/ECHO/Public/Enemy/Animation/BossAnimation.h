@@ -68,6 +68,14 @@ public:
 	//通知区間でのダメージ倍率。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemey", meta = (DisplayAfter = "DamageMultiplier"))
 	float m_damageScale = 1.0f;
+
+    //この一振りに使うボーン。空欄なら攻撃データを使う。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Hit", meta=(DisplayName="Hit Bone"))
+    FName m_hitBone;
+
+    //指定したボーンから剣先までの位置。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Hit", meta=(DisplayName="Hit Tip Offset"))
+    FVector m_tipOffset = FVector::ZeroVector;
 };
 
 //アニメーションから音や見た目の合図を送る。

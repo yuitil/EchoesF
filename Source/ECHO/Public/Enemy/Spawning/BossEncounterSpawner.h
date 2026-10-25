@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -84,6 +84,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss | Spawn", meta = (DisplayName = "Start On Enter"))
 	bool m_bStartOnEnter = true;
 
+	//開始範囲にいるプレイヤーを確認する間隔。
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss | Spawn", meta = (ClampMin = "0.1"))
+	float m_checkDelay = 0.25f;
+
+	//床や生成場所の準備を待って再試行する間隔。
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss | Spawn", meta = (ClampMin = "0.1"))
+	float m_retryDelay = 1.f;
+
 	//現在の状態。
 	UPROPERTY(BlueprintReadOnly, Category = "Boss | Spawn", meta = (DisplayName = "State"))
 	EBossEncounterState m_state = EBossEncounterState::Idle;
@@ -104,6 +112,12 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type _reason) override;
 
 private:
+	//開始時から範囲内にいる場合も見落とさず確認する。
+	void CheckEntry();
+
+	//一時的な生成失敗を記録して、次の確認で再試行する。
+	void RetrySpawn(const FString& _message);
+
 	//ボス戦の進行状態を切り替える。
 	void ChangeState(EBossEncounterState _state, const FString& _message);
 
@@ -124,6 +138,15 @@ private:
 	void PlayerEntered(UPrimitiveComponent* _component, AActor* _actor, UPrimitiveComponent* _otherComp, int32 _bodyIndex, bool _fromSweep, const FHitResult& _hit);
 
 private:
+	//開始範囲の確認を止めるためのタイマー。
+	FTimerHandle m_entryTimer;
+
+	//一時的な理由による生成失敗か。
+	bool m_retrySpawn = false;
+
+	//次に生成を試せる時刻。
+	double m_retryTime = 0.;
+
 	//ボスの生成やリセットの処理中か。
 	bool m_bBusy = false;
 

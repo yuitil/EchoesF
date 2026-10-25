@@ -56,6 +56,10 @@ public:
 	void ConsumeGuardRequest() { m_guardPending = false; }
 
 public:
+	//相手がこちらを向き、攻撃が届く位置にいるか。
+	UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category="Enemy|Defense")
+	bool IsThreat(AActor* _target) const;
+
 	//相手が攻撃中か調べる。
 	UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "Enemy | Defense")
 	bool IsTargetAttacking(AActor* target) const;
@@ -69,6 +73,14 @@ public:
 	void ResetDefense();
 
 public:
+	//相手の正面から、この角度以内なら攻撃が来ると判断する。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Defense", meta=(ClampMin="0", ClampMax="90"))
+	float m_threatAngle = 55.f;
+
+	//段差がこの高さを超えた相手には、先回りしてガードしない。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Defense", meta=(ClampMin="0"))
+	float m_threatHeight = 140.f;
+
 	//防御の結果を伝える通知。
 	UPROPERTY(BlueprintAssignable, Category = "Enemy | Defense", meta = (DisplayName = "OnDefenseResolved"))
 	FDefenseEvent m_onDefense;

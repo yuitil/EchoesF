@@ -1,4 +1,4 @@
-#include "Enemy/Boss/BossShadow.h"
+﻿#include "Enemy/Boss/BossShadow.h"
 #include "Enemy/Boss/BossShadowSummon.h"
 #include "Enemy/Boss/BossApproach.h"
 #include "Enemy/Boss/BossSpacing.h"
@@ -13,6 +13,9 @@
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Components/CapsuleComponent.h"
+#include "Ghost/GhostCharacter/GhostCharacter.h"
+#include "Ghost/GhostEnemy/GhostEnemyComponent.h"
+#include "EngineUtils.h"
 
 //オーラの素材や位置はBPから設定する。
 ABossShadow::ABossShadow()
@@ -65,6 +68,9 @@ void ABossShadow::PostInitializeComponents()
 void ABossShadow::BeginPlay()
 {
     Super::BeginPlay();
+    //開始時の登録でTickが戻っても、本体用の抜刀と召喚を動かさない。
+    m_approach->SetComponentTickEnabled(false);
+    m_summon->SetComponentTickEnabled(false);
     m_approach->ShowSword();
     PlaySmoke();
     if(GetNetMode() != NM_DedicatedServer) 
@@ -94,13 +100,14 @@ void ABossShadow::Setup(AActor* _target, float _life)
 //出現が終わるまで戦闘を待つ。
 bool ABossShadow::IsRepositioning() const
 {
-    return m_fading || m_age < m_riseTime;
+    return m_fading || m_age < m_riseTime || (m_join && (m_joinDone || m_age < m_joinDelay));
 }
 
 //本体のフェーズ2の攻撃を抽選候補にする。
 bool ABossShadow::IsActionAllowed(const FEnemyActionData& _action) const
 {
     const auto* data = GetBossData();
+    if(m_join && m_actionSerial == 0 && !m_joinAction.IsNone() && _action.m_actionId != m_joinAction) { return false; }
     return !m_fading && (!data || data->m_phaseTwoActions.IsEmpty() || data->m_phaseTwoActions.Contains(_action.m_actionId));
 }
 
@@ -114,6 +121,39 @@ float ABossShadow::GetActionWeightMultiplier(const FEnemyActionData& _action) co
 void ABossShadow::OnAttackFinished()
 {
     m_readyTime += FMath::FRandRange(FMath::Max(0.f, m_waitMin), FMath::Max(m_waitMin, m_waitMax));
+}
+
+//連携が終わった次の更新で分身を確認してから消える。
+void ABossShadow::OnActionEnded()
+{
+    Super::OnActionEnded();
+    if(m_join && (!m_actionSuccess || GetPendingComboId().IsNone())) { m_joinDone = true; }
+}
+
+//分身がいない時は、本体に続いて一つのコンボだけ行う。
+void ABossShadow::StartJoin(FName _action, float _delay, float _range)
+{
+    m_join = true;
+    m_joinAction = _action;
+    m_joinDelay = FMath::Max(m_riseTime, _delay);
+    m_cloneRange = _range;
+}
+
+//新しく出された分身を優先する。プレイヤー側には変更を加えない。
+AActor* ABossShadow::FindClone() const
+{
+    AActor* target = nullptr;
+    float best = FMath::Square(m_cloneRange);
+    for(TActorIterator<AGhostCharacter> it(GetWorld()); it; ++it)
+    {
+        auto* ghost = *it;
+        if(!ghost->EnemyComponent || ghost->IsHidden() || !ghost->CanBeDamaged()) { continue; }
+        const auto state = ghost->EnemyComponent->GetLifecycleState();
+        if(state != EGhostLifecycleState::Friendly && state != EGhostLifecycleState::Warning) { continue; }
+        const float distance = FVector::DistSquared2D(GetActorLocation(), ghost->GetActorLocation());
+        if(distance < best) { best = distance; target = ghost; }
+    }
+    return target;
 }
 
 //倒された影は立ち上がらずに消える。
@@ -147,13 +187,23 @@ void ABossShadow::Tick(float _delta)
 {
     Super::Tick(_delta);
     m_age += _delta;
+    //連携中に分身が出たら、プレイヤーへの攻撃を止めて担当を変える。
+    if(HasAuthority() && m_join && !m_fading)
+    {
+        if(auto* clone = FindClone())
+        {
+            m_join = false;
+            CancelAction();
+            m_targeting->m_fixedTarget = clone;
+            m_combatTarget = clone;
+        }
+        else if(m_joinDone || m_age >= m_joinLimit) { FadeOut(); }
+    }
     if(HasAuthority() && !m_fading && (m_age >= m_life || !m_targeting->SelectTarget())) 
     {
         FadeOut();
     }
-    if(m_fading) 
-    { 
-    }
+    if(m_fading) { m_fadeAge += _delta; }
     const float fade = m_fading ? 1.f - FMath::Clamp(m_fadeAge / FMath::Max(UE_SMALL_NUMBER, m_fadeTime), 0.f, 1.f) : FMath::Clamp(m_age / FMath::Max(UE_SMALL_NUMBER, m_riseTime), 0.f, 1.f);
     for(const auto& mat : m_mats) 
     { 

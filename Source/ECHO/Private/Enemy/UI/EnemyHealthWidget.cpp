@@ -20,7 +20,8 @@ void UEnemyHealthWidget::SetEnemy(AEnemyCharacterBase* _enemy)
     m_lastHealth = _enemy ? _enemy->GetHealth() : 0.f;
     m_showLeft = 0.f;
     m_wasBroken = false;
-    SetRenderOpacity(m_hitOnly ? 0.f : 1.f);
+    //出現時はBPのFade Speedで、透明から滑らかに表示する。
+    SetRenderOpacity(0.f);
 }
 
 //敵の体力を読み取り、BPで作った表示を動かす。

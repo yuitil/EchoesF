@@ -26,7 +26,7 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type _reason) override;
 
 	//剣の攻撃判定を有効にする。
-	void BeginHitWindow(float _damageScale = 1.0f);
+	void BeginHitWindow(float _damageScale = 1.0f, FName _bone = NAME_None, FVector _tip = FVector::ZeroVector);
 
 	//剣の攻撃判定を終了する。
 	void EndHitWindow();
@@ -46,6 +46,10 @@ public:
 	bool SetWeaponMesh(UMeshComponent* _mesh, FName _base = TEXT("BladeBase"), FName _tip = TEXT("BladeTip"));
 
 public:
+	//狙っている相手以外も、剣が直接当たれば判定する。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Combat")
+	bool m_hitNearby = false;
+
 	//BPの剣部品に付けるタグ。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Combat")
 	FName m_weaponTag;
@@ -82,6 +86,12 @@ private:
 	void BeginLift(class ACharacter* _target, const struct FEnemyActionData& _action);
 
 private:
+    //今の通知で指定された武器のボーン。
+    FName m_hitBone;
+
+    //今の通知で指定された剣先の位置。
+    FVector m_tipOffset = FVector::ZeroVector;
+
 	//打ち上げ中の相手。
 	TWeakObjectPtr<class ACharacter> m_liftTarget;
 
