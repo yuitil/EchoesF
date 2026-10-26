@@ -358,8 +358,7 @@ void UBossBattleEvent::PlayBossFinishSequence()
 
 	// Finishシーケンス再生
 	if (!SequenceSystem->PlaySequence(
-		m_EventData.m_EventFinishSequence,
-		false))
+		m_EventData.m_EventFinishSequence))
 	{
 		SequenceSystem->OnSequenceFinished.RemoveDynamic(
 			this,
