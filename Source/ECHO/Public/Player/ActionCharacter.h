@@ -79,17 +79,22 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	class UInputAction* SummonAction;
 
-	//ゲージ技：R1を押している間だけ有効になる入力
+	//ゲージ技（数字＝消費するゲージの本数）
+	//SkillMappingContext は R1 を押している間だけ有効になる入力
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Skill")
 	class UInputMappingContext* SkillMappingContext;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Skill")
 	class UInputAction* SkillModifierAction;   //R1
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Skill")
-	class UInputAction* Skill1Action;          //一閃
+	class UInputAction* Skill1Action;          //スキル1：一閃（R1+Y）
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Skill")
-	class UInputAction* Skill2Action;          //テンペスト
+	class UInputAction* Skill2Action;          //スキル2：未実装（R1+X）
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Skill")
-	class UInputAction* Skill3Action;          //最終奥義（ため）
+	class UInputAction* Skill3Action;          //スキル3：テンペスト（R1+B）
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Skill")
+	class UInputAction* Skill4Action;          //スキル4：未実装（R1+A）
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Skill")
+	class UInputAction* Skill5Action;          //スキル5：最終奥義・ため（RT）
 
 	//回復アクション
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
@@ -134,6 +139,8 @@ protected:
 	UStaticMeshComponent* WeaponMesh;
 
 public:
+	UStaticMeshComponent* GetWeaponMesh() const { return WeaponMesh; }
+
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
 		AController* EventInstigator, AActor* DamageCauser) override;
 
@@ -177,6 +184,20 @@ private:
 
 	void SetHP(float NewHP);
 	void Die();
+
+	//死んでから復帰するまでの時間
+	UPROPERTY(EditAnywhere, Category = "Health|Respawn", meta = (AllowPrivateAccess = "true", ClampMin = "0"))
+	float m_RespawnDelay = 3.f;
+
+	//復帰直後の無敵時間（復帰した瞬間に殴られないように）
+	UPROPERTY(EditAnywhere, Category = "Health|Respawn", meta = (AllowPrivateAccess = "true", ClampMin = "0"))
+	float m_RespawnInvincibleTime = 2.f;
+
+	FTimerHandle m_RespawnTimer;
+	float m_InvincibleUntil = 0.f;
+
+	//GameMode にリスポーンを頼む（Die から時間差で呼ばれる）
+	void RequestRespawn();
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Movement")
@@ -364,8 +385,10 @@ private:
 	void OnSkillModifierReleased();
 	void OnSkill1();
 	void OnSkill2();
-	void OnSkill3Pressed();
-	void OnSkill3Released();
+	void OnSkill3();
+	void OnSkill4();
+	void OnSkill5Pressed();
+	void OnSkill5Released();
 	bool CanUseSkill() const;
 
 	//被弾モーション

@@ -1,4 +1,4 @@
-//SkillComponent.h
+﻿//SkillComponent.h
 //ゲージを消費して出す強力な技（一閃・テンペスト・最終奥義）を管理するコンポーネント
 
 #pragma once
@@ -10,6 +10,9 @@
 class USkillDataAsset;
 class UAnimMontage;
 class AActionCharacter;
+class USpringArmComponent;
+class UNiagaraComponent;
+struct FUltimateLevelData;
 
 UENUM()
 enum class ESkillState : uint8
@@ -75,11 +78,18 @@ private:
 	float m_TempestAngle = 0.f;
 	int32 m_TempestStep = 0;
 
+	// --- カメラ固定 ---
+	TWeakObjectPtr<USpringArmComponent> m_FrozenBoom;
+	FVector m_BoomRelativeLocation = FVector::ZeroVector;
+
 	// --- 最終奥義 ---
 	float m_ChargeTime = 0.f;
 	int32 m_ChargeLevel = 0;
 	int32 m_UltLevel = 0;
 	int32 m_UltHitsLeft = 0;
+	FVector m_UltOrigin = FVector::ZeroVector;   //放った位置
+	FVector m_UltDir = FVector::ForwardVector;   //放った向き
+	TWeakObjectPtr<UNiagaraComponent> m_ChargeFX;   //剣にまとわせているエフェクト
 
 	// --- 共通 ---
 	bool m_bHovering = false;                         //空中で発動したので重力を止めている
@@ -98,11 +108,16 @@ private:
 	void SetPassThroughEnemies(bool bEnable);
 	void SetMoveSpeedRate(float Rate);
 	void PlayMontage(UAnimMontage* Montage);
+	void FreezeCamera(bool bFreeze);
 	int32 DamageInSphere(const FVector& Center, float Radius, float Damage);
 	void CollectAlongPath(const FVector& Start, const FVector& End, float Radius);
 
 	void DashSlash_Go();
 	void DashSlash_ApplyDamage();
 	void Tempest_Step();
+	void Ultimate_Fire();
 	void Ultimate_Hit();
+	void UpdateChargeEffect();
+	void ClearChargeEffect();
+	int32 DamageInWedge(const FVector& Origin, const FVector& Dir, const FUltimateLevelData& Level);
 };

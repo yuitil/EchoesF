@@ -7,6 +7,7 @@
 #include "Player/CombatComponent.h"
 #include "Player/GhostRecorderComponent.h"
 #include "Player/SkillComponent.h"
+#include "GameMode/EchoesGameMode.h"
 #include "Ghost/GhostCharacter/GhostCharacter.h"
 #include "Ghost/GhostEnemy/GhostEnemyComponent.h"
 #include "Ghost/GhostCharacter/GhostManagerComponent.h"
@@ -99,6 +100,9 @@ AActionCharacter::AActionCharacter(const FObjectInitializer& ObjectInitializer)
 
 	//スキル
 	SkillComponent = CreateDefaultSubobject<USkillComponent>(TEXT("SkillComponent"));
+
+	//RespawnPoint がプレイヤーを見分けるためのタグ
+	Tags.Add(TEXT("Player"));
 }
 
 UActionMovementComponent* AActionCharacter::GetActionMovementComponent() const
@@ -115,6 +119,12 @@ void AActionCharacter::BeginPlay()
 	SetEnergy(0.f);
 	SetHP(m_MaxHP);
 	RefillHeals();
+
+	//開始位置を最初の復帰地点にする（RespawnPoint を通る前に死んでも原点に飛ばないように）
+	if (AEchoesGameMode* GM = GetWorld()->GetAuthGameMode<AEchoesGameMode>())
+	{
+		GM->SetRespawnTransform(GetActorTransform());
+	}
 
 	if (CombatComponent)
 	{
@@ -199,8 +209,10 @@ void AActionCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		EIC->BindAction(SkillModifierAction, ETriggerEvent::Completed, this, &AActionCharacter::OnSkillModifierReleased);
 		EIC->BindAction(Skill1Action, ETriggerEvent::Started, this, &AActionCharacter::OnSkill1);
 		EIC->BindAction(Skill2Action, ETriggerEvent::Started, this, &AActionCharacter::OnSkill2);
-		EIC->BindAction(Skill3Action, ETriggerEvent::Started, this, &AActionCharacter::OnSkill3Pressed);
-		EIC->BindAction(Skill3Action, ETriggerEvent::Completed, this, &AActionCharacter::OnSkill3Released);
+		EIC->BindAction(Skill3Action, ETriggerEvent::Started, this, &AActionCharacter::OnSkill3);
+		EIC->BindAction(Skill4Action, ETriggerEvent::Started, this, &AActionCharacter::OnSkill4);
+		EIC->BindAction(Skill5Action, ETriggerEvent::Started, this, &AActionCharacter::OnSkill5Pressed);
+		EIC->BindAction(Skill5Action, ETriggerEvent::Completed, this, &AActionCharacter::OnSkill5Released);
 	}
 }
 
@@ -217,6 +229,8 @@ float AActionCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damag
 {
 
 	if (m_bIsDead || DamageAmount <= 0.f) return 0.f;
+	//復帰直後の無敵
+	if (GetWorld()->GetTimeSeconds() < m_InvincibleUntil) return 0.f;
 	if (SkillComponent && SkillComponent->IsInvincible()) return 0.f;
 
 	//回避中は無敵
@@ -236,6 +250,7 @@ float AActionCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damag
 	m_LastDamageTime = Now;
 	SetHP(m_CurrentHP - Actual);
 	InterruptHeal();
+	if (SkillComponent) SkillComponent->Interrupt();   //ため中ならキャンセル
 
 	if (m_CurrentHP > 0.f)
 	{
@@ -310,6 +325,17 @@ void AActionCharacter::Die()
 	GetCharacterMovement()->DisableMovement();
 
 	if (m_bDebugHP) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("PLAYER DEAD"));
+
+	//少し待ってから復帰する
+	GetWorldTimerManager().SetTimer(m_RespawnTimer, this, &AActionCharacter::RequestRespawn, FMath::Max(m_RespawnDelay, 0.01f), false);
+}
+
+void AActionCharacter::RequestRespawn()
+{
+	if (AEchoesGameMode* GM = GetWorld()->GetAuthGameMode<AEchoesGameMode>())
+	{
+		GM->RespawnPlayer(this);   //復帰地点へ移動 → OnRespawn() が呼ばれる
+	}
 }
 
 void AActionCharacter::DebugDamage(float Amount)
@@ -334,6 +360,38 @@ void AActionCharacter::AddHp(float _hpAmount)
 
 void AActionCharacter::OnRespawn()
 {
+	//状態のリセット
+	m_bIsDead = false;
+	m_bIsHitStunned = false;
+	GetWorldTimerManager().ClearTimer(m_HitStunTimer);
+	EndHeal();
+	if (CombatComponent) CombatComponent->CancelAttack();
+	StopAnimMontage();
+
+	//操作と移動を戻す
+	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		EnableInput(PC);
+		PC->SetControlRotation(GetActorRotation());   //カメラを復帰地点の向きに合わせる
+	}
+
+	//ロックオン解除
+	if (LockOnComponent && LockOnComponent->IsLockedOn()) LockOnComponent->ToggleLockOn();
+
+	//死んだ場所に残っている分身を消す
+	const TArray<TWeakObjectPtr<AGhostCharacter>> Ghosts = m_ActiveGhosts;
+	for (const TWeakObjectPtr<AGhostCharacter>& G : Ghosts)
+	{
+		if (G.IsValid()) G->Destroy();
+	}
+
+	//HP と回復回数を全快、しばらく無敵
+	SetHP(m_MaxHP);
+	RefillHeals();
+	m_InvincibleUntil = GetWorld()->GetTimeSeconds() + m_RespawnInvincibleTime;
+
+	if (m_bDebugHP) GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Green, TEXT("RESPAWN"));
 }
 
 void AActionCharacter::UpdateCombatState(float DeltaTime)
@@ -386,6 +444,7 @@ void AActionCharacter::OnHitEnemy(float EnergyGain)
 
 void AActionCharacter::Dodge()
 {
+	if (SkillComponent && SkillComponent->IsBusy()) return;
 	if (m_bIsHitStunned) return;
 	InterruptHeal();
 	if (CombatComponent) CombatComponent->ExecuteDodge();
@@ -798,6 +857,7 @@ void AActionCharacter::OnGhostDestroyed(AActor* DestroyedActor)
 
 void AActionCharacter::Heal()
 {
+	if (SkillComponent && SkillComponent->IsBusy()) return;
 	if (m_bIsDead || IsHealing()) return;
 
 	if (m_bIsHitStunned) return;
@@ -859,7 +919,6 @@ void AActionCharacter::EndHeal()
 void AActionCharacter::InterruptHeal()
 {
 	if (!IsHealing()) return;
-	if (SkillComponent) SkillComponent->Interrupt();
 
 	if (m_bDebugHP)
 	{
@@ -906,7 +965,11 @@ void AActionCharacter::OnSkillModifierPressed()
 	if (!PC || !SkillMappingContext) return;
 	if (UEnhancedInputLocalPlayerSubsystem* Sub = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
 	{
-		Sub->AddMappingContext(SkillMappingContext, 1);   //通常操作より優先
+		//押しっぱなしのキー（移動スティックなど）を無視しない設定にする
+		//（初期設定だと、切り替えた瞬間に押していたスティックが離すまで効かなくなる）
+		FModifyContextOptions Options;
+		Options.bIgnoreAllPressedKeysUntilRelease = false;
+		Sub->AddMappingContext(SkillMappingContext, 1, Options);   //通常操作より優先
 	}
 }
 
@@ -917,14 +980,31 @@ void AActionCharacter::OnSkillModifierReleased()
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* Sub = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
 		{
-			Sub->RemoveMappingContext(SkillMappingContext);
+			FModifyContextOptions Options;
+			Options.bIgnoreAllPressedKeysUntilRelease = false;
+			Sub->RemoveMappingContext(SkillMappingContext, Options);
 		}
 	}
-	//R1を先に離したときも、ためていた奥義は放つ
-	if (SkillComponent && SkillComponent->IsCharging()) SkillComponent->ReleaseCharge();
 }
 
+//スキル1：一閃
 void AActionCharacter::OnSkill1() { if (CanUseSkill()) SkillComponent->UseDashSlash(); }
-void AActionCharacter::OnSkill2() { if (CanUseSkill()) SkillComponent->UseTempest(); }
-void AActionCharacter::OnSkill3Pressed() { if (CanUseSkill()) SkillComponent->StartCharge(); }
-void AActionCharacter::OnSkill3Released() { if (SkillComponent) SkillComponent->ReleaseCharge(); }
+
+//スキル2：未実装（ここに2ゲージ技を入れる）
+void AActionCharacter::OnSkill2()
+{
+	if (CanUseSkill()) GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::White, TEXT("Skill2 : Not implemented"));
+}
+
+//スキル3：テンペスト
+void AActionCharacter::OnSkill3() { if (CanUseSkill()) SkillComponent->UseTempest(); }
+
+//スキル4：未実装（ここに4ゲージ技を入れる）
+void AActionCharacter::OnSkill4()
+{
+	if (CanUseSkill()) GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::White, TEXT("Skill4 : Not implemented"));
+}
+
+//スキル5：最終奥義（押してためる → 離して放つ）
+void AActionCharacter::OnSkill5Pressed() { if (CanUseSkill()) SkillComponent->StartCharge(); }
+void AActionCharacter::OnSkill5Released() { if (SkillComponent) SkillComponent->ReleaseCharge(); }
