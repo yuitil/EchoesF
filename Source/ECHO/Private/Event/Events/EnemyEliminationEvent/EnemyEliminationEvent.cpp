@@ -47,6 +47,15 @@ void UEnemyEliminationEvent::Update(float _deltaTime)
 
 void UEnemyEliminationEvent::Finish()
 {
+	EventReset();
+
+	Super::Finish();
+}
+
+void UEnemyEliminationEvent::EventReset()
+{
+	Super::EventReset();
+
 	if (UWorld* World = GetWorld())
 	{
 		if (UEnemyManager* EnemyManager =
@@ -57,8 +66,6 @@ void UEnemyEliminationEvent::Finish()
 	}
 
 	DestroyAllSpawnedEnemies();
-
-	Super::Finish();
 }
 
 void UEnemyEliminationEvent::StartClearSlowMotion()

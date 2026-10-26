@@ -16,6 +16,8 @@ public:
 	virtual void Update(float _deltaTime) override;
 	virtual void Finish() override;
 
+	virtual void EventReset()override;
+	
 	UFUNCTION()
 	void OnEventEnemyDead(AEnemyCharacterBase* _enemy);
 

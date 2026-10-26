@@ -22,6 +22,8 @@ public:
 	virtual void Enter(const FEventData& _data);
 	virtual void Update(float _deltaTime);
 	virtual void Finish();
+	
+	virtual void EventReset();
 
 	FEventData& GetEventData() { return m_EventData; }
 

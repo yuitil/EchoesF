@@ -56,7 +56,18 @@ void UBossBattleEvent::Update(float _deltaTime)
 
 void UBossBattleEvent::Finish()
 {
-	if (UWorld* World = GetWorld())
+	EventReset();
+
+	Super::Finish();
+}
+
+void UBossBattleEvent::EventReset()
+{
+	Super::EventReset();
+
+	UWorld* World = GetWorld();
+
+	if (World)
 	{
 		// 敵死亡通知を解除
 		if (UEnemyManager* EnemyManager =
@@ -73,16 +84,44 @@ void UBossBattleEvent::Finish()
 				this,
 				&UBossBattleEvent::OnBossIntroSequenceFinished
 			);
+
+			SequenceSystem->OnSequenceFinished.RemoveDynamic(
+				this,
+				&UBossBattleEvent::OnBossFinishSequenceFinished
+			);
+
+			// 再生中のシーケンスを停止
+			if (SequenceSystem->IsSequencePlaying())
+			{
+				SequenceSystem->StopSequence();
+			}
 		}
+
+		// スローモーションのタイマーを解除
+		World->GetTimerManager().ClearTimer(
+			m_ClearSlowTimerHandle
+		);
+
+		// 時間倍率を元に戻す
+		UGameplayStatics::SetGlobalTimeDilation(
+			World,
+			1.0f
+		);
 	}
 
-	if (m_SpawnedBoss)
+	// 生成したボスを破棄
+	if (IsValid(m_SpawnedBoss))
 	{
 		m_SpawnedBoss->Destroy();
 	}
+
 	m_SpawnedBoss = nullptr;
 
-	Super::Finish();
+	// 状態初期化
+	m_IsBossDead = false;
+	m_IsCleared = false;
+	m_IsBossIntroFinished = false;
+	m_IsBossFinishFinished = false;
 }
 
 void UBossBattleEvent::SpawnBoss()

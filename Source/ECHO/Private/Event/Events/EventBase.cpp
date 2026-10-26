@@ -23,6 +23,11 @@ void UEventBase::Finish()
 	}
 }
 
+void UEventBase::EventReset()
+{
+	
+}
+
 void UEventBase::EndEvent()
 {
 	UStageEventSubsystem* EventSubsystem = GetWorld()->GetSubsystem<UStageEventSubsystem>();
