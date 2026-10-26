@@ -1,6 +1,6 @@
-// ActionCharacter.h
-// �v���C���[�̃R�A�N���X
-// ���́E�J��������E�e�R���|�[�l���g�ւ̈Ϗ�
+﻿// ActionCharacter.h
+// プレイヤーのコアクラス
+// 入力・カメラ制御・各コンポーネントへの委譲
 
 #pragma once
 
@@ -17,14 +17,15 @@ class USpringArmComponent;
 class UCameraComponent;
 class UGhostManagerComponent;
 class UBatManagerComponent;
+class USkillComponent;
 
-//�G�l���M�[���ς�����Ƃ��i���ݒl, �ő�l�j
+//エネルギーが変わったとき（現在値, 最大値）
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnEnergyChanged, float, float);
-//���g�̐��E��Ԃ��ς�����Ƃ�
+//分身の数・状態が変わったとき
 DECLARE_MULTICAST_DELEGATE(FOnGhostsChanged);
-//UI�p�i����HP, �ő�HP�j
+//UI用（現在HP, 最大HP）
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnHPChanged, float, float);
-//UI�p�i�c���, �ő�񐔁j
+//UI用（残り回数, 最大回数）
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnHealCountChanged, int32, int32);
 
 UCLASS()
@@ -37,16 +38,16 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-	//�I�[�g�_�b�V���̌v���Ɏg��
+	//オートダッシュの計測に使う
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	//�W�����v�����������Ƃ��ɌĂ΂��֐�
+	//ジャンプが成功したときに呼ばれる関数
 	virtual void OnJumped_Implementation() override;
-	//�n�ʂȂǂɒ��n�����Ƃ��ɌĂ΂��֐�
+	//地面などに着地したときに呼ばれる関数
 	virtual void Landed(const FHitResult& Hit) override;
 
 	// -----------------------------------------------------------------------
-	// ����
+	// 入力
 	// -----------------------------------------------------------------------
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	class UInputMappingContext* DefaultMappingContext;
@@ -74,35 +75,47 @@ protected:
 	class UInputAction* DodgeAction;
 	void Dodge();
 
-	//�����A�N�V����
+	//召喚アクション
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	class UInputAction* SummonAction;
 
-	//�񕜃A�N�V����
+	//ゲージ技：R1を押している間だけ有効になる入力
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Skill")
+	class UInputMappingContext* SkillMappingContext;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Skill")
+	class UInputAction* SkillModifierAction;   //R1
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Skill")
+	class UInputAction* Skill1Action;          //一閃
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Skill")
+	class UInputAction* Skill2Action;          //テンペスト
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Skill")
+	class UInputAction* Skill3Action;          //最終奥義（ため）
+
+	//回復アクション
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	class UInputAction* HealAction;
 	void Heal();
 	
 	
 	// -----------------------------------------------------------------------
-	// �ړ�
+	// 移動
 	// -----------------------------------------------------------------------
 
-	//�I�[�g�_�b�V���ւ̈ڍs����
+	//オートダッシュへの移行時間
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float m_TimeToSprint;
 
-	//���葱���Ă��鎞�Ԃ��v������ϐ�
+	//走り続けている時間を計測する変数
 	float m_CurrentRunTime;
-	//����J�n�ƏI��
+	//走り開始と終了
 	void StartSprint();
 	void StopSprint();
 
-	//�X�e�B�b�N�𗣂����Ǝ��ɕۑ������������N���A����֐�
+	//スティックを離したと時に保存した方向をクリアする関数
 	void MoveCompleted(const FInputActionValue& Value);
 
 	// -----------------------------------------------------------------------
-	// �J����
+	// カメラ
 	// -----------------------------------------------------------------------
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	USpringArmComponent* CameraBoom;
@@ -111,12 +124,12 @@ protected:
 	UCameraComponent* FollowCamera;
 
 	// -----------------------------------------------------------------------
-	// �퓬
+	// 戦闘
 	// -----------------------------------------------------------------------
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent* CombatComponent;
 
-	//��Ɏ������錕�̃��b�V��
+	//手に持たせる剣のメッシュ
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	UStaticMeshComponent* WeaponMesh;
 
@@ -130,7 +143,7 @@ public:
 
 	FOnHPChanged OnHPChanged;
 
-	//�f�o�b�O�p�F�R���\�[���ŁuDebugDamage 30�v�Ƒłƃ_���[�W���󂯂�
+	//デバッグ用：コンソールで「DebugDamage 30」と打つとダメージを受ける
 	UFUNCTION(Exec)
 	void DebugDamage(float Amount = 10.f);
 
@@ -148,11 +161,11 @@ private:
 	UPROPERTY(VisibleInstanceOnly, Category = "Health", meta = (AllowPrivateAccess = "true"))
 	float m_CurrentHP = 0.f;
 
-	//��e��̖��G���ԁi���i�q�b�g�h�~�j
+	//被弾後の無敵時間（多段ヒット防止）
 	UPROPERTY(EditAnywhere, Category = "Health", meta = (AllowPrivateAccess = "true"))
 	float m_HitInvincibleTime = 0.5f;
 
-	//��𒆂͖��G�ɂ��邩
+	//回避中は無敵にするか
 	UPROPERTY(EditAnywhere, Category = "Health", meta = (AllowPrivateAccess = "true"))
 	bool m_bDodgeInvincible = true;
 
@@ -169,15 +182,27 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Movement")
 	class UActionMovementComponent* GetActionMovementComponent() const;
 
-	//�퓬�����ǂ����i�_�b�V���̐����ȂǂɎg���j
+	//戦闘中かどうか（ダッシュの制限などに使う）
 	bool IsInCombat() const { return m_bInCombat; }
 
+	// スキル関連
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Skill")
+	USkillComponent* SkillComponent;
+
+	//ゲージ（ストック）を消費する。足りなければ false
+	bool TryConsumeEnergyStock(int32 Count);
+
+	//デバッグ用：コンソールで「DebugEnergy 500」と打つとエネルギーが増える
+	UFUNCTION(Exec)
+	void DebugEnergy(float Amount = 500.f);
+
 private:
-	//���͈͓̔��Ɂu�N����_���Ă���G�v��������퓬��
+	//この範囲内に「誰かを狙っている敵」がいたら戦闘中
 	UPROPERTY(EditAnywhere, Category = "Movement|Combat")
 	float m_CombatCheckRadius = 1500.f;
 
-	//�Ō�ɍU���𓖂ĂĂ���A���̕b���͐퓬���Ƃ݂Ȃ�
+	//最後に攻撃を当ててから、この秒数は戦闘中とみなす
 	UPROPERTY(EditAnywhere, Category = "Movement|Combat")
 	float m_CombatLingerTime = 4.f;
 
@@ -188,54 +213,54 @@ private:
 	void UpdateCombatState(float DeltaTime);
 
 	// -----------------------------------------------------------------------
-	// ���b�N�I������
+	// ロックオン処理
 	// -----------------------------------------------------------------------
 public:
-	//���b�N�I���R���|�[�l���g
+	//ロックオンコンポーネント
 	UPROPERTY(VisibleAnywhere)
 	ULockOnComponent* LockOnComponent;
 
-	//���b�N�I����Ԃ�؂�ւ���֐�
+	//ロックオン状態を切り替える関数
 	void OnLockOnChanged(AActor* NewTarget);
 
-	//���b�N�I�����̃J������ԑ��x
+	//ロックオン中のカメラ補間速度
 	UPROPERTY(EditAnywhere, Category = "LockOn")
 	float m_LockOnCameraInterpSpeed;
 
-	//���b�N�I�����̃J�����̋����I�t�Z�b�g
+	//ロックオン中のカメラの距離オフセット
 	UPROPERTY(EditAnywhere, Category = "LockOn")
 	float m_LockOnCameraOffsetY;
 
-	//���b�N�I�����J����Pitch�̉���
+	//ロックオン中カメラPitchの下限
 	UPROPERTY(EditAnywhere, Category = "LockOn")
 	float m_LockOnPitchMin;
 
-	//���b�N�I�����J����Pitch�̏��
+	//ロックオン中カメラPitchの上限
 	UPROPERTY(EditAnywhere, Category = "LockOn")
 	float m_LockOnPitchMax;
 
-	//���E�I�t�Z�b�g���ő�ɂȂ���ς̐�Βl�A�������قǐ؂�ւ����@�q
+	//左右オフセットが最大になる内積の絶対値、小さいほど切り替えが機敏
 	UPROPERTY(EditAnywhere, Category = "LockOn")
 	float m_SideBlendRange = 0.5f;
 
-	//�����X���ǂꂾ���G���ɂ悹�邩(0=�v���C���[ 1=�G)
+	//注視店をどれだけ敵側によせるか(0=プレイヤー 1=敵)
 	UPROPERTY(EditAnywhere, Category = "LockOn")
 	float m_TargetFocusBias = 0.5f;
 
-	//���ߋ����ł̒Ǐ]���x
+	//至近距離での追従速度
 	UPROPERTY(EditAnywhere, Category = "LockOn")
 	float m_LockOnInterpSpeedNear = 12.f;
 
 	FVector DefaultSocketOffset;
 
-	//���b�N�I�����̂��ǂ����̃t���O
+	//ロックオン中のかどうかのフラグ
 	bool m_bsLockedOn;
 
-	//���b�N�I�����̃J�����̍X�V
+	//ロックオン中のカメラの更新
 	void UpdateLockOnCamera(float DeltaTime);
 
 	// -----------------------------------------------------------------------
-	// ���g�V�X�e��
+	// 分身システム
 	// -----------------------------------------------------------------------
 	UFUNCTION(BlueprintCallable, Category = "Ghost")
 	void SummonGhost();
@@ -243,62 +268,62 @@ public:
 	UFUNCTION()
 	void OnGhostDestroyed(AActor* DestroyedActor);
 
-	//�G�l���M�[�iUI �\���p�� public�j
+	//エネルギー（UI 表示用に public）
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ghost")
 	float m_CurrentEnergy;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ghost")
 	float m_MaxEnergy;
 
-	//���ݏ������̕��g���iUI �\���p�j
+	//現在召喚中の分身数（UI 表示用）
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ghost")
 	int32 m_iActiveGhostCount;
 
-	//���g�̍ő叢����
+	//分身の最大召喚数
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ghost")
 	int32 m_iMaxGhostCount;
 
 private:
-	//�G�ɍU�����q�b�g�����ۂɒʒm���󂯎��A�G�l���M�[���`���[�W����
+	//敵に攻撃がヒットした際に通知を受け取り、エネルギーをチャージする
 	void OnHitEnemy(float EnergyGain);
 
-	//�v���C���[�s�����L�^����R���|�[�l���g
+	//プレイヤー行動を記録するコンポーネント
 	UPROPERTY(VisibleAnywhere, Category = "Ghost")
 	UGhostRecorderComponent* GhostRecorder;
 
-	//���g�̏����E�Ǘ��R���|�[�l���g�iTrySummon �o�R�ŗ��p�\�j
+	//分身の召喚・管理コンポーネント（TrySummon 経由で利用可能）
 	UPROPERTY(VisibleAnywhere, Category = "Ghost")
 	UGhostManagerComponent* GhostManager;
 
-	//�����R�X�g
+	//召喚コスト
 	UPROPERTY(EditAnywhere, Category = "Ghost")
 	float m_GhostSummonCost;
 
-	//�q�b�g���̃G�l���M�[������
+	//ヒット時のエネルギー増加量
 	UPROPERTY(EditAnywhere, Category = "Ghost")
 	float m_EnergyGainPerHit;
 
-	// �X�|�[������ GhostCharacter �N���X�iBP �� BP_GhostCharacter ��ݒ�j
+	// スポーンする GhostCharacter クラス（BP で BP_GhostCharacter を設定）
 	UPROPERTY(EditAnywhere, BlueprintReadWrite,
 		meta = (AllowPrivateAccess = "true"), Category = "Ghost")
 	TSubclassOf<AGhostCharacter> GhostCharacterClass;
 
-	//���g�̍U���œ�����G�l���M�[�̔{���i1.0�Ńv���C���[�Ɠ����j
+	//分身の攻撃で得られるエネルギーの倍率（1.0でプレイヤーと同じ）
 	UPROPERTY(EditAnywhere, Category = "Ghost")
 	float m_GhostEnergyRate = 1.f;
 
-	// private �̊֐��ɒǉ�
-		//���g���G�ɍU���𓖂Ă��Ƃ��̒ʒm���󂯎��
+	// private の関数に追加
+		//分身が敵に攻撃を当てたときの通知を受け取る
 	void OnGhostHitEnemy(float EnergyGain);
 
 	// -----------------------------------------------------------------------
-	// �� 
+	// 回復
 	// -----------------------------------------------------------------------
 public:
 	int32 GetHealCount()    const { return m_iHealCount; }
 	int32 GetMaxHealCount() const { return m_iMaxHealCount; }
 
-	//�񐔂�S�񕜁i�`�F�b�N�|�C���g�ȂǂŎg���\��j
+	//回数を全回復（チェックポイントなどで使う予定）
 	void RefillHeals();
 
 	FOnHealCountChanged OnHealCountChanged;
@@ -318,30 +343,39 @@ private:
 	EHealPhase m_HealPhase = EHealPhase::None;
 	FTimerHandle m_HealTimer;
 
-	//�{�^���������Ă���񕜂���܂Łi���̊Ԃɔ�e����Ǝ��s�j
+	//ボタンを押してから回復するまで（この間に被弾すると失敗）
 	UPROPERTY(EditAnywhere, Category = "Health|Heal", meta = (AllowPrivateAccess = "true", ClampMin = "0"))
 	float m_HealWindupTime = 0.5f;
 
-	//�񕜂��Ă��瓮�삪�I���܂Łi��e����Ɠ��삾�����f�j
+	//回復してから動作が終わるまで（被弾すると動作だけ中断）
 	UPROPERTY(EditAnywhere, Category = "Health|Heal", meta = (AllowPrivateAccess = "true", ClampMin = "0"))
 	float m_HealRecoveryTime = 0.5f;
 
-	//�񕜓��쒆�̈ړ����x�̔{��
+	//回復動作中の移動速度の倍率
 	UPROPERTY(EditAnywhere, Category = "Health|Heal", meta = (AllowPrivateAccess = "true", ClampMin = "0", ClampMax = "1"))
 	float m_HealMoveSpeedRate = 0.5f;
 
-	void ApplyHeal();      //�\�����I������u�Ԃɉ񕜂���
-	void EndHeal();        //�񕜓���̏I���i���f�ł��Ăԁj
-	void InterruptHeal();  //��e�E����Ŋ��荞�܂ꂽ�Ƃ�
+	void ApplyHeal();      //構えが終わった瞬間に回復する
+	void EndHeal();        //回復動作の終了（中断でも呼ぶ）
+	void InterruptHeal();  //被弾・回避で割り込まれたとき
 
-	//��e���[�V����
+	//スキル関連
+	void OnSkillModifierPressed();
+	void OnSkillModifierReleased();
+	void OnSkill1();
+	void OnSkill2();
+	void OnSkill3Pressed();
+	void OnSkill3Released();
+	bool CanUseSkill() const;
+
+	//被弾モーション
 	UPROPERTY(EditAnywhere, Category = "Health|HitReact", meta = (AllowPrivateAccess = "true"))
 	class UAnimMontage* m_HitReactMontage;
 
 	UPROPERTY(EditAnywhere, Category = "Health|HitReact", meta = (AllowPrivateAccess = "true", ClampMin = "0.1"))
 	float m_HitReactPlayRate = 1.f;
 
-	//�̂����莞�ԁi���̊Ԃ͑���ł��Ȃ��j
+	//のけぞり時間（この間は操作できない）
 	UPROPERTY(EditAnywhere, Category = "Health|HitReact", meta = (AllowPrivateAccess = "true", ClampMin = "0"))
 	float m_HitStunTime = 0.4f;
 
@@ -355,7 +389,7 @@ public:
 	bool IsHealing() const { return m_HealPhase != EHealPhase::None; }
 
 	// -----------------------------------------------------------------------
-	// UI �p
+	// UI 用
 	// -----------------------------------------------------------------------
 	FOnEnergyChanged OnEnergyChanged;
 	FOnGhostsChanged OnGhostsChanged;
@@ -366,7 +400,7 @@ public:
 	int32 GetMaxEnergyStock() const { return m_iMaxEnergyStock; }
 	int32 GetMaxGhostCount() const { return m_iMaxGhostCount; }
 
-	//���̃X�g�b�N���i�Q�[�W�����{���܂��Ă��邩�j
+	//今のストック数（ゲージが何本溜まっているか）
 	int32 GetEnergyStock() const
 	{
 		return (m_EnergyPerStock > 0.f)
@@ -374,55 +408,55 @@ public:
 			: 0;
 	}
 
-	//�������̕��g�̏�Ԃ��A�����������ɕԂ�
+	//召喚中の分身の状態を、召喚した順に返す
 	void GetGhostStates(TArray<EGhostLifecycleState>& OutStates) const;
 
 private:
-	//�Q�[�W1�{���̃G�l���M�[��
+	//ゲージ1本分のエネルギー量
 	UPROPERTY(EditAnywhere, Category = "Ghost")
 	float m_EnergyPerStock = 100.f;
 
-	//�X�g�b�N�ł���ő�{��
+	//ストックできる最大本数
 	UPROPERTY(EditAnywhere, Category = "Ghost")
 	int32 m_iMaxEnergyStock = 5;
 
-	//�������̕��g�̈ꗗ�iUI�ŃJ�v�Z���̐F�����߂�̂Ɏg���j
+	//召喚中の分身の一覧（UIでカプセルの色を決めるのに使う）
 	TArray<TWeakObjectPtr<AGhostCharacter>> m_ActiveGhosts;
 
-	//�G�l���M�[��ύX���鑋���i�ύX������K��UI�ɒʒm����j
+	//エネルギーを変更する窓口（変更したら必ずUIに通知する）
 	void SetEnergy(float NewEnergy);
 
-	//���g�̏�Ԃ��ς�����Ƃ��i�����钼�O�Ȃǁj
+	//分身の状態が変わったとき（消える直前など）
 	UFUNCTION()
 	void OnGhostStateChanged(EGhostLifecycleState NewState);
 
 	// -----------------------------------------------------------------------
-	// �W�����v�����̃J�X�^�}�C�Y�i����������Ȃǁj
+	// ジャンプ挙動のカスタマイズ（長押し制御など）
 	// -----------------------------------------------------------------------
 protected:
-	//�W�����v�\���ǂ����̔���i�U�����̓W�����v�����Ȃ��j
+	//ジャンプ可能かどうかの判定（攻撃中はジャンプさせない）
 	virtual bool CanJumpInternal_Implementation() const override;
 
 private:
-	//�W�����v�{�^���������ꂽ����
+	//ジャンプボタンが押された時間
 	float m_JumpPressedTime;
 
-	//���W�����v�Ɣ��肷�邽�߂̃{�^������������
+	//長ジャンプと判定するためのボタン長押し時間
 	UPROPERTY(EditAnywhere, Category = "Jump")
 	float m_JumpHoldThreshold;
 
-	//�Z�W�����v�̏�����ő呬�x
+	//短ジャンプの上方向最大速度
 	UPROPERTY(EditAnywhere, Category = "Jump")
 	float m_JumpZVelocityShort;
 
-	//�������̏�����ő呬�x
+	//長押しの上方向最大速度
 	UPROPERTY(EditAnywhere, Category = "Jump")
 	float m_JumpZVelocityLong;
 
-	void OnJumpPressed();	//�{�^������͎�
-	void OnJumpReleased();	//�{�^���𗣂����Ƃ�
+	void OnJumpPressed();	//ボタンを入力時
+	void OnJumpReleased();	//ボタンを離したとき
 
-	//��i�W�����v���ɍĐ����郂�[�V����
+	//二段ジャンプ時に再生するモーション
 	UPROPERTY(EditAnywhere, Category = "Jump", meta = (AllowPrivateAccess = "true"))
 	class UAnimMontage* m_SecondJumpMontage;
 

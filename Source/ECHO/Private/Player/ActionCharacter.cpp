@@ -1,4 +1,4 @@
-// ActionCharacter.cpp
+﻿// ActionCharacter.cpp
 
 #include "Player/ActionCharacter.h"
 #include "Player/ActionMovementComponent.h"
@@ -6,6 +6,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "Player/CombatComponent.h"
 #include "Player/GhostRecorderComponent.h"
+#include "Player/SkillComponent.h"
 #include "Ghost/GhostCharacter/GhostCharacter.h"
 #include "Ghost/GhostEnemy/GhostEnemyComponent.h"
 #include "Ghost/GhostCharacter/GhostManagerComponent.h"
@@ -44,47 +45,47 @@ AActionCharacter::AActionCharacter(const FObjectInitializer& ObjectInitializer)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	//�W�����v�i���ݒ�
+	//ジャンプ段数設定
 	JumpMaxCount = 2;
 
-	//�R���g���[���[�̉�]�ŃL�������̂����Ȃ��悤��
+	//コントローラーの回転でキャラ自体が回らないように
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
-	//�ړ������ɃL�����N�^�[�������ŃX�b�ƌ����悤�ɂ���
+	//移動方向にキャラクターが自動でスッと向くようにする
 	GetActionMovementComponent()->bOrientRotationToMovement = true;
 
-	//�L�����N�^�[�̈ړ����͂���������ցA�����I�Ɋ��炩�Ɍ�����ς���ݒ�
+	//キャラクターの移動入力がある方向へ、自動的に滑らかに向きを変える設定
 	if (UActionMovementComponent* MoveComp = GetActionMovementComponent())
 	{
 		MoveComp->bOrientRotationToMovement = true;
-		MoveComp->RotationRate = FRotator(0.f, 1000.f, 0.f); //���񑬓x
+		MoveComp->RotationRate = FRotator(0.f, 1000.f, 0.f); //旋回速度
 	}
 
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
 
-	//�����E��̃\�P�b�g�ɕt����
+	//剣を右手のソケットに付ける
 	WeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WeaponMesh"));
 	WeaponMesh->SetupAttachment(GetMesh(), TEXT("WeaponSocket"));
 	WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	LockOnComponent = CreateDefaultSubobject<ULockOnComponent>(TEXT("LockOnComponent"));
 
-	//�J�����̐ݒ�
+	//カメラの設定
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->bUsePawnControlRotation = true;
 
 	CameraBoom->TargetArmLength = 400.f;
-	//�ǂ̏Փ˃e�X�g
+	//壁の衝突テスト
 	CameraBoom->bDoCollisionTest = true;
-	//�J��������������`�����l������WorldStatic�݂̂ɂ���i�ς������j
+	//カメラが反応するチャンネルををWorldStaticのみにする（変えたい）
 	CameraBoom->ProbeChannel = ECC_Camera;
-	//����p�̋��̑傫��
+	//判定用の球の大きさ
 	CameraBoom->ProbeSize = 15.f;
-	//�E���z���I�t�Z�b�g
+	//右肩越しオフセット
 	CameraBoom->SocketOffset = FVector(0.f, 60.f, 50.f);
-	//�J�����X���[�W���O
+	//カメラスムージング
 	CameraBoom->bEnableCameraLag = true;
 	CameraBoom->CameraLagSpeed = 10.f;
 
@@ -92,9 +93,12 @@ AActionCharacter::AActionCharacter(const FObjectInitializer& ObjectInitializer)
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
 
-	//Ghost�V�X�e��
+	//Ghostシステム
 	GhostRecorder = CreateDefaultSubobject<UGhostRecorderComponent>(TEXT("GhostRecorder"));
 	GhostManager = CreateDefaultSubobject<UGhostManagerComponent>(TEXT("GhostManager"));
+
+	//スキル
+	SkillComponent = CreateDefaultSubobject<USkillComponent>(TEXT("SkillComponent"));
 }
 
 UActionMovementComponent* AActionCharacter::GetActionMovementComponent() const
@@ -106,7 +110,7 @@ void AActionCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	//�ő�G�l���M�[�́u1�{�� �~ �ő�{���v�Ō��߂�
+	//最大エネルギーは「1本分 × 最大本数」で決める
 	m_MaxEnergy = m_EnergyPerStock * m_iMaxEnergyStock;
 	SetEnergy(0.f);
 	SetHP(m_MaxHP);
@@ -134,8 +138,8 @@ void AActionCharacter::BeginPlay()
 
 		if (PC->PlayerCameraManager)
 		{
-			PC->PlayerCameraManager->ViewPitchMin = -60.f; //�����낵�̌��E
-			PC->PlayerCameraManager->ViewPitchMax = 35.f; //���グ�̌��E�i�n�ʂɐ���ɂ����Ȃ�j
+			PC->PlayerCameraManager->ViewPitchMin = -60.f; //見下ろしの限界
+			PC->PlayerCameraManager->ViewPitchMax = 35.f; //見上げの限界（地面に潜りにくくなる）
 		}
 	}
 
@@ -149,19 +153,19 @@ void AActionCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	//���b�N�I�����̓J�������^�[�Q�b�g�֒Ǐ]������
+	//ロックオン中はカメラをターゲットへ追従させる
 	if (LockOnComponent && LockOnComponent->IsLockedOn())
 	{
 		UpdateLockOnCamera(DeltaTime);
 	}
 
-	//�퓬�����ǂ������X�V
+	//戦闘中かどうかを更新
 	UpdateCombatState(DeltaTime);
 
-	//�L�����N�^�[�̌��݂̕��s�ړ����x���擾
+	//キャラクターの現在の平行移動速度を取得
 	const float Speed = GetVelocity().Size2D();
 
-	//�퓬���łȂ��A���ȏ�̑��x�ő��葱������_�b�V��
+	//戦闘中でなく、一定以上の速度で走り続けたらダッシュ
 	if (Speed > 10.f && !m_bInCombat)
 	{
 		m_CurrentRunTime += DeltaTime;
@@ -169,7 +173,7 @@ void AActionCharacter::Tick(float DeltaTime)
 	}
 	else
 	{
-		//�~�܂����A�܂��͐퓬�ɓ�������_�b�V������
+		//止まった、または戦闘に入ったらダッシュ解除
 		m_CurrentRunTime = 0.f;
 		StopSprint();
 	}
@@ -189,11 +193,20 @@ void AActionCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		EIC->BindAction(DodgeAction, ETriggerEvent::Started, this, &AActionCharacter::Dodge);
 		EIC->BindAction(SummonAction, ETriggerEvent::Started, this, &AActionCharacter::SummonGhost);
 		EIC->BindAction(HealAction, ETriggerEvent::Started, this, &AActionCharacter::Heal);
+
+		//スキル
+		EIC->BindAction(SkillModifierAction, ETriggerEvent::Started, this, &AActionCharacter::OnSkillModifierPressed);
+		EIC->BindAction(SkillModifierAction, ETriggerEvent::Completed, this, &AActionCharacter::OnSkillModifierReleased);
+		EIC->BindAction(Skill1Action, ETriggerEvent::Started, this, &AActionCharacter::OnSkill1);
+		EIC->BindAction(Skill2Action, ETriggerEvent::Started, this, &AActionCharacter::OnSkill2);
+		EIC->BindAction(Skill3Action, ETriggerEvent::Started, this, &AActionCharacter::OnSkill3Pressed);
+		EIC->BindAction(Skill3Action, ETriggerEvent::Completed, this, &AActionCharacter::OnSkill3Released);
 	}
 }
 
 void AActionCharacter::Attack()
 {
+	if (SkillComponent && SkillComponent->IsBusy()) return;
 	if (IsHealing()) return;
 	if (m_bIsHitStunned) return;
 	if (CombatComponent) CombatComponent->ExecuteAttack();
@@ -202,16 +215,18 @@ void AActionCharacter::Attack()
 float AActionCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
                                    AController* EventInstigator, AActor* DamageCauser)
 {
-	if (m_bIsDead || DamageAmount <= 0.f) return 0.f;
 
-	//��𒆂͖��G
+	if (m_bIsDead || DamageAmount <= 0.f) return 0.f;
+	if (SkillComponent && SkillComponent->IsInvincible()) return 0.f;
+
+	//回避中は無敵
 	if (m_bDodgeInvincible && CombatComponent && CombatComponent->IsDodging())
 	{
 		if (m_bDebugHP) GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Cyan, TEXT("Dodge! No Damage"));
 		return 0.f;
 	}
 
-	//��e����̖��G����
+	//被弾直後の無敵時間
 	const float Now = GetWorld()->GetTimeSeconds();
 	if (Now - m_LastDamageTime < m_HitInvincibleTime) return 0.f;
 
@@ -240,10 +255,10 @@ float AActionCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damag
 
 void AActionCharacter::PlayHitReaction(AActor* DamageCauser)
 {
-	//�U�����Ȃ�R���{�𒆒f
+	//攻撃中ならコンボを中断
 	if (CombatComponent) CombatComponent->CancelAttack();
 
-	//�U�����Ă�������̕��������i���ʂ���H�炤���[�V�����Ȃ̂Łj
+	//攻撃してきた相手の方を向く（正面から食らうモーションなので）
 	if (DamageCauser && DamageCauser != this)
 	{
 		FVector ToCauser = DamageCauser->GetActorLocation() - GetActorLocation();
@@ -254,14 +269,14 @@ void AActionCharacter::PlayHitReaction(AActor* DamageCauser)
 		}
 	}
 
-	//�������~�߂ă��[�V�����Đ�
+	//勢いを止めてモーション再生
 	GetCharacterMovement()->StopMovementImmediately();
 	if (m_HitReactMontage)
 	{
 		PlayAnimMontage(m_HitReactMontage, m_HitReactPlayRate);
 	}
 
-	//�̂�����J�n
+	//のけぞり開始
 	m_bIsHitStunned = true;
 	GetWorldTimerManager().SetTimer(m_HitStunTimer, this, &AActionCharacter::EndHitStun, m_HitStunTime, false);
 }
@@ -278,7 +293,7 @@ void AActionCharacter::SetHP(float NewHP)
 
 	if (m_bDebugHP && GEngine)
 	{
-		//�L�[���Œ肷��Ɠ����s���㏑�����ꑱ����i��ʍ���ɏ�ɕ\���j
+		//キーを固定すると同じ行が上書きされ続ける（画面左上に常に表示）
 		//GEngine->AddOnScreenDebugMessage(1001, 9999.f, FColor::Green,FString::Printf(TEXT("HP: %.0f / %.0f"), m_CurrentHP, m_MaxHP));
 	}
 }
@@ -290,7 +305,7 @@ void AActionCharacter::Die()
 
 	EndHeal();
 
-	//�Ƃ肠��������s�\�ɂ��邾���i���o�͌�Łj
+	//とりあえず操作不能にするだけ（演出は後で）
 	if (APlayerController* PC = Cast<APlayerController>(GetController())) DisableInput(PC);
 	GetCharacterMovement()->DisableMovement();
 
@@ -323,18 +338,18 @@ void AActionCharacter::OnRespawn()
 
 void AActionCharacter::UpdateCombatState(float DeltaTime)
 {
-	//���t���[���͕s�v�Ȃ̂�0.25�b���Ƃɔ��肷��
+	//毎フレームは不要なので0.25秒ごとに判定する
 	m_CombatCheckTimer -= DeltaTime;
 	if (m_CombatCheckTimer > 0.f) return;
 	m_CombatCheckTimer = 0.25f;
 
 	const float Now = GetWorld()->GetTimeSeconds();
 
-	//���b�N�I�����A�܂��͍ŋߍU���𓖂ĂĂ���ΐ퓬��
+	//ロックオン中、または最近攻撃を当てていれば戦闘中
 	bool bCombat = (LockOnComponent && LockOnComponent->IsLockedOn())
 		|| (Now - m_LastCombatTime < m_CombatLingerTime);
 
-	//����ȊO�́A�߂��Ɂu�N����_���Ă���G�v�����邩�Ŕ���
+	//それ以外は、近くに「誰かを狙っている敵」がいるかで判定
 	if (!bCombat)
 	{
 		TArray<FOverlapResult> Overlaps;
@@ -381,16 +396,16 @@ void AActionCharacter::Look(const FInputActionValue& Value)
 	const FVector2D LookAxisVector = Value.Get<FVector2D>();
 	if (!Controller) return;
 
-	//���b�N�I�����͉E�X�e�B�b�N���^�[�Q�b�g�؂�ւ��Ɏg��
+	//ロックオン中は右スティックをターゲット切り替えに使う
 	if (LockOnComponent && LockOnComponent->IsLockedOn())
 	{
 		LockOnComponent->TrySwitchTarget(LookAxisVector.X);
 		return;
 	}
 
-	//���E�̃J������]
+	//左右のカメラ回転
 	AddControllerYawInput(LookAxisVector.X);
-	//�㉺�̃J������]
+	//上下のカメラ回転
 	AddControllerPitchInput(LookAxisVector.Y);
 }
 
@@ -402,31 +417,31 @@ void AActionCharacter::LockOn()
 	}
 }
 
-//���b�N�I���V�X�e�����ǒ�
+//ロックオンシステム改良中
 void AActionCharacter::OnLockOnChanged(AActor* NewTarget)
 {
 	if (NewTarget)
 	{
-		//���b�NON�F�v���C���[���R���g���[���[��Yaw�ɏ]�킹��
+		//ロックON：プレイヤーをコントローラーのYawに従わせる
 		bUseControllerRotationYaw = true;
 		GetActionMovementComponent()->bOrientRotationToMovement = false;
 
-		//�J���������ɂ��炵�ăv���C���[�ƃ^�[�Q�b�g�����f��
+		//カメラを横にずらしてプレイヤーとターゲット両方映す
 		//CameraBoom->SocketOffset = FVector(
 		//	DefaultSocketOffset.X,
 		//	DefaultSocketOffset.Y + LockOnCameraOffsetY,
 		//	DefaultSocketOffset.Z
 		//);
 
-		// GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan, FString::Printf(TEXT("���b�N�I���F %s"), *NewTarget->GetName()));
+		// GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan, FString::Printf(TEXT("ロックオン： %s"), *NewTarget->GetName()));
 	}
 	else
 	{
-		//���b�N�I��OFF�F�ʏ�̈ړ����������ɖ߂�
+		//ロックオンOFF：通常の移動方向向きに戻す
 		bUseControllerRotationYaw = false;
 		GetActionMovementComponent()->bOrientRotationToMovement = true;
 
-		//�\�P�b�g�I�t�Z�b�g�����ɖ߂�
+		//ソケットオフセットを元に戻す
 		CameraBoom->SocketOffset = DefaultSocketOffset;
 
 		GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Purple, TEXT("FinithLockOn"));
@@ -441,44 +456,44 @@ void AActionCharacter::UpdateLockOnCamera(float DeltaTime)
 	FVector PlayerLocation = GetActorLocation();
 	FVector TargetLocation = Target->GetActorLocation();
 
-	//���E�I�t�Z�b�g
+	//左右オフセット
 	FVector ToTarget = (TargetLocation - PlayerLocation).GetSafeNormal();
 	float RightDot = FVector::DotProduct(FollowCamera->GetRightVector(), ToTarget);
 
-	//�����t�߂�0�t�߂Ɏ���������BSideBlendRange ��傫������قǊɂ₩�ɂȂ�
+	//中央付近を0付近に収束させる。SideBlendRange を大きくするほど緩やかになる
 	float SideRatio = FMath::Clamp(RightDot / m_SideBlendRange, -1.f, 1.f);
 	float DesiredOffsetY = DefaultSocketOffset.Y + m_LockOnCameraOffsetY * SideRatio;
 
-	//�}�ɃI�t�Z�b�g���ς��Ƃ����炩�Ɉړ�
+	//急にオフセットが変わるとき滑らかに移動
 	FVector NewOffset = CameraBoom->SocketOffset;
 	NewOffset.Y = FMath::FInterpTo(NewOffset.Y, DesiredOffsetY, DeltaTime, 6.f);
 	CameraBoom->SocketOffset = NewOffset;
 
-	//�J�������g�̈ʒu�ł͂Ȃ� SpringArm �̍�������ɒ����_��ݒ�
+	//カメラ自身の位置ではなく SpringArm の根元を基準に注視点を設定
 	FVector Pivot = CameraBoom->GetComponentLocation();
 	FVector FocusPoint = FMath::Lerp(PlayerLocation, TargetLocation, m_TargetFocusBias);
 
 	const FVector ToFocus = FocusPoint - Pivot;
-	//�����������ق�0����Yaw����`�ł����\���
+	//水平距離がほぼ0だとYawが定義できず暴れる
 	if (ToFocus.SizeSquared2D() < FMath::Square(20.f)) return;
 
 	FRotator TargetRot = ToFocus.Rotation();
 
-	//�����ɉ����ĕ⊮���x��ς���
+	//距離に応じて補完速度を変える
 	float Distance = FVector::Dist(PlayerLocation, TargetLocation);
 	float InterpSpeed = FMath::GetMappedRangeValueClamped(
-		FVector2D(200.f, 1500.f), //���������W
-		FVector2D(m_LockOnInterpSpeedNear, m_LockOnCameraInterpSpeed), //�Ή�����⊮���x�����W
+		FVector2D(200.f, 1500.f), //距離レンジ
+		FVector2D(m_LockOnInterpSpeedNear, m_LockOnCameraInterpSpeed), //対応する補完速度レンジ
 		Distance
 	);
 
-	//�ɒ[�Ȍ��グ�E�����낵��h��
+	//極端な見上げ・見下ろしを防ぐ
 	FRotator NewRot = FMath::RInterpTo(Controller->GetControlRotation(), TargetRot, DeltaTime, InterpSpeed);
 	NewRot.Pitch = FMath::Clamp(NewRot.Pitch, m_LockOnPitchMin, m_LockOnPitchMax);
 	NewRot.Roll = 0.f;
 	Controller->SetControlRotation(NewRot);
 
-	//�v���C���[�̌�����G�̕����ɌŒ�
+	//プレイヤーの向きを敵の方向に固定
 	FVector ToTargetFlat = TargetLocation - PlayerLocation;
 	ToTargetFlat.Z = 0.f;
 	if (!ToTargetFlat.IsNearlyZero())
@@ -490,7 +505,9 @@ void AActionCharacter::UpdateLockOnCamera(float DeltaTime)
 
 void AActionCharacter::Move(const FInputActionValue& Value)
 {
-	//���͒l��2D�x�N�g���Ƃ��Ď擾
+	if (SkillComponent && SkillComponent->IsBusy() && !SkillComponent->IsCharging()) return;
+
+	//入力値を2Dベクトルとして取得
 	const FVector2D MovementVector = Value.Get<FVector2D>();
 
 	if (!Controller) return;
@@ -499,19 +516,19 @@ void AActionCharacter::Move(const FInputActionValue& Value)
 	const FVector Forward = FRotationMatrix(Yaw).GetUnitAxis(EAxis::X);
 	const FVector Right = FRotationMatrix(Yaw).GetUnitAxis(EAxis::Y);
 
-	//�U���̌����␳�p�ɁA���͕����͏�ɋL�^���Ă���
+	//攻撃の向き補正用に、入力方向は常に記録しておく
 	if (CombatComponent)
 	{
 		CombatComponent->SetDesiredDirection(Forward * MovementVector.Y + Right * MovementVector.X);
 	}
 
-	//�U�����͈ړ����Ȃ�
+	//攻撃中は移動しない
 	if (CombatComponent && CombatComponent->IsPlayingAttackMontage()) return;
 
-	//�̂����蒆�͈ړ����Ȃ�
+	//のけぞり中は移動しない
 	if (m_bIsHitStunned) return;
 
-	//��𒆂͈ړ����Ȃ��i�����̏����j
+	//回避中は移動しない（既存の処理）
 	if (UActionMovementComponent* MoveComp = GetActionMovementComponent())
 	{
 		if (MoveComp->IsDodging()) return;
@@ -546,30 +563,30 @@ void AActionCharacter::OnJumped_Implementation()
 	UActionMovementComponent* MoveComp = GetActionMovementComponent();
 	if (!MoveComp) return;
 
-	//���݂̃W�����v�񐔂��m�F
-	//JumpCurrentCount ��ACharacter�ɕW���ŗp�ӂ���Ă���u���݉���ڂ̃W�����v���v�����ϐ�
+	//現在のジャンプ回数を確認
+	//JumpCurrentCount はACharacterに標準で用意されている「現在何回目のジャンプか」を持つ変数
 	if (JumpCurrentCount == 1)
 	{
-		//�y1�i�ڂ̃W�����v���̏����z
+		//【1段目のジャンプ時の処理】
 		MoveComp->AirControl = MoveComp->m_AirControlFirstJump;
 
 
-		//�n�ʂ��R��y���̃G�t�F�N�g(Niagara)�𑫌��ɏo��
-		//�u�n�b�I�v�Ƃ����ʏ�W�����v�̃{�C�X��SE���Đ�����
+		//地面を蹴る土煙のエフェクト(Niagara)を足元に出す
+		//「ハッ！」という通常ジャンプのボイスやSEを再生する
 	}
 	else if (JumpCurrentCount == 2)
 	{
-		//�y2�i�ڂ̃W�����v�i�G�A�n�C�N�j���̏����z
+		//【2段目のジャンプ（エアハイク）時の処理】
 		MoveComp->AirControl = MoveComp->m_AirControlSecondJump;
 
 		FVector Vel = MoveComp->Velocity;
 		Vel.Z = MoveComp->m_SecondJumpZVelocity;
 		MoveComp->Velocity = Vel;
 
-		//��i�W�����v�ŋ󒆍U����������x�g����悤�ɂ���
+		//二段ジャンプで空中攻撃をもう一度使えるようにする
 		if (CombatComponent) CombatComponent->ResetAirAttack();
 
-		//���͕����Ɉ�x���������]��
+		//入力方向に一度だけ方向転換
 		FVector InputVector = MoveComp->GetLastInputVector();
 		if (!InputVector.IsNearlyZero())
 		{
@@ -590,9 +607,11 @@ void AActionCharacter::OnJumped_Implementation()
 
 bool AActionCharacter::CanJumpInternal_Implementation() const
 {
-	//�U�����[�V�������̓W�����v�s��
+	if (SkillComponent && SkillComponent->IsBusy()) return false;
+
+	//攻撃モーション中はジャンプ不可
 	if (CombatComponent && CombatComponent->IsPlayingAttackMontage()) return false;
-	//�񕜒��̓W�����v�s��
+	//回復中はジャンプ不可
 	if (IsHealing()) return false;
 
 	if (m_bIsHitStunned) return false;
@@ -610,16 +629,16 @@ void AActionCharacter::OnJumpReleased()
 {
 	StopJumping();
 
-	// ��i�W�����v����Z���x��G��Ȃ�
+	// 二段ジャンプ中はZ速度を触らない
 	if (JumpCurrentCount >= 2) return;
 
-	//�{�^���������Ă������Ԃ��Z�o
+	//ボタンを押していた時間を算出
 	float HoldDuration = GetWorld()->GetTimeSeconds() - m_JumpPressedTime;
 
 	UActionMovementComponent* MoveComp = GetActionMovementComponent();
 	if (!MoveComp) return;
 
-	//�󒆂Ń{�^���������ɗ����ꂽ�ꍇ�A�㏸���x�̏����Ⴍ�J�b�g���邱�Ƃŏ��W�����v��\������
+	//空中でボタンが即座に離された場合、上昇速度の上限を低くカットすることで小ジャンプを表現する
 	if (MoveComp->IsFalling())
 	{
 		FVector Vel = MoveComp->Velocity;
@@ -635,7 +654,7 @@ void AActionCharacter::Landed(const FHitResult& Hit)
 {
 	Super::Landed(Hit);
 
-	//���n���A����
+	//着地復帰処理
 	UActionMovementComponent* MoveComp = GetActionMovementComponent();
 	if (MoveComp)
 	{
@@ -662,18 +681,18 @@ void AActionCharacter::Landed(const FHitResult& Hit)
 }
 
 // -----------------------------------------------------------------------
-// ���g�̏���
+// 分身の召喚
 // -----------------------------------------------------------------------
 void AActionCharacter::SummonGhost()
 {
-	//�X�g�b�N�s���`�F�b�N�i�����ɂ̓X�g�b�N1�{���K�v�j
+	//ストック不足チェック（召喚にはストック1本が必要）
 	if (GetEnergyStock() < 1)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("Not enough energy stock"));
 		return;
 	}
 
-	//�ő吔�`�F�b�N
+	//最大数チェック
 	if (m_ActiveGhosts.Num() >= m_iMaxGhostCount)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Orange, TEXT("MaxGhostCount!"));
@@ -686,7 +705,7 @@ void AActionCharacter::SummonGhost()
 		return;
 	}
 
-	//����20�b�̍s���L�^���擾
+	//直近20秒の行動記録を取得
 	const TArray<FGhostActionData> Snapshot = GhostRecorder->GetSnapshot(20.f);
 	if (Snapshot.IsEmpty())
 	{
@@ -694,7 +713,7 @@ void AActionCharacter::SummonGhost()
 		return;
 	}
 
-	//�X�|�[���ʒu�i�v���C���[�̍����j
+	//スポーン位置（プレイヤーの左横）
 	const FVector SpawnLoc = GetActorLocation() + GetActorRightVector() * -100.f;
 	const FRotator SpawnRot = GetActorRotation();
 
@@ -711,25 +730,25 @@ void AActionCharacter::SummonGhost()
 		return;
 	}
 
-	//�L�^�f�[�^��n���čs���J�n
+	//記録データを渡して行動開始
 	Ghost->InitializeGhost(Snapshot, GhostRecorder);
 
-	//���g���������烊�X�g����O��
+	//分身が消えたらリストから外す
 	Ghost->OnDestroyed.AddDynamic(this, &AActionCharacter::OnGhostDestroyed);
 
-	//���g�̍U���ł��G�l���M�[�𓾂�
+	//分身の攻撃でもエネルギーを得る
 	if (Ghost->CombatComponent)
 	{
 		Ghost->CombatComponent->OnHitEnemy.AddUObject(this, &AActionCharacter::OnGhostHitEnemy);
 	}
 
-	//���g�̏�ԁi�����钼�O�Ȃǁj�̕ω���UI�ɓ`����
+	//分身の状態（消える直前など）の変化をUIに伝える
 	if (Ghost->EnemyComponent)
 	{
 		Ghost->EnemyComponent->OnStateChanged.AddDynamic(this, &AActionCharacter::OnGhostStateChanged);
 	}
 
-	//�X�g�b�N��1�{����
+	//ストックを1本消費
 	SetEnergy(m_CurrentEnergy - m_EnergyPerStock);
 
 	m_ActiveGhosts.Add(Ghost);
@@ -792,13 +811,13 @@ void AActionCharacter::Heal()
 	if (GetCharacterMovement()->IsFalling()) return;
 	if (CombatComponent && (CombatComponent->IsAttacking() || CombatComponent->IsDodging())) return;
 
-	//�\���J�n�F�ړ����x�𗎂Ƃ�
+	//構え開始：移動速度を落とす
 	m_HealPhase = EHealPhase::Windup;
 	if (UActionMovementComponent* Move = Cast<UActionMovementComponent>(GetCharacterMovement()))
 	{
 		Move->SetSpeedMultiplier(m_HealMoveSpeedRate);
 	}
-	//TODO�F�����ŉ񕜃��[�V�����i�r�����ށj���Đ�����
+	//TODO：ここで回復モーション（瓶を飲む）を再生する
 
 	GetWorldTimerManager().SetTimer(m_HealTimer, this, &AActionCharacter::ApplyHeal, m_HealWindupTime, false);
 
@@ -807,7 +826,7 @@ void AActionCharacter::Heal()
 
 void AActionCharacter::ApplyHeal()
 {
-	//�����ŏ��߂ĉ񐔂�����ĉ�
+	//ここで初めて回数を消費して回復
 	--m_iHealCount;
 	SetHP(m_CurrentHP + m_HealAmount);
 	OnHealCountChanged.Broadcast(m_iHealCount, m_iMaxHealCount);
@@ -820,7 +839,7 @@ void AActionCharacter::ApplyHeal()
 			                                 m_iMaxHealCount));
 	}
 
-	//�㌄�F���x�͗��Ƃ����܂�
+	//後隙：速度は落としたまま
 	m_HealPhase = EHealPhase::Recovery;
 	GetWorldTimerManager().SetTimer(m_HealTimer, this, &AActionCharacter::EndHeal, m_HealRecoveryTime, false);
 }
@@ -834,16 +853,17 @@ void AActionCharacter::EndHeal()
 	{
 		Move->SetSpeedMultiplier(1.f);
 	}
-	//TODO�F�񕜃��[�V�������~�߂�i���f���j
+	//TODO：回復モーションを止める（中断時）
 }
 
 void AActionCharacter::InterruptHeal()
 {
 	if (!IsHealing()) return;
+	if (SkillComponent) SkillComponent->Interrupt();
 
 	if (m_bDebugHP)
 	{
-		//�\�����Ȃ玸�s�A�㌄���Ȃ瓮�삾�����f�i�񕜂͍ς�ł���j
+		//構え中なら失敗、後隙中なら動作だけ中断（回復は済んでいる）
 		const bool bFailed = (m_HealPhase == EHealPhase::Windup);
 		GEngine->AddOnScreenDebugMessage(-1, 2.f, bFailed ? FColor::Red : FColor::Yellow,
 		                                 bFailed
@@ -858,3 +878,53 @@ void AActionCharacter::RefillHeals()
 	m_iHealCount = m_iMaxHealCount;
 	OnHealCountChanged.Broadcast(m_iHealCount, m_iMaxHealCount);
 }
+
+//スキル関連
+bool AActionCharacter::TryConsumeEnergyStock(int32 Count)
+{
+	if (Count <= 0) return true;
+	if (GetEnergyStock() < Count) return false;
+	SetEnergy(m_CurrentEnergy - m_EnergyPerStock * Count);
+	return true;
+}
+
+void AActionCharacter::DebugEnergy(float Amount)
+{
+	SetEnergy(m_CurrentEnergy + Amount);
+}
+
+bool AActionCharacter::CanUseSkill() const
+{
+	if (m_bIsDead || m_bIsHitStunned || IsHealing()) return false;
+	if (CombatComponent && CombatComponent->IsDodging()) return false;
+	return SkillComponent != nullptr;
+}
+
+void AActionCharacter::OnSkillModifierPressed()
+{
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC || !SkillMappingContext) return;
+	if (UEnhancedInputLocalPlayerSubsystem* Sub = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+	{
+		Sub->AddMappingContext(SkillMappingContext, 1);   //通常操作より優先
+	}
+}
+
+void AActionCharacter::OnSkillModifierReleased()
+{
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC && SkillMappingContext)
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Sub = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+		{
+			Sub->RemoveMappingContext(SkillMappingContext);
+		}
+	}
+	//R1を先に離したときも、ためていた奥義は放つ
+	if (SkillComponent && SkillComponent->IsCharging()) SkillComponent->ReleaseCharge();
+}
+
+void AActionCharacter::OnSkill1() { if (CanUseSkill()) SkillComponent->UseDashSlash(); }
+void AActionCharacter::OnSkill2() { if (CanUseSkill()) SkillComponent->UseTempest(); }
+void AActionCharacter::OnSkill3Pressed() { if (CanUseSkill()) SkillComponent->StartCharge(); }
+void AActionCharacter::OnSkill3Released() { if (SkillComponent) SkillComponent->ReleaseCharge(); }
