@@ -1,4 +1,5 @@
-#include "Enemy/Boss/BossCrowd.h"
+﻿#include "Enemy/Boss/BossCrowd.h"
+#include "Enemy/Audio/EnemyAudio.h"
 #include "Enemy/Boss/BossEnemyCharacter.h"
 #include "Enemy/Boss/BossShadow.h"
 #include "Ghost/GhostCharacter/GhostCharacter.h"
@@ -108,7 +109,7 @@ void UBossCrowd::Release()
     if(GetNetMode() == NM_DedicatedServer) { return; }
     const FVector floor = boss->GetActorLocation() - FVector(0, 0, boss->GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
     if(m_fx) { UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, m_fx, floor); }
-    if(m_sound) { UGameplayStatics::PlaySoundAtLocation(this, m_sound, floor); }
+    if(m_sound && boss->m_audio) { UGameplayStatics::PlaySoundAtLocation(this, m_sound, floor, FRotator::ZeroRotator, 1.f, 1.f, 0.f, boss->m_audio->m_range, boss->m_audio->m_limit, boss); }
 }
 
 //再戦時に前の攻撃番号を持ち越さない。

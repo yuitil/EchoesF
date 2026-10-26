@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -298,6 +298,9 @@ protected:
 
 	//状況に合わせて攻撃の選びやすさを返す。
 	virtual float GetActionWeightMultiplier(const FEnemyActionData& _action) const { return 1.0f; }
+
+	//ガードした時も攻撃してきた相手を知らせる。
+	virtual void OnAttackReceived(AActor* _attacker) {}
 
 	//ダメージを受けた後の反応を行う。
 	virtual void OnAcceptedHit(AActor* _attacker)

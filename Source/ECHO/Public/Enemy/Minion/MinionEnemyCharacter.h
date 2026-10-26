@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "CoreMinimal.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
 #include "MinionEnemyCharacter.generated.h"
@@ -61,6 +61,9 @@ protected:
 
 	//ダメージを受けた後の反応を行う。
 	virtual void OnAcceptedHit(AActor* _attacker) override;
+
+	//受けた攻撃への反撃を予約する。
+	virtual void OnAttackReceived(AActor* _attacker) override;
 
 private:
 	//次に被弾アニメーションを再生できる時刻。

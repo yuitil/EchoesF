@@ -1,4 +1,4 @@
-#include "Enemy/Combat/Combat.h"
+﻿#include "Enemy/Combat/Combat.h"
 #include "Enemy/Audio/EnemyAudio.h"
 #include "Enemy/Animation/EnemySwing.h"
 #include "Enemy/Combat/EnemyHitEffect.h"
@@ -333,7 +333,7 @@ void UCombat::TickComponent(float _deltaTime, ELevelTick _type, FActorComponentT
 		if (actualDamage > 0.0f)
 		{
 			enemy->RecordAttackHit();
-			if(enemy->m_audio) { enemy->m_audio->Play(EEnemySound::Hit, hit.ImpactPoint); }
+			if(enemy->m_hitFx) { enemy->m_hitFx->ShowStrike(hit.ImpactPoint, hit.ImpactNormal.GetSafeNormal()); }
 			if (hitActor == target && action->m_launch && enemy->IsActing() && !enemy->WasAttackBlocked()) { BeginLift(Cast<ACharacter>(hitActor), *action); }
 
 			//空中で当たった時は、相手と上下の速さを合わせる。

@@ -1,4 +1,4 @@
-#include "Enemy/Minion/MinionEnemyCharacter.h"
+﻿#include "Enemy/Minion/MinionEnemyCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "AIController.h"
 #include "Engine/World.h"
@@ -91,7 +91,7 @@ void AMinionEnemyCharacter::OnAcceptedHit(AActor* _attacker)
 {
     Super::OnAcceptedHit(_attacker);
 
-    m_formation->Provoke(_attacker);
+
 
     //現在の時刻。
     const double now = GetWorld()->GetTimeSeconds();
@@ -110,4 +110,10 @@ void AMinionEnemyCharacter::OnAcceptedHit(AActor* _attacker)
         m_readyTime = now + length;
         m_nextHit = now + FMath::Max(length,m_hitCooldown);
     }
+}
+
+//ガードでも反撃を予約し、ひるみの再生とは分ける。
+void AMinionEnemyCharacter::OnAttackReceived(AActor* _attacker)
+{
+    if(m_formation) { m_formation->Provoke(_attacker); }
 }

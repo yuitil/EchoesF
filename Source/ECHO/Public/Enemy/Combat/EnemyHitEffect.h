@@ -34,7 +34,19 @@ public:
 	UFUNCTION(NetMulticast, Unreliable)
 	void ShowClash(FVector _point, FVector _normal);
 
+	//攻撃が相手へ当たった演出を全員に見せる。
+	UFUNCTION(NetMulticast, Unreliable)
+	void ShowStrike(FVector _point, FVector _normal);
+
 public:
+	//相手へ命中した時のNiagara。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Hit FX")
+	TObjectPtr<UNiagaraSystem> m_strikeEffect;
+
+	//相手への命中演出の大きさ。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Hit FX")
+	FVector m_strikeScale = FVector(1.f);
+
 	//体力に適用する効果。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Hit FX")
 	TObjectPtr<UNiagaraSystem> m_effect;

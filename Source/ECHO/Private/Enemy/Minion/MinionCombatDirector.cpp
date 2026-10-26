@@ -1,4 +1,4 @@
-#include "Enemy/Minion/MinionCombatDirector.h"
+﻿#include "Enemy/Minion/MinionCombatDirector.h"
 #include "Enemy/Minion/MinionFormation.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
 #include "Enemy/Combat/Defense.h"
@@ -86,7 +86,7 @@ void UMinionCombatDirector::Update()
             member->m_hasTurn = false; 
             continue; 
         }
-        if (!member->m_holdDuel && member->m_hasTurn && !enemy->IsActing() && now-member->m_granted > member->m_turnTimeout) 
+        if ((!member->m_holdDuel || member->m_counterTurn) && member->m_hasTurn && !enemy->IsActing() && now-member->m_granted > member->m_turnTimeout) 
         {
             member->ReleaseTurn();
         }
@@ -128,7 +128,7 @@ void UMinionCombatDirector::Update()
         //一対一を維持する設定では、現在の担当だけに順番を与える。
         if(duel)
         {
-            for(auto* member:group) member->m_hasTurn=(member==owner);
+            for(auto* member:group) member->m_hasTurn=(member==owner) || (member->m_counterTurn && member->m_hasTurn);
         }
 
         //処理に使う上限。
@@ -147,10 +147,10 @@ void UMinionCombatDirector::Update()
         //攻撃を待つ時間。
         const double* pause=m_pauses.Find(target);
 
-        if (duel && owner) { continue; }
+        //担当がいても、攻撃された敵の反撃は確認する。
        
         //一対一を維持する設定では、現在の担当だけに順番を与える。
-        if (duel) { limit = 1; }
+        if (duel && !owner) { limit = 1; }
 
         //反撃の順番を待っているか。
         const bool counterWaiting = group.ContainsByPredicate([](const auto* member)
@@ -177,6 +177,7 @@ void UMinionCombatDirector::Update()
             
             //攻撃された相手への反撃か。
             const bool counter = member->WantsCounter();
+            if(duel && owner && !counter) { continue; }
             
             //状態が始まった時刻。
             const double since=member->m_gapSince; member->m_gapSince=-1.;
@@ -236,10 +237,11 @@ void UMinionCombatDirector::Update()
         //最も適した敵に攻撃の順番を渡す。
         if (best) 
         { 
+            best->m_counterTurn = duel && owner && best != owner;
             best->PrepareAttack(); 
             best->ConsumeCounter(); 
             best->m_hasTurn=true; best->m_granted=now; 
-            if(duel)
+            if(duel && !owner)
             {
                 m_duelists.Add(target,best); 
                 for (auto* member : group)

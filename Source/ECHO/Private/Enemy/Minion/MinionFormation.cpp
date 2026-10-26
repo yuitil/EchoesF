@@ -1,4 +1,4 @@
-#include "Enemy/Minion/MinionFormation.h"
+﻿#include "Enemy/Minion/MinionFormation.h"
 #include "Enemy/Minion/MinionCombatDirector.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
 #include "Enemy/Combat/Defense.h"
@@ -85,7 +85,7 @@ void UMinionFormation::ReleaseTurn()
 
     //処理の対象となる敵。
     auto* enemy=Enemy();
-    if(m_holdDuel && m_hasTurn && enemy && enemy->IsCombatActive() && m_target.IsValid() && enemy->m_combatTarget == m_target.Get()) { return; }
+    if(m_holdDuel && !m_counterTurn && m_hasTurn && enemy && enemy->IsCombatActive() && m_target.IsValid() && enemy->m_combatTarget == m_target.Get()) { return; }
 
     //役目を終えた相手に、次の攻撃までの間を作る。
     if (m_hasTurn)
@@ -93,6 +93,7 @@ void UMinionFormation::ReleaseTurn()
         GetWorld()->GetSubsystem<UMinionCombatDirector>()->ClearPlayerGuard(this);
         GetWorld()->GetSubsystem<UMinionCombatDirector>()->PauseTarget(m_target.Get(), m_groupRest);
     }
+    m_counterTurn=false;
     m_hasTurn=false; m_gapSince=-1.; m_ready=GetWorld()->GetTimeSeconds()+FMath::Max(0.f,m_restTime);
     if (IsProvoked()) m_ready=FMath::Min(m_ready,m_counterReady);
 }
@@ -179,6 +180,7 @@ void UMinionFormation::TickComponent(float _delta,ELevelTick _type,FActorCompone
     if (m_target.Get()!=enemy->m_combatTarget)
     {
         SetOrbit(false);
+        m_counterTurn=false;
         m_hasTurn=false;
         m_gapSince=-1.;
         m_target=enemy->m_combatTarget;

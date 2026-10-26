@@ -68,7 +68,12 @@ bool UEnemyHitEffect::EstimateContact(AActor* _attacker, FVector& _point, FVecto
         }
         return !_point.ContainsNaN() && !_normal.ContainsNaN();
     }
-    if(victim->GetCapsuleComponent()->GetClosestPointOnCollision(source, _point) < 0.f) { return false; }
+    if(victim->GetCapsuleComponent()->GetClosestPointOnCollision(source, _point) < 0.f)
+    {
+        //物理の形が使えなくても、体の表面に命中演出を残す。
+        const FVector direction = (source - victim->GetActorLocation()).GetSafeNormal2D();
+        _point = victim->GetActorLocation() + direction * victim->GetCapsuleComponent()->GetScaledCapsuleRadius();
+    }
     _normal = (source - _point).GetSafeNormal();
     if (_normal.IsNearlyZero()) { _normal = -victim->GetActorForwardVector(); }
     return !_point.ContainsNaN();
@@ -143,4 +148,13 @@ void UEnemyHitEffect::ShowClash_Implementation(FVector _point, FVector _normal)
     if(!m_clashEffect || GetNetMode() == NM_DedicatedServer) { return; }
 
     UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, m_clashEffect, _point, _normal.Rotation(), m_clashScale, true, true, ENCPoolMethod::AutoRelease);
+}
+
+//ダメージを与えた時だけ、相手の命中位置で音と効果を出す。
+void UEnemyHitEffect::ShowStrike_Implementation(FVector _point, FVector _normal)
+{
+    if(GetNetMode() == NM_DedicatedServer || _point.ContainsNaN()) { return; }
+    if(auto* audio = GetOwner()->FindComponentByClass<UEnemyAudio>()) { audio->Emit_Implementation(EEnemySound::Hit, _point, 1.f); }
+    if(!m_strikeEffect) { return; }
+    UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, m_strikeEffect, _point + _normal * m_offset, _normal.Rotation(), m_strikeScale, true, true, ENCPoolMethod::AutoRelease);
 }

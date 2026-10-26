@@ -1,4 +1,4 @@
-#include "Enemy/Core/EnemyCharacterBase.h"
+﻿#include "Enemy/Core/EnemyCharacterBase.h"
 #include "Enemy/Audio/EnemyAudio.h"
 #include "Enemy/Animation/EnemySwing.h"
 #include "Enemy/AI/EnemyTargeting.h"
@@ -356,11 +356,14 @@ float AEnemyCharacterBase::TakeDamage(float _damage, const FDamageEvent& _damage
 	if (!FMath::IsFinite(accepted) || accepted <= 0) { return 0.0f; }
 
 	//攻撃してきた相手。
-	AActor* attacker = _instigator && _instigator->GetPawn() ? _instigator->GetPawn() : _causer;
+	AActor* attacker = Cast<APawn>(_causer);
+	if(!attacker) { attacker = _instigator && _instigator->GetPawn() ? _instigator->GetPawn() : _causer; }
 	if (attacker && attacker->GetOwner() && !Cast<APawn>(attacker))
 	{
 		attacker = attacker->GetOwner();
 	}
+
+	OnAttackReceived(attacker);
 
 	//受けたダメージの情報。
 	const UEBCombatDamageType* damageInfo = _damageEvent.DamageTypeClass

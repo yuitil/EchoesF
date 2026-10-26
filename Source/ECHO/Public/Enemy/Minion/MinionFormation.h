@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "MinionFormation.generated.h"
@@ -49,6 +49,9 @@ public:
 public:
 	//攻撃の順番を受け取った時刻。
 	double m_granted = 0.;
+
+	//担当とは別に、一回だけ反撃する役か。
+	bool m_counterTurn = false;
 
 	//次に攻撃できる時刻。
 	double m_ready = 0.;
