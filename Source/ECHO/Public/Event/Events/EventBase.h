@@ -28,7 +28,12 @@ public:
 protected:
 	void EndEvent();
 
+	void OnFinalEventFinish();
+
 protected:
 	UPROPERTY()
 	FEventData m_EventData;
+
+	UPROPERTY(EditAnywhere, Category="Param")
+	bool m_IsFinalEvent = false;
 };

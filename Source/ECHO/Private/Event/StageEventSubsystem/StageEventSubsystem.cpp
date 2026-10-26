@@ -69,7 +69,7 @@ void UStageEventSubsystem::EventStart(AEventTriggerVolume* _eventTrigger)
 	// イベント情報を渡して開始
 	m_CurrentEvent->Enter(_eventTrigger->GetEventData());
 
-	SetGateOpen(false,m_CurrentEvent->GetEventData());
+	SetGateOpen(false, m_CurrentEvent->GetEventData());
 
 	if (GEngine)
 	{
@@ -82,11 +82,11 @@ void UStageEventSubsystem::EventFinish()
 	if (!m_CurrentEvent)return;
 
 	m_CurrentEvent->Finish();
-	
-	SetGateOpen(true,m_CurrentEvent->GetEventData());
-	
+
+	SetGateOpen(true, m_CurrentEvent->GetEventData());
+
 	m_CurrentEvent = nullptr;
-	
+
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Blue, TEXT("Event Finish"));
@@ -102,7 +102,7 @@ void UStageEventSubsystem::SetGateOpen(bool _isOpen, FEventData& _eventData)
 		for (TObjectPtr<AGate> Gate : Gates)
 		{
 			Gate->OpenGate();
-		}	
+		}
 	}
 	else
 	{
@@ -111,5 +111,9 @@ void UStageEventSubsystem::SetGateOpen(bool _isOpen, FEventData& _eventData)
 			Gate->CloseGate();
 		}
 	}
-	
+}
+
+void UStageEventSubsystem::NotifyFinalEventFinished()
+{
+	OnFinalEventFinished.Broadcast();
 }

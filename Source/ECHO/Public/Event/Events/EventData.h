@@ -8,7 +8,7 @@
 
 class AEventPoint;
 class AGate;
-
+class ALevelSequenceActor;
 
 USTRUCT(BlueprintType)
 struct ECHO_API FEventData
@@ -21,4 +21,10 @@ public:
 	
 	UPROPERTY(EditAnywhere)
 	TArray<TObjectPtr<AGate>> m_Gates;
+	
+	UPROPERTY(EditAnywhere, Category = "Param|Sequence")
+	TObjectPtr<ALevelSequenceActor> m_EventIntroSequence = nullptr;
+	
+	UPROPERTY(EditAnywhere, Category = "Param|Sequence")
+	TObjectPtr<ALevelSequenceActor> m_EventFinishSequence = nullptr;
 };

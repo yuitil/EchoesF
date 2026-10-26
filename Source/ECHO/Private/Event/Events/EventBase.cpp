@@ -5,6 +5,7 @@
 
 #include "Event/StageEventSubsystem/StageEventSubsystem.h"
 
+
 void UEventBase::Enter(const FEventData& _data)
 {
 	m_EventData = _data;
@@ -16,6 +17,10 @@ void UEventBase::Update(float _deltaTime)
 
 void UEventBase::Finish()
 {
+	if (m_IsFinalEvent)
+	{
+		OnFinalEventFinish();
+	}
 }
 
 void UEventBase::EndEvent()
@@ -25,4 +30,12 @@ void UEventBase::EndEvent()
 	if (!EventSubsystem)return;
 
 	EventSubsystem->EventFinish();
+}
+
+void UEventBase::OnFinalEventFinish()
+{
+	if (UStageEventSubsystem* StageEventSubsystem = GetWorld()->GetSubsystem<UStageEventSubsystem>())
+	{
+		StageEventSubsystem->NotifyFinalEventFinished();
+	}
 }

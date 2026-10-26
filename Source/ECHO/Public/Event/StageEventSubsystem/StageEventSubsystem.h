@@ -14,6 +14,9 @@
 class UEventBase;
 class AEventTriggerVolume;
 
+// ステージ最終ボスイベント終了通知
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnFinalEventFinished);
+
 UCLASS()
 class ECHO_API UStageEventSubsystem : public UTickableWorldSubsystem
 {
@@ -38,7 +41,16 @@ public:
 	void EventFinish();
 
 	void SetGateOpen(bool _isOpen,FEventData& _eventData);
+	
+	// ステージ最終ボスイベント終了
+	void NotifyFinalEventFinished();
+	
 private:
 	UPROPERTY()
 	TObjectPtr<UEventBase> m_CurrentEvent;
+	
+public:
+	// ステージ最終ボスイベント終了通知
+	UPROPERTY(BlueprintAssignable, Category = "Event")
+	FOnFinalEventFinished OnFinalEventFinished;
 };

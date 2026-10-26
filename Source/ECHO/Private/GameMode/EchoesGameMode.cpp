@@ -4,10 +4,27 @@
 
 #include "Player/ActionCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Event/StageEventSubsystem/StageEventSubsystem.h"
 
 AEchoesGameMode::AEchoesGameMode()
 {
 	// stub
+}
+
+void AEchoesGameMode::BeginPlay()
+{
+	Super::BeginPlay();
+
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	UStageEventSubsystem* StageEventSubsystem = World->GetSubsystem<UStageEventSubsystem>();
+
+	if (!StageEventSubsystem) return;
+
+	// 最終イベント終了通知にバインド
+	StageEventSubsystem->OnFinalEventFinished.AddUniqueDynamic(this, &AEchoesGameMode::OnFinalEventFinish);
 }
 
 void AEchoesGameMode::RespawnPlayer(AActionCharacter* _player)
@@ -22,4 +39,11 @@ void AEchoesGameMode::RespawnPlayer(AActionCharacter* _player)
 
 	_player->SetActorTransform(m_RespawnTransform, false, nullptr, ETeleportType::TeleportPhysics);
 	_player->OnRespawn();
+}
+
+void AEchoesGameMode::OnFinalEventFinish()
+{
+	if (m_NextLevel.IsNull())return;
+
+	UGameplayStatics::OpenLevelBySoftObjectPtr(this, m_NextLevel);
 }

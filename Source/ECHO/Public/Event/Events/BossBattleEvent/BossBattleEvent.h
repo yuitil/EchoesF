@@ -10,6 +10,7 @@
  * 
  */
 class AEnemyCharacterBase;
+class ALevelSequenceActor;
 
 UCLASS()
 class ECHO_API UBossBattleEvent : public UEventBase
@@ -41,6 +42,22 @@ private:
 	UFUNCTION()
 	void EndClearSlowMotion();
 
+	// ボス登場シーケンスを再生
+	void PlayBossIntroSequence();
+
+	// ボス登場シーケンス終了
+	UFUNCTION()
+	void OnBossIntroSequenceFinished();
+	
+	// ボス撃破シーケンスを再生
+	void PlayBossFinishSequence();
+
+	// ボス撃破シーケンス終了
+	UFUNCTION()
+	void OnBossFinishSequenceFinished();
+
+	// ボス撃破シーケンスが終了したか
+	bool m_IsBossFinishFinished = false;
 protected:
 	// 生成するボスクラス
 	UPROPERTY(EditAnywhere, Category = "Param")
@@ -73,4 +90,7 @@ private:
 	TSubclassOf<UUserWidget> m_ClearWidgetClass;
 
 	FTimerHandle m_ClearSlowTimerHandle;
+	
+	// ボス登場シーケンスが終了したか
+	bool m_IsBossIntroFinished = false;
 };
