@@ -1,4 +1,5 @@
 ﻿#include "Enemy/Combat/EnemyHitEffect.h"
+#include "Enemy/Audio/EnemyAudio.h"
 #include "GameFramework/Character.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -76,7 +77,7 @@ bool UEnemyHitEffect::EstimateContact(AActor* _attacker, FVector& _point, FVecto
 //体に当たった場所の演出を開始する。
 void UEnemyHitEffect::PlayHit(AActor* _attacker, const FHitResult* _hit)
 {
-    if(!GetOwner()->HasAuthority() || !m_effect) { return; }
+    if(!GetOwner()->HasAuthority()) { return; }
     FVector point, normal;
     if (_hit && _hit->GetActor() == GetOwner() && !_hit->bStartPenetrating && !_hit->ImpactPoint.ContainsNaN())
     {
@@ -90,6 +91,8 @@ void UEnemyHitEffect::PlayHit(AActor* _attacker, const FHitResult* _hit)
 //命中位置でエフェクトを再生する。
 void UEnemyHitEffect::ShowHit_Implementation(FVector _point, FVector _normal)
 {
+    //鎧や体の命中音。
+    if(auto* audio = GetOwner()->FindComponentByClass<UEnemyAudio>()) { audio->Emit_Implementation(EEnemySound::Armor, _point, 1.f); }
     if(!m_effect || GetNetMode() == NM_DedicatedServer) { return; }
     UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, m_effect, _point + _normal * m_offset, _normal.Rotation(), m_scale, true, true, ENCPoolMethod::AutoRelease);
 }
@@ -97,7 +100,7 @@ void UEnemyHitEffect::ShowHit_Implementation(FVector _point, FVector _normal)
 //相手に近い剣の位置を使う。剣がなければ体の接触位置を使う。
 void UEnemyHitEffect::PlayClash(AActor* _attacker)
 {
-    if(!GetOwner()->HasAuthority() || !m_clashEffect || !IsValid(_attacker)) { return; }
+    if(!GetOwner()->HasAuthority() || !IsValid(_attacker)) { return; }
 
     FVector point, normal;
     if(!EstimateContact(_attacker, point, normal)) { return; }
@@ -135,6 +138,8 @@ void UEnemyHitEffect::PlayClash(AActor* _attacker)
 //体の命中とは別の火花を出す。
 void UEnemyHitEffect::ShowClash_Implementation(FVector _point, FVector _normal)
 {
+    //剣で受けた時の金属音。
+    if(auto* audio = GetOwner()->FindComponentByClass<UEnemyAudio>()) { audio->Emit_Implementation(EEnemySound::Clash, _point, 1.f); }
     if(!m_clashEffect || GetNetMode() == NM_DedicatedServer) { return; }
 
     UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, m_clashEffect, _point, _normal.Rotation(), m_clashScale, true, true, ENCPoolMethod::AutoRelease);

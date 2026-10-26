@@ -2,6 +2,8 @@
 #include "Enemy/AI/BossUpdateCombat.h"
 
 #include "Enemy/Core/EnemyCharacterBase.h"
+#include "Enemy/Boss/BossEnemyCharacter.h"
+#include "Enemy/Boss/BossCrowd.h"
 #include "Enemy/Core/EnemyTraversal.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
@@ -55,6 +57,8 @@ void UBossUpdateCombat::TickNode(UBehaviorTreeComponent& _ownerComp, uint8* _nod
     if (!IsValid(target) && enemy->IsActing()) enemy->CancelAction();
 
 	enemy->m_combatTarget = target;
+	//囲まれていて行動できる時は、通常の抽選より先に押し返す。
+	if(auto* boss = Cast<ABossEnemyCharacter>(enemy)) { boss->m_crowd->TryPush(); }
 	
 	//生きていて戦闘できるか。
 	const bool alive = enemy->IsCombatActive();

@@ -1,4 +1,6 @@
-﻿#include "Enemy/Core/EnemyCharacterBase.h"
+#include "Enemy/Core/EnemyCharacterBase.h"
+#include "Enemy/Audio/EnemyAudio.h"
+#include "Enemy/Animation/EnemySwing.h"
 #include "Enemy/AI/EnemyTargeting.h"
 
 #include "Enemy/Core/EnemyTraversal.h"
@@ -92,6 +94,15 @@ AEnemyCharacterBase::AEnemyCharacterBase()
 	m_defense = CreateDefaultSubobject<UDefense>(TEXT("Defense"));
 
 	m_hitFx = CreateDefaultSubobject<UEnemyHitEffect>(TEXT("HitFX"));
+	m_audio = CreateDefaultSubobject<UEnemyAudio>(TEXT("EnemyAudio"));
+    m_swing = CreateDefaultSubobject<UEnemySwing>(TEXT("EnemySwing"));
+}
+
+//空中から戻った足元で鳴らす。
+void AEnemyCharacterBase::Landed(const FHitResult& _hit)
+{
+	Super::Landed(_hit);
+	if(m_audio) { m_audio->Play(EEnemySound::Land, _hit.ImpactPoint); }
 }
 
 //相手の防御結果を確認する標準処理。
@@ -361,10 +372,18 @@ float AEnemyCharacterBase::TakeDamage(float _damage, const FDamageEvent& _damage
 	const bool unblockable = damageInfo && !damageInfo->m_bBlockable;
 
 	//強攻撃として扱うか。
-	const bool heavyAttack = damageInfo ? damageInfo->m_heavyAttack : m_defense->IsObservedHeavyAttack(attacker);
+	const bool heavyAttack = (damageInfo && damageInfo->m_heavyAttack) || m_defense->IsObservedHeavyAttack(attacker);
 
 	//処理の結果。
-	const EDefenseResult result = m_defense->ResolveHit(attacker, unblockable, heavyAttack);
+	EDefenseResult result = m_defense->ResolveHit(attacker, unblockable, heavyAttack);
+	//弾かれた攻撃では、連続命中の回数を戻す。
+	if(result == EDefenseResult::Deflect || result == EDefenseResult::Parry) { m_defense->RecordHeavyHit(attacker, false); }
+
+	//ガード中も通常被弾も、同じ強攻撃の回数として数える。
+	if(result != EDefenseResult::Deflect && result != EDefenseResult::Parry && m_defense->RecordHeavyHit(attacker, heavyAttack))
+	{
+		result = EDefenseResult::GuardBreak;
+	}
 
 	//防御で受けた時は体の命中と別の火花を出す。
 	if (result == EDefenseResult::Guard || result == EDefenseResult::Deflect || result == EDefenseResult::Parry)
@@ -448,6 +467,7 @@ void AEnemyCharacterBase::HealthChanged(const FOnAttributeChangeData& _data)
 //体力がなくなった時の処理を行う。
 void AEnemyCharacterBase::HandleHealthDepleted()
 {
+	if(m_audio) { m_audio->Play(EEnemySound::Death, GetActorLocation()); }
 	SetState(EEnemyState::Dead);
 	CancelAction();
 	SetCanBeDamaged(false);
@@ -702,6 +722,7 @@ void AEnemyCharacterBase::RecordAttackHit()
 //ガード崩れのエフェクトを表示する。
 void AEnemyCharacterBase::ShowGuardBreak_Implementation()
 {
+	if(m_audio) { m_audio->Emit_Implementation(EEnemySound::Break, GetActorLocation(), 1.f); }
 	if (GetNetMode() != NM_DedicatedServer) { GuardBreakFX(); }
 }
 

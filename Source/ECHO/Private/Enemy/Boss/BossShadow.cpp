@@ -1,4 +1,5 @@
 ﻿#include "Enemy/Boss/BossShadow.h"
+#include "Enemy/Audio/EnemyAudio.h"
 #include "Enemy/Boss/BossShadowSummon.h"
 #include "Enemy/Boss/BossApproach.h"
 #include "Enemy/Boss/BossSpacing.h"
@@ -68,6 +69,7 @@ void ABossShadow::PostInitializeComponents()
 void ABossShadow::BeginPlay()
 {
     Super::BeginPlay();
+    if(m_audio) { m_audio->Play(EEnemySound::Spawn, GetActorLocation()); }
     //開始時の登録でTickが戻っても、本体用の抜刀と召喚を動かさない。
     m_approach->SetComponentTickEnabled(false);
     m_summon->SetComponentTickEnabled(false);
@@ -167,6 +169,7 @@ void ABossShadow::FadeOut()
 {
     if(m_fading) { return; }
     m_fading = true;
+    if(m_audio) { m_audio->Play(EEnemySound::Fade, GetActorLocation()); }
     PlaySmoke();
     m_aura->Deactivate();
     CancelAction();

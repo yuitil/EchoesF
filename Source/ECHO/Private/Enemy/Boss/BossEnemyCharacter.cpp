@@ -1,5 +1,7 @@
 #include "Enemy/Boss/BossEnemyCharacter.h"
+#include "Enemy/Audio/EnemyAudio.h"
 #include "Enemy/Boss/BossShadowSummon.h"
+#include "Enemy/Boss/BossCrowd.h"
 #include "Enemy/Boss/BossObservation.h"
 #include "Enemy/Boss/BossPosture.h"
 #include "Enemy/Animation/EnemyAfterimageTrail.h"
@@ -23,6 +25,7 @@ namespace BossEnemyCharacterTuning
 //初期設定と必要な部品を用意する。
 ABossEnemyCharacter::ABossEnemyCharacter()
 {
+	m_crowd = CreateDefaultSubobject<UBossCrowd>(TEXT("Crowd"));
 	m_summon = CreateDefaultSubobject<UBossShadowSummon>(TEXT("ShadowSummon"));
 	m_posture = CreateDefaultSubobject<UBossPosture>(TEXT("Posture"));
 	m_afterimage = CreateDefaultSubobject<UEnemyAfterimageTrail>(TEXT("Afterimage"));
@@ -115,6 +118,7 @@ void ABossEnemyCharacter::SetLife(EBossPhase _newLife)
 void ABossEnemyCharacter::FinishTransition()
 {
 	if(m_bossPhase != EBossPhase::Transition) { return; }
+	if(m_audio) { m_audio->Play(EEnemySound::Rise, GetActorLocation()); }
 
 	StopAnimMontage();
 	
@@ -147,6 +151,8 @@ bool ABossEnemyCharacter::IsActionAllowed(const FEnemyActionData& _action) const
 {
 	//刀を抜き終わってから攻撃を選ぶ。
 	if(m_approach && !m_approach->HasDrawn()) { return false; }
+	//押し返しは人数がそろった時だけ選ぶ。
+	if(m_crowd && _action.m_actionId == m_crowd->m_action) { return m_crowd->CanPush(); }
 	
 	//BPから設定した敵のデータ。
 	const UBossData* data = GetBossData();
@@ -196,6 +202,7 @@ void ABossEnemyCharacter::OnActionEnded()
 //次の戦闘に向けて状態を初期化する。
 void ABossEnemyCharacter::ResetEncounter()
 {
+	m_crowd->Reset();
 	if(!HasAuthority()) { return; }
 
 	GetWorld()->GetTimerManager().ClearTimer(m_transitionTimer);

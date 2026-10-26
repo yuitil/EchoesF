@@ -24,7 +24,10 @@ UBossShadowSummon::UBossShadowSummon()
 //本体の戦闘が終われば影も消す。
 void UBossShadowSummon::Reset()
 {
-    if(m_shadow.IsValid()) { m_shadow->FadeOut(); }
+    for(auto* shadow : {m_shadow.Get(), m_secondShadow.Get()})
+    {
+        if(IsValid(shadow)) { shadow->FadeOut(); }
+    }
     m_nextTime = 0.;
     m_lastJoin = INDEX_NONE;
     m_cloneCount = 0;
@@ -33,15 +36,16 @@ void UBossShadowSummon::Reset()
 //削除時は影のAIも残さず片付ける。
 void UBossShadowSummon::EndPlay(const EEndPlayReason::Type _reason)
 {
-    if(m_shadow.IsValid())
+    for(auto* shadow : {m_shadow.Get(), m_secondShadow.Get()})
     {
-        if(auto* ai = m_shadow->GetController()) { ai->UnPossess(); ai->Destroy(); }
-        m_shadow->Destroy();
+        if(!IsValid(shadow)) { continue; }
+        if(auto* ai = shadow->GetController()) { ai->UnPossess(); ai->Destroy(); }
+        shadow->Destroy();
     }
     Super::EndPlay(_reason);
 }
 
-//歩ける場所が見つかった時だけ影を一体呼ぶ。
+//空いている場所へ影を呼び、同時に二体までにする。
 void UBossShadowSummon::TickComponent(float _delta, ELevelTick _type, FActorComponentTickFunction* _tick)
 {
     Super::TickComponent(_delta, _type, _tick);
@@ -49,12 +53,22 @@ void UBossShadowSummon::TickComponent(float _delta, ELevelTick _type, FActorComp
     if(!boss || !boss->HasAuthority() || boss->IsA<ABossShadow>()) { return; }
     if(!boss->IsCombatActive())
     {
-        if(m_shadow.IsValid()) { m_shadow->FadeOut(); }
+        for(auto* shadow : {m_shadow.Get(), m_secondShadow.Get()})
+        {
+            if(IsValid(shadow)) { shadow->FadeOut(); }
+        }
         return;
     }
     const double now = GetWorld()->GetTimeSeconds();
 
-    //味方として活動中の分身から最も近い一体を探す。
+    //一体目が消えたら、残った影を一体目として扱う。
+    if(!m_shadow.IsValid() && m_secondShadow.IsValid())
+    {
+        m_shadow = m_secondShadow;
+        m_secondShadow.Reset();
+    }
+
+    //味方として活動中の分身から、担当が重ならない相手を探す。
     AActor* target = nullptr;
     float best = FMath::Square(m_range);
     m_cloneCount = 0;
@@ -66,9 +80,12 @@ void UBossShadowSummon::TickComponent(float _delta, ELevelTick _type, FActorComp
         if(state != EGhostLifecycleState::Friendly && state != EGhostLifecycleState::Warning) { continue; }
         const float distance = FVector::DistSquared2D(boss->GetActorLocation(), ghost->GetActorLocation());
         if(distance <= FMath::Square(m_range)) { ++m_cloneCount; }
+        if(m_shadow.IsValid() && m_shadow->m_combatTarget == ghost) { continue; }
         if(distance < best) { best = distance; target = ghost; }
     }
-    if(!m_shadowClass || m_shadow.IsValid() || now < m_nextTime || boss->m_defense->IsBusy()) { return; }
+    const bool second = m_shadow.IsValid();
+    if(!m_shadowClass || m_secondShadow.IsValid() || now < m_nextTime || boss->m_defense->IsBusy()) { return; }
+    if(second && (!target || m_cloneCount < FMath::Max(2, m_twoCloneCount))) { return; }
     const bool firstPhase = boss->m_bossPhase == EBossPhase::PhaseOne;
     
     //序盤は複数の分身に囲まれた時だけ、影に分担させる。
@@ -93,7 +110,7 @@ void UBossShadowSummon::TickComponent(float _delta, ELevelTick _type, FActorComp
     auto* nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
     FNavLocation floor;
    
-    const FVector point = boss->GetActorLocation() + boss->GetActorRightVector() * m_spawnRange;
+    const FVector point = boss->GetActorLocation() + boss->GetActorRightVector() * m_spawnRange * (second ? -1.f : 1.f);
     if(!nav || !nav->ProjectPointToNavigation(point, floor)) { return; }
    
     const auto* defaults = m_shadowClass->GetDefaultObject<ABossShadow>();
@@ -107,6 +124,9 @@ void UBossShadowSummon::TickComponent(float _delta, ELevelTick _type, FActorComp
     UGameplayStatics::FinishSpawningActor(shadow, pose);
     if(!IsValid(shadow)) { return; }
    
-    m_shadow = shadow;
-    m_nextTime = now + FMath::Max(0.f, join ? m_joinCooldown : m_cooldown);
+    if(second) { m_secondShadow = shadow; }
+    else { m_shadow = shadow; }
+    //五体以上なら、次の確認で二体目も呼べるようにする。
+    const bool needSecond = !second && !join && m_cloneCount >= FMath::Max(2, m_twoCloneCount);
+    m_nextTime = now + (needSecond ? PrimaryComponentTick.TickInterval : FMath::Max(0.f, join ? m_joinCooldown : m_cooldown));
 }

@@ -60,7 +60,7 @@ public:
 
     //体勢が尽きた時に無防備になる秒数。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Posture", meta=(ClampMin="0.1"))
-    float m_breakTime = 3.f;
+    float m_breakTime = 2.f;
 
     //現在の体勢。
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Boss|Posture")

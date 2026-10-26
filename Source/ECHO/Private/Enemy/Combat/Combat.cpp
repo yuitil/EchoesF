@@ -1,4 +1,6 @@
-﻿#include "Enemy/Combat/Combat.h"
+#include "Enemy/Combat/Combat.h"
+#include "Enemy/Audio/EnemyAudio.h"
+#include "Enemy/Animation/EnemySwing.h"
 #include "Enemy/Combat/EnemyHitEffect.h"
 #include "GameFramework/DamageType.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
@@ -126,6 +128,7 @@ void UCombat::BeginHitWindow(float _damageScale, FName _bone, FVector _tip)
 	m_hitActors.Empty();
 	m_hasPreviousHit = false;
 	m_bHitWindow = true;
+    if(auto* swing = GetOwner()->FindComponentByClass<UEnemySwing>()) { swing->Start(); }
 
 	if (m_bDebug) { UE_LOG(LogTemp, Display, TEXT("BossCombat WindowOpen %s"), *GetNameSafe(GetOwner())); }
 
@@ -135,6 +138,10 @@ void UCombat::BeginHitWindow(float _damageScale, FName _bone, FVector _tip)
 void UCombat::EndHitWindow()
 {
 	m_bHitWindow = false;
+    if(GetOwner())
+    {
+        if(auto* swing = GetOwner()->FindComponentByClass<UEnemySwing>()) { swing->Stop(); }
+    }
 	m_hasPreviousHit = false;
 }
 
@@ -146,6 +153,34 @@ void UCombat::ResetWindows()
 	m_hitActors.Empty();
 	m_bInvulnerable = false;
 	m_bGuarding = false;
+}
+
+//攻撃と残り線で、同じボーンとソケットを使う。
+bool UCombat::GetWeaponPoints(FVector& _base, FVector& _tip) const
+{
+    const auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
+    const auto* action = enemy ? enemy->GetActiveAction() : nullptr;
+    if(!enemy || !action) { return false; }
+    //相手の体の当たり判定。
+    const bool body = !m_hitBone.IsNone() || (!action->m_hitBase.IsNone() && !action->m_hitTip.IsNone());
+    //剣の根元の位置。
+    const FName base = !m_hitBone.IsNone() ? m_hitBone : (body ? action->m_hitBase : m_baseSocket);
+    //剣先の位置。
+    const FName tip = !m_hitBone.IsNone() ? m_hitBone : (body ? action->m_hitTip : m_tipSocket);
+    //対象のモデル。
+    UMeshComponent* mesh = body ? enemy->GetMesh() : (m_useWeapon ? m_weapon.Get() : enemy->GetMesh());
+
+	if (!IsValid(mesh) || mesh->GetOwner() != enemy || !mesh->DoesSocketExist(base) || !mesh->DoesSocketExist(tip))
+	{
+		
+		return false;
+	}
+
+	//調べ始める位置。
+	_base = body && m_hitBone.IsNone() ? mesh->GetSocketTransform(base).TransformPosition(action->m_hitBaseOffset) : mesh->GetSocketLocation(base);
+	//調べ終える位置。
+	_tip = body ? mesh->GetSocketTransform(tip).TransformPosition(m_hitBone.IsNone() ? action->m_hitTipOffset : m_tipOffset) : mesh->GetSocketLocation(tip);
+    return true;
 }
 
 //経過時間に合わせて敵の状態を更新する。
@@ -184,25 +219,9 @@ void UCombat::TickComponent(float _deltaTime, ELevelTick _type, FActorComponentT
 
 	if(!enemy || !enemy->HasAuthority() || !m_bHitWindow || !action || !enemy->IsCombatActive()) { return; }
 
-    //相手の体の当たり判定。
-    const bool body = !m_hitBone.IsNone() || (!action->m_hitBase.IsNone() && !action->m_hitTip.IsNone());
-    //剣の根元の位置。
-    const FName base = !m_hitBone.IsNone() ? m_hitBone : (body ? action->m_hitBase : m_baseSocket);
-    //剣先の位置。
-    const FName tip = !m_hitBone.IsNone() ? m_hitBone : (body ? action->m_hitTip : m_tipSocket);
-    //対象のモデル。
-    UMeshComponent* mesh = body ? enemy->GetMesh() : (m_useWeapon ? m_weapon.Get() : enemy->GetMesh());
-
-	if (!IsValid(mesh) || mesh->GetOwner() != enemy || !mesh->DoesSocketExist(base) || !mesh->DoesSocketExist(tip))
-	{
-		m_hasPreviousHit = false;
-		return;
-	}
-
-	//調べ始める位置。
-	FVector start = body && m_hitBone.IsNone() ? mesh->GetSocketTransform(base).TransformPosition(action->m_hitBaseOffset) : mesh->GetSocketLocation(base);
-	//調べ終える位置。
-	FVector end = body ? mesh->GetSocketTransform(tip).TransformPosition(m_hitBone.IsNone() ? action->m_hitTipOffset : m_tipOffset) : mesh->GetSocketLocation(tip);
+    //演出と同じ位置で判定する。
+    FVector start, end;
+    if(!GetWeaponPoints(start, end)) { m_hasPreviousHit = false; return; }
 	//判定の対象とする種類。
 	FCollisionObjectQueryParams objects;
 	//分身はPawnと別の種類なので、巻き込み時は動く物も調べる。
@@ -314,6 +333,7 @@ void UCombat::TickComponent(float _deltaTime, ELevelTick _type, FActorComponentT
 		if (actualDamage > 0.0f)
 		{
 			enemy->RecordAttackHit();
+			if(enemy->m_audio) { enemy->m_audio->Play(EEnemySound::Hit, hit.ImpactPoint); }
 			if (hitActor == target && action->m_launch && enemy->IsActing() && !enemy->WasAttackBlocked()) { BeginLift(Cast<ACharacter>(hitActor), *action); }
 
 			//空中で当たった時は、相手と上下の速さを合わせる。

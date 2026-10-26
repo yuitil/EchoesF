@@ -1,4 +1,4 @@
-#include "Enemy/Combat/Defense.h"
+﻿#include "Enemy/Combat/Defense.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
 #include "Enemy/Combat/Combat.h"
 #include "Combat/EBDefenseFeedback.h"
@@ -110,7 +110,6 @@ EDefenseResult UDefense::ResolveHit(AActor* _attacker, bool _unblockable, bool _
 	if (!enemy || !enemy->HasAuthority() || !enemy->m_definition || _unblockable || !enemy->IsCombatActive()
 		|| m_bGuardBroken || GetWorld()->GetTimeSeconds() < m_busyUntilTime || enemy->GetCharacterMovement()->IsFalling() || !IsFrontFacing(_attacker))
 	{
-		ClearHeavyChain();
 		return EDefenseResult::None;
 	}
 
@@ -144,8 +143,7 @@ EDefenseResult UDefense::ResolveHit(AActor* _attacker, bool _unblockable, bool _
 		const float chance = enemy->GetSpecialDefenseChance();
 		if (PassesChance(FMath::FRand(), chance))
 		{
-			ClearHeavyChain();
-			++m_successes;
+				++m_successes;
 
 			//弾きを選んだか。
 			const bool deflect = deflectWeight > 0 && (parryWeight <= 0 || FMath::FRand() < deflectWeight / totalWeight);
@@ -164,7 +162,7 @@ EDefenseResult UDefense::ResolveHit(AActor* _attacker, bool _unblockable, bool _
 
 	{
 		//処理の結果。
-		const EDefenseResult result = ResolveGuardChain(_attacker, _heavyAttack);
+		const EDefenseResult result = EDefenseResult::Guard;
 		if (result == EDefenseResult::Guard)
 		{
 			RememberHit(_attacker);
@@ -177,7 +175,6 @@ EDefenseResult UDefense::ResolveHit(AActor* _attacker, bool _unblockable, bool _
 		return result;
 
 	}
-	ClearHeavyChain();
 	return EDefenseResult::None;
 }
 
@@ -210,19 +207,19 @@ void UDefense::ClearHeavyChain()
 }
 
 //強攻撃の連続命中によるガード崩れを調べる。
-EDefenseResult UDefense::ResolveGuardChain(AActor* _attacker, bool _heavyAttack)
+bool UDefense::RecordHeavyHit(AActor* _attacker, bool _heavyAttack)
 {
 	//処理の対象となる敵。
 	AEnemyCharacterBase* enemy = Cast<AEnemyCharacterBase>(GetOwner());
 	//BPから設定した敵のデータ。
 	const UEnemyData* data = enemy ? enemy->m_definition : nullptr;
 
-	if(!data) { return EDefenseResult::None; }
+	if(!data || !enemy->HasAuthority() || !enemy->IsCombatActive() || m_bGuardBroken || !IsValid(_attacker)) { ClearHeavyChain(); return false; }
 
 	if (!data->m_useGuardBreak || !_heavyAttack)
 	{
 		ClearHeavyChain();
-		return EDefenseResult::Guard;
+		return false;
 	}
 
 	//処理を待つ制限時間。
@@ -241,10 +238,10 @@ EDefenseResult UDefense::ResolveGuardChain(AActor* _attacker, bool _heavyAttack)
 	{
 		ClearHeavyChain();
 		StartGuardBreak();
-		return EDefenseResult::GuardBreak;
+		return true;
 	}
 	GetWorld()->GetTimerManager().SetTimer(m_heavyTimer, this, &UDefense::ClearHeavyChain, timeout, false);
-	return EDefenseResult::Guard;
+	return false;
 }
 
 //ガードを崩して無防備な時間を開始する。

@@ -12,6 +12,7 @@ class UBossSpacing;
 class UBossPosture;
 class UEnemyAfterimageTrail;
 class UBossShadowSummon;
+class UBossCrowd;
 
 //状態の変化をBPや他の処理へ知らせる通知を用意する。
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FBossLifeEvent, EBossPhase, lifePhase);
@@ -59,6 +60,10 @@ public:
 	void BossDefeated();
 
 public:
+	//分身に囲まれた時に間合いを作る部品。
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Boss")
+	TObjectPtr<UBossCrowd> m_crowd;
+
 	//抜刀と接近を管理する部品。
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Boss")
 	TObjectPtr<UBossApproach> m_approach;

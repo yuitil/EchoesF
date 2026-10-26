@@ -24,6 +24,9 @@ public:
 	//相手の再生中の動作が強攻撃か調べる。
 	bool IsObservedHeavyAttack(AActor* _attacker) const;
 
+	//命中した強攻撃を数え、設定回数で体勢を崩す。
+	bool RecordHeavyHit(AActor* _attacker, bool _heavy);
+
 	//防御の結果を通知する。
 	void PublishResult(AActor* _attacker, EDefenseResult _result);
 
@@ -97,12 +100,12 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Enemy | Defense", meta = (DisplayName = "Successes"))
 	int32 m_successes = 0;
 
-	//連続でガードした強攻撃の回数。
+	//連続で受けた強攻撃の回数。
 	UPROPERTY(BlueprintReadOnly, Category = "Enemy | GuardBreak", meta = (DisplayName = "GuardedHeavyHits"))
 	int32 m_guardedHeavyHits = 0;
 
 	//ガードが崩れているか。
-	UPROPERTY(BlueprintReadOnly, Category = "Enemy | GuardBreak", meta = (DisplayName = "GuardedLightHits"))
+	UPROPERTY(BlueprintReadOnly, Category = "Enemy | GuardBreak", meta = (DisplayName = "GuardBroken"))
 	bool m_bGuardBroken = false;
 
 protected:
@@ -115,9 +118,6 @@ private:
 
 	//連続して受けた強攻撃の記録を消す。
 	void ClearHeavyChain();
-
-	//強攻撃の連続命中によるガード崩れを調べる。
-	EDefenseResult ResolveGuardChain(AActor* _attacker, bool _heavyAttack);
 
 	//ガードを崩して無防備な時間を開始する。
 	void StartGuardBreak();

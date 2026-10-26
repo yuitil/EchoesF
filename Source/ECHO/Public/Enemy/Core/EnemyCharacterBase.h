@@ -16,6 +16,8 @@ class UDefense;
 
 class UEnemyTargeting;
 class UEnemyHitEffect;
+class UEnemyAudio;
+class UEnemySwing;
 class UNiagaraSystem;
 
 class UGameplayAbility;
@@ -37,6 +39,9 @@ class ECHO_API AEnemyCharacterBase : public ACharacter, public IAbilitySystemInt
 public:
 	//敵に共通する体力、攻撃、移動を管理する。
 	AEnemyCharacterBase();
+
+	//地面に着いた時だけ着地音を鳴らす。
+	virtual void Landed(const FHitResult& _hit) override;
 
 	//通知で指定した区間だけ、攻撃の移動を相手へ合わせる。
 	void SetAttackAim(bool _enabled, float _range);
@@ -94,6 +99,15 @@ public:
 
 	//イベントフラグのセッター
 	void SetIsEventEnemy(const bool _isEventEnemy) { m_IsEventEnemy = _isEventEnemy; }
+
+public:
+	//敵ごとの音をBPで調整する部品。
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Enemy|Audio")
+	TObjectPtr<UEnemyAudio> m_audio;
+
+    //剣の残り線と振る音をBPで調整する部品。
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Enemy|Swing")
+    TObjectPtr<UEnemySwing> m_swing;
 
 public:
 	//ガード崩れの演出を表示する。

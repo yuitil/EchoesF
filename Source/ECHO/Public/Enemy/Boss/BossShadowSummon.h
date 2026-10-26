@@ -6,7 +6,7 @@
 
 class ABossShadow;
 
-//連携や分身との戦闘に使う影を一体だけ呼ぶ。
+//分身の数に合わせて、連携する影を最大二体呼ぶ。
 UCLASS(ClassGroup=(Enemy), meta=(BlueprintSpawnableComponent))
 class ECHO_API UBossShadowSummon : public UActorComponent
 {
@@ -33,6 +33,10 @@ public:
     //フェーズ1で影を呼ぶ、近くの分身の数。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shadow", meta=(ClampMin="1"))
     int32 m_cloneLimit = 2;
+
+    //影を二体に増やす、近くの分身の数。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shadow", meta=(ClampMin="2"))
+    int32 m_twoCloneCount = 5;
 
     //分身に囲まれた時に選びやすくする攻撃。BPで選ぶ。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shadow")
@@ -81,6 +85,10 @@ public:
     //現在呼び出している影。
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Shadow")
     TWeakObjectPtr<ABossShadow> m_shadow;
+
+    //分身が多い時に呼ぶ二体目の影。
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Shadow")
+    TWeakObjectPtr<ABossShadow> m_secondShadow;
 
 protected:
     //分身とボスの状態に合わせて影を管理する。

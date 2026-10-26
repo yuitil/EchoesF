@@ -31,6 +31,9 @@ public:
 	//剣の攻撃判定を終了する。
 	void EndHitWindow();
 
+	//攻撃判定と演出で同じ剣の位置を読む。
+	bool GetWeaponPoints(FVector& _base, FVector& _tip) const;
+
 	//攻撃判定が有効か返す。
 	bool IsHitWindowOpen() const { return m_bHitWindow; }
 

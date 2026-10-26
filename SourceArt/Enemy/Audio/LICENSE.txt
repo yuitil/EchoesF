@@ -1,0 +1,6 @@
+Enemy audio sources
+Kenney RPG Audio: https://kenney.nl/assets/rpg-audio
+Kenney Impact Sounds: https://kenney.nl/assets/impact-sounds
+License: CC0 1.0 https://creativecommons.org/publicdomain/zero/1.0/
+Selected samples converted to mono 48kHz PCM; low rumble filtered and peaks limited.
+Existing /Game/Sound assets remain unchanged; their original project license applies.

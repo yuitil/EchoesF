@@ -380,15 +380,15 @@ public:
 
 	//ガード崩れに必要な強攻撃の回数。
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | GuardBreak", meta = (DisplayName = "HeavyHitToBreak", ClampMin = "1"))
-	int32 m_heavyHitsCount = 3;
+	int32 m_heavyHitsCount = 2;
 
 	//強攻撃を連続として扱う時間。
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | GuardBreak", meta = (DisplayName = "HeavyChainTimeout", ClampMin = "0.1"))
-	float m_heavyTimeout = 8.0f;
+	float m_heavyTimeout = 3.0f;
 
 	//ガード崩れで無防備になる時間。
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | GuardBreak", meta = (DisplayName = "GuardBreakStun", ClampMin = "0.1"))
-	float m_guardBreakTime = 3.0f;
+	float m_guardBreakTime = 2.0f;
 
 	//ガード崩れに使うモンタージュ。
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | GuardBreak", meta = (DisplayName = "GuardBreakMontage"))

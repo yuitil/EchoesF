@@ -1,4 +1,5 @@
 #include "Enemy/Combat/EnemyBomb.h"
+#include "Enemy/Audio/EnemyAudio.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -154,6 +155,7 @@ void AEnemyBomb::Explode()
         }
     }
     //爆発の見た目を出して弾を片付ける。
+    if(source && source->m_audio) { source->m_audio->Play(EEnemySound::Blast, point); }
     ShowExplosion(point);
     if(m_debugHit) 
     { 
