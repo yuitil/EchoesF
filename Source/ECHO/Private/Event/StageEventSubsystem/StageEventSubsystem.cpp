@@ -125,6 +125,16 @@ void UStageEventSubsystem::OnPlayerRespawn()
 	{
 		//イベントの進行を戻す
 		m_CurrentVolume->SetIsEventExecution(false);
+		
+		TArray<TObjectPtr<AGate>> Gates = m_CurrentVolume->GetEventData().m_Gates;
+
+		for (AGate* Gate : Gates)
+		{
+			if (IsValid(Gate))
+			{
+				Gate->OpenGate();
+			}
+		}
 	}
 
 	EventFinish();
