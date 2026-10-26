@@ -1,9 +1,9 @@
-//CombatComponent.h
-//ƒRƒ“ƒoƒbƒgƒRƒ“ƒ|[ƒlƒ“ƒgƒwƒbƒ_[
+ï»¿//CombatComponent.h
+//ã‚³ãƒ³ãƒãƒƒãƒˆã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆãƒ˜ãƒƒãƒ€ãƒ¼
 //
-//í“¬“Š‡ƒRƒ“ƒ|[ƒlƒ“ƒg
-//ƒRƒ“ƒ{‚Ìó‘ÔŠÇ—AŒ»İ‘•”õ’†‚Ì•Ší
-//‰ñ”ğAƒAƒNƒVƒ‡ƒ“ƒgƒŠƒK[A–³“GŠÔ
+//æˆ¦é—˜çµ±æ‹¬ã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆ
+//ã‚³ãƒ³ãƒœã®çŠ¶æ…‹ç®¡ç†ã€ç¾åœ¨è£…å‚™ä¸­ã®æ­¦å™¨
+//å›é¿ã€ã‚¢ã‚¯ã‚·ãƒ§ãƒ³ãƒˆãƒªã‚¬ãƒ¼ã€ç„¡æ•µæ™‚é–“
 
 #pragma once
 
@@ -11,7 +11,7 @@
 #include "Components/ActorComponent.h"
 #include "CombatComponent.generated.h"
 
-//“G‚Éƒqƒbƒg‚µ‚½ÛAƒLƒƒƒ‰ƒNƒ^[ƒNƒ‰ƒX‚Éƒ_ƒ[ƒW‚ğ’Ê’m‚·‚éƒfƒŠƒQ[ƒg
+//æ•µã«ãƒ’ãƒƒãƒˆã—ãŸéš›ã€ã‚­ãƒ£ãƒ©ã‚¯ã‚¿ãƒ¼ã‚¯ãƒ©ã‚¹ã«ãƒ€ãƒ¡ãƒ¼ã‚¸ã‚’é€šçŸ¥ã™ã‚‹ãƒ‡ãƒªã‚²ãƒ¼ãƒˆ
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnHitEnemyDelegate, float);
 
 USTRUCT(BlueprintType)
@@ -22,52 +22,52 @@ struct FComboStepData
 	UPROPERTY(EditAnywhere)
 	UAnimMontage* Montage = nullptr;
 
-	//UŒ‚”»’è‚Ì‹…‘Ì‚Ì”¼Œa
+	//æ”»æ’ƒåˆ¤å®šã®çƒä½“ã®åŠå¾„
 	UPROPERTY(EditAnywhere)
 	float HitRadius = 60.f;
 
-	//UŒ‚”»’è‚ğ‘O•û‚ÖL‚Î‚·’·‚³
+	//æ”»æ’ƒåˆ¤å®šã‚’å‰æ–¹ã¸ä¼¸ã°ã™é•·ã•
 	UPROPERTY(EditAnywhere)
 	float HitRange = 100.f;
 
-	//“G‚É—^‚¦‚éŠî–{ƒ_ƒ[ƒW
+	//æ•µã«ä¸ãˆã‚‹åŸºæœ¬ãƒ€ãƒ¡ãƒ¼ã‚¸
 	UPROPERTY(EditAnywhere)
 	float Damage = 20.f;
 
-	//‚«”ò‚Î‚µ—Íi0‚È‚ç‚«”ò‚Î‚µ‚È‚µj
+	//å¹ãé£›ã°ã—åŠ›ï¼ˆ0ãªã‚‰å¹ãé£›ã°ã—ãªã—ï¼‰
 	UPROPERTY(EditAnywhere)
 	float LaunchForce = 0.f;
 
-	//‚±‚ÌUŒ‚‚ª“G1‘Ì‚É“–‚½‚Á‚½‚Æ‚«‚É“¾‚éƒGƒlƒ‹ƒM[
+	//ã“ã®æ”»æ’ƒãŒæ•µ1ä½“ã«å½“ãŸã£ãŸã¨ãã«å¾—ã‚‹ã‚¨ãƒãƒ«ã‚®ãƒ¼
 	UPROPERTY(EditAnywhere)
 	float m_EnergyGain = 10.f;
 
-	//ƒRƒ“ƒ{“ü—Íó•tŠJnƒ^ƒCƒ~ƒ“ƒO
+	//ã‚³ãƒ³ãƒœå…¥åŠ›å—ä»˜é–‹å§‹ã‚¿ã‚¤ãƒŸãƒ³ã‚°
 	UPROPERTY(EditAnywhere)
 	float ComboWindowStart = 0.5f;
 
-	//ƒRƒ“ƒ{ƒŠƒZƒbƒg‚Ü‚Å‚ÌŠÔ
+	//ã‚³ãƒ³ãƒœãƒªã‚»ãƒƒãƒˆã¾ã§ã®æ™‚é–“
 	UPROPERTY(EditAnywhere)
 	float ComboResetTime = 1.0f;
 
-	//ƒAƒjƒ[ƒVƒ‡ƒ“‚ÌÄ¶‘¬“x
+	//ã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³ã®å†ç”Ÿé€Ÿåº¦
 	UPROPERTY(EditAnywhere)
 	float m_PlayRate = 1.f;
-	//ƒAƒjƒ[ƒVƒ‡ƒ“‚ÌÄ¶ŠJnˆÊ’u(•b)AU‚è‚©‚Ô‚è‚ğÈ—ª‚Å‚«‚é
+	//ã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³ã®å†ç”Ÿé–‹å§‹ä½ç½®(ç§’)ã€æŒ¯ã‚Šã‹ã¶ã‚Šã‚’çœç•¥ã§ãã‚‹
 	UPROPERTY(EditAnywhere)
 	float m_StartTime = 0.f;
 
-	//“G‚ª‚¢‚È‚¢‚Æ‚«‚Ì“¥‚İ‚İ‹——£
+	//æ•µãŒã„ãªã„ã¨ãã®è¸ã¿è¾¼ã¿è·é›¢
 	UPROPERTY(EditAnywhere)
 	float m_LungeDistance = 40.f;
-	//“G‚ÉŒü‚©‚Á‚Ä‹l‚ß‚éÅ‘å‹——£
+	//æ•µã«å‘ã‹ã£ã¦è©°ã‚ã‚‹æœ€å¤§è·é›¢
 	UPROPERTY(EditAnywhere)
 	float m_LungeMaxDistance = 250.f;
-	//“¥‚İ‚İ‚É‚©‚¯‚éŠÔi0‚È‚ç“¥‚İ‚Ü‚È‚¢j
+	//è¸ã¿è¾¼ã¿ã«ã‹ã‘ã‚‹æ™‚é–“ï¼ˆ0ãªã‚‰è¸ã¿è¾¼ã¾ãªã„ï¼‰
 	UPROPERTY(EditAnywhere)
 	float m_LungeDuration = 0.15f;
 
-	//‹ó’†UŒ‚‚Ì‘Oi‹——£i0‚È‚ç‘Oi‚µ‚È‚¢j
+	//ç©ºä¸­æ”»æ’ƒæ™‚ã®å‰é€²è·é›¢ï¼ˆ0ãªã‚‰å‰é€²ã—ãªã„ï¼‰
 	UPROPERTY(EditAnywhere)
 	float m_AirLungeDistance = 30.f;
 };
@@ -87,134 +87,151 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
 		FActorComponentTickFunction* ThisTickFunction) override;
 
-	//UŒ‚
+	//æ”»æ’ƒ
 	void ExecuteAttack();
-	//‰ñ”ğiOverrideDirection ‚ğ“n‚·‚Æ‚»‚Ì•ûŒü‚Ö‰ñ”ğBAIs“®—pj
+	//å›é¿ï¼ˆOverrideDirection ã‚’æ¸¡ã™ã¨ãã®æ–¹å‘ã¸å›é¿ã€‚AIè¡Œå‹•ç”¨ï¼‰
 	void ExecuteDodge(const FVector& OverrideDirection = FVector::ZeroVector);
-	//ƒLƒƒƒ‰ƒNƒ^[‚Ì’…’n‚È‚Ç‚ÉA‹ó’†‰ñ”ğ‚Ìg—pÏ‚İƒtƒ‰ƒO‚ğƒŠƒZƒbƒg‚·‚éŠÖ”
+	//ã‚­ãƒ£ãƒ©ã‚¯ã‚¿ãƒ¼ã®ç€åœ°æ™‚ãªã©ã«ã€ç©ºä¸­å›é¿ã®ä½¿ç”¨æ¸ˆã¿ãƒ•ãƒ©ã‚°ã‚’ãƒªã‚»ãƒƒãƒˆã™ã‚‹é–¢æ•°
 	void ResetAirDodge();
 
-	//’…’n‚ÉŒÄ‚ÔF‹ó’†UŒ‚‚Ìg—pÏ‚İƒtƒ‰ƒO‚ğƒŠƒZƒbƒg
+	//ç€åœ°æ™‚ã«å‘¼ã¶ï¼šç©ºä¸­æ”»æ’ƒã®ä½¿ç”¨æ¸ˆã¿ãƒ•ãƒ©ã‚°ã‚’ãƒªã‚»ãƒƒãƒˆ
 	void ResetAirAttack();
 
-	//AnimationNotify‚©‚çŒÄ‚Î‚ê‚éA“–‚½‚è”»’è
+	//AnimationNotifyã‹ã‚‰å‘¼ã°ã‚Œã‚‹ã€å½“ãŸã‚Šåˆ¤å®š
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void CheckHit();
 
-	//”í’e‚È‚Ç‚ÅUŒ‚‚ğ‹­§“I‚É’†’f‚·‚é
+	//è¢«å¼¾ãªã©ã§æ”»æ’ƒã‚’å¼·åˆ¶çš„ã«ä¸­æ–­ã™ã‚‹
 	void CancelAttack() { OnComboResetTimeout(); }
 
-	//AnimationNotify‚©‚çŒÄ‚Î‚ê‚éAƒRƒ“ƒ{‚ÌŸ‚Ì’iŠK‚Ö‚ÌˆÚs‚ğó‚¯•t‚¯‚éŠÖ”
+	//AnimationNotifyã‹ã‚‰å‘¼ã°ã‚Œã‚‹ã€ã‚³ãƒ³ãƒœã®æ¬¡ã®æ®µéšã¸ã®ç§»è¡Œã‚’å—ã‘ä»˜ã‘ã‚‹é–¢æ•°
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void OpenComboWindow();
 
-	//AnimationNotify‚©‚çŒÄ‚Î‚ê‚éAƒRƒ“ƒ{ó•tI—¹ŠÖ”
+	//AnimationNotifyã‹ã‚‰å‘¼ã°ã‚Œã‚‹ã€ã‚³ãƒ³ãƒœå—ä»˜çµ‚äº†é–¢æ•°
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void CloseComboWindow();
 
-	//ƒRƒ“ƒ{‚Ì’iŠK‚ğæ“¾‚·‚éŠÖ”AAIs“®—p
+	//ã‚³ãƒ³ãƒœã®æ®µéšã‚’å–å¾—ã™ã‚‹é–¢æ•°ã€AIè¡Œå‹•ç”¨
 	int32 GetCurrentComboIndex() const { return m_iCurrentComboIndex; }
 
 	FOnHitEnemyDelegate OnHitEnemy;
 
-	//UŒ‚’†‚ÉˆÚ“®‚ğ§ŒÀ‚·‚é‚½‚ß‚ÌŠÖ”
+	//æ”»æ’ƒä¸­ã«ç§»å‹•ã‚’åˆ¶é™ã™ã‚‹ãŸã‚ã®é–¢æ•°
 	bool IsPlayingAttackMontage() const;
 
-	//ƒvƒŒƒCƒ„[‚ªŒü‚«‚½‚¢•ûŒü‚ğ“n‚·ŠÖ”
+	//ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ãŒå‘ããŸã„æ–¹å‘ã‚’æ¸¡ã™é–¢æ•°
 	void SetDesiredDirection(const FVector& Dir) { m_DesiredDirection = Dir; }
 
 protected:
-	//BP‚©‚çƒRƒ“ƒ{ƒ‹[ƒg‚âŠe’i”‚Ìƒpƒ‰ƒ[ƒ^‚ğİ’è‚·‚é”z—ñ
+	//BPã‹ã‚‰ã‚³ãƒ³ãƒœãƒ«ãƒ¼ãƒˆã‚„å„æ®µæ•°ã®ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ã‚’è¨­å®šã™ã‚‹é…åˆ—
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Combo")
 	TArray<FComboStepData> ComboSteps;
 
-	//ƒRƒ“ƒ{‚Ìİ’èƒf[ƒ^iİ’è‚³‚ê‚Ä‚¢‚ê‚ÎA‚±‚¿‚ç‚Ì“à—e‚ğ ComboSteps ‚Æ‚µ‚Äg‚¤j
+	//ã‚³ãƒ³ãƒœã®è¨­å®šãƒ‡ãƒ¼ã‚¿ï¼ˆè¨­å®šã•ã‚Œã¦ã„ã‚Œã°ã€ã“ã¡ã‚‰ã®å†…å®¹ã‚’ ComboSteps ã¨ã—ã¦ä½¿ã†ï¼‰
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Combo")
 	TObjectPtr<UComboDataAsset> ComboData;
 
-	//UŒ‚ŠJn‚É“ü—Í•ûŒü‚ÖŒü‚«’¼‚é‚Ü‚Å‚ÌŠÔi0‚È‚çuj
+	//æ”»æ’ƒé–‹å§‹æ™‚ã«å…¥åŠ›æ–¹å‘ã¸å‘ãç›´ã‚‹ã¾ã§ã®æ™‚é–“ï¼ˆ0ãªã‚‰ç¬æ™‚ï¼‰
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Combo")
 	float m_AttackTurnDuration;
 
-	//‹z‚¢•t‚«‘ÎÛ‚ğ’T‚·‹——£
+	//å¸ã„ä»˜ãå¯¾è±¡ã‚’æ¢ã™è·é›¢
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Assist")
 	float m_AssistRange = 400.f;
-	//‹z‚¢•t‚­Šp“xiŠî€•ûŒü‚©‚ç¶‰E‚»‚ê‚¼‚ê‰½“x‚Ü‚Åj
+	//å¸ã„ä»˜ãè§’åº¦ï¼ˆåŸºæº–æ–¹å‘ã‹ã‚‰å·¦å³ãã‚Œãã‚Œä½•åº¦ã¾ã§ï¼‰
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Assist")
 	float m_AssistHalfAngle = 15.f;
-	//“G‚Ì’†S‚©‚ç‚±‚Ì‹——£‚Å“¥‚İ‚İ‚ğ~‚ß‚éi“G‚É‚ß‚è‚Ü‚È‚¢‚æ‚¤‚Éj
+	//æ•µã®ä¸­å¿ƒã‹ã‚‰ã“ã®è·é›¢ã§è¸ã¿è¾¼ã¿ã‚’æ­¢ã‚ã‚‹ï¼ˆæ•µã«ã‚ã‚Šè¾¼ã¾ãªã„ã‚ˆã†ã«ï¼‰
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Assist")
 	float m_LungeStopDistance = 150.f;
-	//‹z‚¢•t‚«‘ÎÛ‚ğƒfƒoƒbƒO•\¦‚·‚é
+	//å¸ã„ä»˜ãå¯¾è±¡ã‚’ãƒ‡ãƒãƒƒã‚°è¡¨ç¤ºã™ã‚‹
 	UPROPERTY(EditAnywhere, Category = "Combat|Assist")
 	bool m_bDebugAssist = false;
 
-	//‰ñ”ğ‚É‰Ÿ‚µo‚·u”­—Í‚È—Í
+	//å›é¿æ™‚ã«æŠ¼ã—å‡ºã™ç¬ç™ºåŠ›ãªåŠ›
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Dodge")
 	float m_DodgeForce;
 
-	//‰ñ”ğƒAƒNƒVƒ‡ƒ“‚Ì‘±ŠÔ
+	//å›é¿ã‚¢ã‚¯ã‚·ãƒ§ãƒ³ã®æŒç¶šæ™‚é–“
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Dodge")
 	float m_DodgeDuration;
 
-	//Ÿ‚É‰ñ”ğ‚ªg—p‰Â”\‚É‚È‚é‚Ü‚Å‚ÌƒN[ƒ‹ƒ_ƒEƒ“
+	//æ¬¡ã«å›é¿ãŒä½¿ç”¨å¯èƒ½ã«ãªã‚‹ã¾ã§ã®ã‚¯ãƒ¼ãƒ«ãƒ€ã‚¦ãƒ³
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Dodge")
 	float m_DodgeCooldown;
 
-	//UŒ‚‚Ì“–‚½‚è”»’èi‰©FEÔ‚Ì‹…j‚ğ•\¦‚·‚é
+	//æ”»æ’ƒã®é€”ä¸­ã§ã‚‚å›é¿ã§ã‚­ãƒ£ãƒ³ã‚»ãƒ«ã§ãã‚‹ã‹
+	UPROPERTY(EditAnywhere, Category = "Combat|Dodge")
+	bool m_bDodgeCancelAttack = true;
+
+	//æ”»æ’ƒã‚’å§‹ã‚ã¦ã‹ã‚‰ã“ã®ç§’æ•°ãŒçµŒã¤ã¾ã§ã¯å›é¿ã‚­ãƒ£ãƒ³ã‚»ãƒ«ã§ããªã„ï¼ˆ0ãªã‚‰å‡ºã—ãŸç¬é–“ã‹ã‚‰ã‚­ãƒ£ãƒ³ã‚»ãƒ«å¯ï¼‰
+	UPROPERTY(EditAnywhere, Category = "Combat|Dodge", meta = (ClampMin = "0"))
+	float m_DodgeCancelDelay = 0.f;
+
+	//å›é¿ã‚­ãƒ£ãƒ³ã‚»ãƒ«ã—ãŸã¨ãã€æ”»æ’ƒãƒ¢ãƒ¼ã‚·ãƒ§ãƒ³ã‚’æ¶ˆã™é€Ÿã•ï¼ˆç§’ï¼‰
+	UPROPERTY(EditAnywhere, Category = "Combat|Dodge", meta = (ClampMin = "0"))
+	float m_DodgeCancelBlendOut = 0.1f;
+
+	//ã‚¹ãƒ†ã‚£ãƒƒã‚¯ã‚’å€’ã—ã¦ã„ãªã„ã¨ãã¯å¾Œã‚ã¸å›é¿ã™ã‚‹ï¼ˆfalse ãªã‚‰å‰ã¸ï¼‰
+	UPROPERTY(EditAnywhere, Category = "Combat|Dodge")
+	bool m_bBackstepWhenNoInput = true;
+
+	//æ”»æ’ƒã®å½“ãŸã‚Šåˆ¤å®šï¼ˆé»„è‰²ãƒ»èµ¤ã®çƒï¼‰ã‚’è¡¨ç¤ºã™ã‚‹
 	UPROPERTY(EditAnywhere, Category = "Combat|Debug")
 	bool m_bDebugDrawHit = false;
 
 private:
-	//UŒ‚•ûŒü‚ğŒˆ‚ß‚éi‹z‚¢•t‚«‘ÎÛ‚ª‚¢‚ê‚ÎOutTarget‚É“ü‚éj
+	//æ”»æ’ƒæ–¹å‘ã‚’æ±ºã‚ã‚‹ï¼ˆå¸ã„ä»˜ãå¯¾è±¡ãŒã„ã‚Œã°OutTargetã«å…¥ã‚‹ï¼‰
 	FVector ResolveAttackDirection(ACharacter* Owner, AActor*& OutTarget) const;
-	//Šî€•ûŒü‚Ì‹ß‚­‚É‚¢‚é“G‚ğ’T‚·
+	//åŸºæº–æ–¹å‘ã®è¿‘ãã«ã„ã‚‹æ•µã‚’æ¢ã™
 	AActor* FindAssistTarget(ACharacter* Owner, const FVector& BaseDir) const;
-	//w’è•ûŒü‚Ö‚ÌŒü‚«’¼‚è‚ğŠJn
+	//æŒ‡å®šæ–¹å‘ã¸ã®å‘ãç›´ã‚Šã‚’é–‹å§‹
 	void StartTurn(ACharacter* Owner, const FVector& Dir);
-	//“¥‚İ‚İ‚ğŠJn
+	//è¸ã¿è¾¼ã¿ã‚’é–‹å§‹
 	void StartLunge(ACharacter* Owner, const FVector& Dir, const AActor* Target, const FComboStepData& Step);
 
-	// --- ‹ó’†UŒ‚ ---
-	bool m_bAirAttack = false;        //¡‚ÌƒRƒ“ƒ{‚ª‹ó’†‚Ån‚Ü‚Á‚½‚©
-	bool m_bAirComboAllowed = false;  //‹ó’†‚ÅŸ‚Ì’i‚Éi‚ß‚é‚©i‘O‚Ì’i‚ª“–‚½‚Á‚½‚©j
-	bool m_bHasAirAttacked = false;   //‚±‚Ì‘Ø‹ó’†‚É‚·‚Å‚É‹ó’†UŒ‚‚µ‚½‚©
+	// --- ç©ºä¸­æ”»æ’ƒ ---
+	bool m_bAirAttack = false;        //ä»Šã®ã‚³ãƒ³ãƒœãŒç©ºä¸­ã§å§‹ã¾ã£ãŸã‹
+	bool m_bAirComboAllowed = false;  //ç©ºä¸­ã§æ¬¡ã®æ®µã«é€²ã‚ã‚‹ã‹ï¼ˆå‰ã®æ®µãŒå½“ãŸã£ãŸã‹ï¼‰
+	bool m_bHasAirAttacked = false;   //ã“ã®æ»ç©ºä¸­ã«ã™ã§ã«ç©ºä¸­æ”»æ’ƒã—ãŸã‹
 
 	void SetAirHover(bool bEnable);
 	void EndAirAttack();
 	void OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
-	// --- ƒRƒ“ƒ{§Œä‚Ì“à—eó‘Ô•Ï” ---
-	int32 m_iCurrentComboIndex;     //Œ»İƒRƒ“ƒ{‚Ì‰½’i–Ú‚©
-	bool m_bIsAttacking;            //Œ»İUŒ‚ƒ‚[ƒVƒ‡ƒ“’†‚©
-	bool m_bComboWindowOpen;        //Œ»İŸ‚ÌƒRƒ“ƒ{“ü—Í‚ğó‚¯‚éó‘Ô‚©
-	bool m_bComboInputBuffered;     //ó•t‘‹Œû‚ªŠJ‚­‘O‚ÉUŒ‚ƒ{ƒ^ƒ“‚ª‰Ÿ‚³‚ê‚½ê‡‚Ìuæs“ü—Ív
+	// --- ã‚³ãƒ³ãƒœåˆ¶å¾¡ã®å†…å®¹çŠ¶æ…‹å¤‰æ•° ---
+	int32 m_iCurrentComboIndex;     //ç¾åœ¨ã‚³ãƒ³ãƒœã®ä½•æ®µç›®ã‹
+	bool m_bIsAttacking;            //ç¾åœ¨æ”»æ’ƒãƒ¢ãƒ¼ã‚·ãƒ§ãƒ³ä¸­ã‹
+	bool m_bComboWindowOpen;        //ç¾åœ¨æ¬¡ã®ã‚³ãƒ³ãƒœå…¥åŠ›ã‚’å—ã‘ã‚‹çŠ¶æ…‹ã‹
+	bool m_bComboInputBuffered;     //å—ä»˜çª“å£ãŒé–‹ãå‰ã«æ”»æ’ƒãƒœã‚¿ãƒ³ãŒæŠ¼ã•ã‚ŒãŸå ´åˆã®ã€Œå…ˆè¡Œå…¥åŠ›ã€
 
-	FVector m_DesiredDirection = FVector::ZeroVector;   //UŒ‚ŠJn‚ÉŒü‚­•ûŒü
-	FRotator m_TurnStartRot;     //‰ñ“]ŠJn‚ÌŒü‚«
-	FRotator m_TurnTargetRot;    //‰ñ“]Œã‚ÌŒü‚«
-	float m_TurnElapsed;   //‰ñ“]ŠJn‚©‚ç‚ÌŒo‰ßŠÔ
+	FVector m_DesiredDirection = FVector::ZeroVector;   //æ”»æ’ƒé–‹å§‹æ™‚ã«å‘ãæ–¹å‘
+	FRotator m_TurnStartRot;     //å›è»¢é–‹å§‹æ™‚ã®å‘ã
+	FRotator m_TurnTargetRot;    //å›è»¢å¾Œã®å‘ã
+	float m_TurnElapsed;   //å›è»¢é–‹å§‹ã‹ã‚‰ã®çµŒéæ™‚é–“
+	float m_AttackStartTime = 0.f;   //ä»Šã®æ®µã®æ”»æ’ƒã‚’å‡ºã—ãŸæ™‚åˆ»ï¼ˆå›é¿ã‚­ãƒ£ãƒ³ã‚»ãƒ«ã®åˆ¤å®šç”¨ï¼‰
 
-	// --- ƒ^ƒCƒ}[ƒnƒ“ƒhƒ‹ ---
+	// --- ã‚¿ã‚¤ãƒãƒ¼ãƒãƒ³ãƒ‰ãƒ« ---
 	FTimerHandle ComboResetTimerHandle;
 	FTimerHandle DodgeTimerHandle;
 	FTimerHandle DodgeCoolDownTimerHandle;
 
-	// --- ‰ñ”ğ§Œä‚Ì“à•”ó‘Ô•Ï” ---
-	bool m_bCanDodge;               //Œ»İ‰ñ”ğ‰Â”\‚©‚Ç‚¤‚©
-	bool m_bHasAirDodged;           //‹ó’†‰ñ”ğ‚ğŠù‚ÉÀs‚µ‚½‚©
+	// --- å›é¿åˆ¶å¾¡ã®å†…éƒ¨çŠ¶æ…‹å¤‰æ•° ---
+	bool m_bCanDodge;               //ç¾åœ¨å›é¿å¯èƒ½ã‹ã©ã†ã‹
+	bool m_bHasAirDodged;           //ç©ºä¸­å›é¿ã‚’æ—¢ã«å®Ÿè¡Œã—ãŸã‹
 	bool m_bIsDodging;
 
-	//‘½’iƒqƒbƒg–h~A“–‚½‚Á‚½“G‚ğ‹L˜^‚·‚éƒŠƒXƒg
+	//å¤šæ®µãƒ’ãƒƒãƒˆé˜²æ­¢ã€å½“ãŸã£ãŸæ•µã‚’è¨˜éŒ²ã™ã‚‹ãƒªã‚¹ãƒˆ
 	TArray<AActor*> HitActorsThisAttack;
 
-	//w’è‚³‚ê‚½ƒRƒ“ƒ{’i”‚ÌƒAƒjƒ[ƒVƒ‡ƒ“Ä¶‚Æƒf[ƒ^‰Šú‰»‚ğs‚¤ŠÖ”
+	//æŒ‡å®šã•ã‚ŒãŸã‚³ãƒ³ãƒœæ®µæ•°ã®ã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³å†ç”Ÿã¨ãƒ‡ãƒ¼ã‚¿åˆæœŸåŒ–ã‚’è¡Œã†é–¢æ•°
 	void ExecuteComboStep(int32 StepIndex);
-	//ƒRƒ“ƒ{“ü—Í‚ªŠÔ‚É‡‚í‚¸‚Éƒ^ƒCƒ}[‚ª–—¹‚µ‚½Û‚ÌƒŠƒZƒbƒgŠÖ”
+	//ã‚³ãƒ³ãƒœå…¥åŠ›ãŒé–“ã«åˆã‚ãšã«ã‚¿ã‚¤ãƒãƒ¼ãŒæº€äº†ã—ãŸéš›ã®ãƒªã‚»ãƒƒãƒˆé–¢æ•°
 	void OnComboResetTimeout();
-	//‰ñ”ğŠÔ‚ªI—¹‚µ‚½Û‚É•¨—ó‘Ô‚ğŒ³‚É–ß‚·ŠÖ”
+	//å›é¿æ™‚é–“ãŒçµ‚äº†ã—ãŸéš›ã«ç‰©ç†çŠ¶æ…‹ã‚’å…ƒã«æˆ»ã™é–¢æ•°
 	void EndDodge();
-	//ƒN[ƒ‹ƒ_ƒEƒ“ƒ^ƒCƒ}[I—¹‚É‰ñ”ğó‘Ô‚É–ß‚·ŠÖ”
+	//ã‚¯ãƒ¼ãƒ«ãƒ€ã‚¦ãƒ³ã‚¿ã‚¤ãƒãƒ¼çµ‚äº†æ™‚ã«å›é¿çŠ¶æ…‹ã«æˆ»ã™é–¢æ•°
 	void ResetDodgeCooldown();
 
 
