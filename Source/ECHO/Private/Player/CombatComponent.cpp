@@ -1,4 +1,4 @@
-// CombatComponent.cpp
+ï»¿// CombatComponent.cpp
 
 #include "Player/CombatComponent.h"
 #include "Player/ActionMovementComponent.h"
@@ -39,7 +39,7 @@ void UCombatComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	//ƒf[ƒ^ƒAƒZƒbƒg‚ªİ’è‚³‚ê‚Ä‚¢‚ê‚ÎA‚»‚Ì“à—e‚ğƒRƒ“ƒ{‚Æ‚µ‚Äg‚¤
+	//ãƒ‡ãƒ¼ã‚¿ã‚¢ã‚»ãƒƒãƒˆãŒè¨­å®šã•ã‚Œã¦ã„ã‚Œã°ã€ãã®å†…å®¹ã‚’ã‚³ãƒ³ãƒœã¨ã—ã¦ä½¿ã†
 	if (ComboData)
 	{
 		ComboSteps = ComboData->Steps;
@@ -56,10 +56,10 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 
 	m_TurnElapsed += DeltaTime;
 	float Alpha = FMath::Clamp(m_TurnElapsed / m_AttackTurnDuration, 0.f, 1.f);
-	//Å‰‚É‘¬‚­‰ñ‚Á‚ÄAÅŒã‚É‚ä‚é‚â‚©‚É~‚Ü‚é
+	//æœ€åˆã«é€Ÿãå›ã£ã¦ã€æœ€å¾Œã«ã‚†ã‚‹ã‚„ã‹ã«æ­¢ã¾ã‚‹
 	Alpha = FMath::InterpEaseOut(0.f, 1.f, Alpha, 2.f);
 
-	//Slerp‚ÅA‰“‰ñ‚è‚¹‚¸‹ß‚¢•ûŒü‚Ö‰ñ‚·
+	//Slerpã§ã€é å›ã‚Šã›ãšè¿‘ã„æ–¹å‘ã¸å›ã™
 	const FQuat NewQuat = FQuat::Slerp(m_TurnStartRot.Quaternion(), m_TurnTargetRot.Quaternion(), Alpha);
 	Owner->SetActorRotation(NewQuat.Rotator());
 
@@ -69,7 +69,7 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 void UCombatComponent::ExecuteAttack()
 {
 
-	//ƒ‚[ƒVƒ‡ƒ“‚ªI‚í‚Á‚Ä‚¢‚ê‚ÎAƒŠƒZƒbƒg‘Ò‚¿‚Ì“r’†‚Å‚àV‚µ‚¢UŒ‚‚Æ‚µ‚Äˆµ‚¤
+	//ãƒ¢ãƒ¼ã‚·ãƒ§ãƒ³ãŒçµ‚ã‚ã£ã¦ã„ã‚Œã°ã€ãƒªã‚»ãƒƒãƒˆå¾…ã¡ã®é€”ä¸­ã§ã‚‚æ–°ã—ã„æ”»æ’ƒã¨ã—ã¦æ‰±ã†
 	if (m_bIsAttacking && !IsPlayingAttackMontage())
 	{
 		OnComboResetTimeout();
@@ -77,7 +77,7 @@ void UCombatComponent::ExecuteAttack()
 
 	if (m_bIsAttacking)
 	{
-		//ƒRƒ“ƒ{ó•t‚ªŠJ‚¢‚Ä‚¢‚½‚çŸ‚Ì’i”‚ÖˆÚs
+		//ã‚³ãƒ³ãƒœå—ä»˜ãŒé–‹ã„ã¦ã„ãŸã‚‰æ¬¡ã®æ®µæ•°ã¸ç§»è¡Œ
 		if (m_bComboWindowOpen)
 		{
 			int32 NextIndex = m_iCurrentComboIndex + 1;
@@ -85,7 +85,7 @@ void UCombatComponent::ExecuteAttack()
 		}
 		else
 		{
-			//ó•t‘‹Œû‚ªŠJ‚­‘O‚Éƒ{ƒ^ƒ“‚ª‰Ÿ‚³‚ê‚½‚çæs“ü—Í‚ğON‚É‚·‚é
+			//å—ä»˜çª“å£ãŒé–‹ãå‰ã«ãƒœã‚¿ãƒ³ãŒæŠ¼ã•ã‚ŒãŸã‚‰å…ˆè¡Œå…¥åŠ›ã‚’ONã«ã™ã‚‹
 			m_bComboInputBuffered = true;
 		}
 		return;
@@ -98,18 +98,18 @@ FVector UCombatComponent::ResolveAttackDirection(ACharacter* Owner, AActor*& Out
 {
 	OutTarget = nullptr;
 
-	//ƒƒbƒNƒIƒ“’†‚ÍƒƒbƒNƒIƒ“‘ÎÛ‚ğÅ—Dæ
+	//ãƒ­ãƒƒã‚¯ã‚ªãƒ³ä¸­ã¯ãƒ­ãƒƒã‚¯ã‚ªãƒ³å¯¾è±¡ã‚’æœ€å„ªå…ˆ
 	if (const ULockOnComponent* LockOn = Owner->FindComponentByClass<ULockOnComponent>())
 	{
 		if (LockOn->IsLockedOn()) OutTarget = LockOn->GetTarget();
 	}
 
-	//Šî€•ûŒüF“ü—Í‚ª‚ ‚ê‚Î“ü—Í•ûŒüA‚È‚¯‚ê‚Î¡‚Ì³–Ê
+	//åŸºæº–æ–¹å‘ï¼šå…¥åŠ›ãŒã‚ã‚Œã°å…¥åŠ›æ–¹å‘ã€ãªã‘ã‚Œã°ä»Šã®æ­£é¢
 	const FVector BaseDir = !m_DesiredDirection.IsNearlyZero()
 		? m_DesiredDirection.GetSafeNormal2D()
 		: Owner->GetActorForwardVector().GetSafeNormal2D();
 
-	//ƒƒbƒNƒIƒ“‚µ‚Ä‚¢‚È‚¯‚ê‚ÎAŠî€•ûŒü‚Ì‹ß‚­‚É‚¢‚é“G‚ğ’T‚·
+	//ãƒ­ãƒƒã‚¯ã‚ªãƒ³ã—ã¦ã„ãªã‘ã‚Œã°ã€åŸºæº–æ–¹å‘ã®è¿‘ãã«ã„ã‚‹æ•µã‚’æ¢ã™
 	if (!OutTarget) OutTarget = FindAssistTarget(Owner, BaseDir);
 
 	if (OutTarget)
@@ -136,7 +136,7 @@ AActor* UCombatComponent::FindAssistTarget(ACharacter* Owner, const FVector& Bas
 	for (const FOverlapResult& Result : Overlaps)
 	{
 		AActor* Enemy = Result.GetActor();
-		//¶‚«‚Ä‚¢‚é“G‚¾‚¯‚ğ‘ÎÛ‚É‚·‚éi‹Œ“GEƒ{ƒX‚Ì—¼•û‚É‘Î‰j
+		//ç”Ÿãã¦ã„ã‚‹æ•µã ã‘ã‚’å¯¾è±¡ã«ã™ã‚‹ï¼ˆæ—§æ•µãƒ»ãƒœã‚¹ã®ä¸¡æ–¹ã«å¯¾å¿œï¼‰
 		if (!EnemyQuery::IsAliveEnemy(Enemy)) continue;
 
 		FVector ToEnemy = Enemy->GetActorLocation() - Owner->GetActorLocation();
@@ -144,11 +144,11 @@ AActor* UCombatComponent::FindAssistTarget(ACharacter* Owner, const FVector& Bas
 		const float Dist = ToEnemy.Size();
 		if (Dist < KINDA_SMALL_NUMBER) continue;
 
-		//Šp“x‚Ì”ÍˆÍŠO‚ÍœŠO
+		//è§’åº¦ã®ç¯„å›²å¤–ã¯é™¤å¤–
 		const float Dot = FVector::DotProduct(BaseDir, ToEnemy / Dist);
 		if (Dot < CosLimit) continue;
 
-		//³–Ê‚É‹ß‚¢‚Ù‚ÇA‹——£‚ª‹ß‚¢‚Ù‚Ç—Dæ
+		//æ­£é¢ã«è¿‘ã„ã»ã©ã€è·é›¢ãŒè¿‘ã„ã»ã©å„ªå…ˆ
 		const float Score = (1.f - Dot) * 10.f + Dist / m_AssistRange;
 		if (Score < BestScore)
 		{
@@ -187,18 +187,18 @@ void UCombatComponent::StartLunge(ACharacter* Owner, const FVector& Dir,
 	float Distance = Step.m_LungeDistance;
 	if (bInAir)
 	{
-		//‹ó’†F‚Ù‚ñ‚Ì­‚µ‚¾‚¯‘O‚ÖB“G‚É‹ß‚·‚¬‚é‚Æ‚«‚Íi‚Ü‚È‚¢
+		//ç©ºä¸­ï¼šã»ã‚“ã®å°‘ã—ã ã‘å‰ã¸ã€‚æ•µã«è¿‘ã™ãã‚‹ã¨ãã¯é€²ã¾ãªã„
 		Distance = Step.m_AirLungeDistance;
 		if (Target) Distance = FMath::Min(Distance, FMath::Max(0.f, DistToTarget - m_LungeStopDistance));
 	}
 	else
 	{
-		//’nãF“G‚ª‚¢‚ê‚Îè‘O‚Ü‚Å‹l‚ßA‚¢‚È‚¯‚ê‚Î­‚µ‘O‚Ö
+		//åœ°ä¸Šï¼šæ•µãŒã„ã‚Œã°æ‰‹å‰ã¾ã§è©°ã‚ã€ã„ãªã‘ã‚Œã°å°‘ã—å‰ã¸
 		Distance = Target
 			? FMath::Clamp(DistToTarget - m_LungeStopDistance, 0.f, Step.m_LungeMaxDistance)
 			: Step.m_LungeDistance;
 	}
-	if (Distance <= 1.f) return;   //‚·‚Å‚É\•ª‹ß‚¢
+	if (Distance <= 1.f) return;   //ã™ã§ã«ååˆ†è¿‘ã„
 
 	const FVector Start = Owner->GetActorLocation();
 
@@ -210,11 +210,11 @@ void UCombatComponent::StartLunge(ACharacter* Owner, const FVector& Dir,
 	Lunge->TargetLocation = Start + Dir * Distance;
 	Lunge->Duration = Step.m_LungeDuration;
 	Lunge->bRestrictSpeedToExpected = true;
-	//“¥‚İ‚İI—¹‚Íƒsƒ^ƒb‚Æ~‚ß‚é
+	//è¸ã¿è¾¼ã¿çµ‚äº†æ™‚ã¯ãƒ”ã‚¿ãƒƒã¨æ­¢ã‚ã‚‹
 	Lunge->FinishVelocityParams.Mode = ERootMotionFinishVelocityMode::SetVelocity;
 	Lunge->FinishVelocityParams.SetVelocity = FVector::ZeroVector;
 
-	MoveComp->RemoveRootMotionSource(LungeRootMotionName);   //‘O‚Ì’i‚Ì“¥‚İ‚İ‚ªc‚Á‚Ä‚¢‚ê‚ÎÁ‚·
+	MoveComp->RemoveRootMotionSource(LungeRootMotionName);   //å‰ã®æ®µã®è¸ã¿è¾¼ã¿ãŒæ®‹ã£ã¦ã„ã‚Œã°æ¶ˆã™
 	MoveComp->ApplyRootMotionSource(Lunge);
 }
 
@@ -227,35 +227,36 @@ void UCombatComponent::ExecuteComboStep(int32 StepIndex)
 
 	const FComboStepData& Step = ComboSteps[StepIndex];
 
-	//‹ó’†UŒ‚‚Ì”»’è
+	//ç©ºä¸­æ”»æ’ƒã®åˆ¤å®š
 	UActionMovementComponent* MoveComp = Cast<UActionMovementComponent>(OwnerCharacter->GetCharacterMovement());
 	const bool bInAir = MoveComp && MoveComp->IsFalling();
 	if (bInAir)
 	{
 		if (StepIndex == 0)
 		{
-			//‹ó’†UŒ‚‚Í1‰ñ‚Ì‘Ø‹ó‚É‚Â‚«1ƒZƒbƒg‚Ü‚Å
+			//ç©ºä¸­æ”»æ’ƒã¯1å›ã®æ»ç©ºã«ã¤ã1ã‚»ãƒƒãƒˆã¾ã§
 			if (m_bHasAirAttacked) return;
 			m_bHasAirAttacked = true;
 			m_bAirAttack = true;
 		}
 		else if (!m_bAirAttack || !m_bAirComboAllowed)
 		{
-			//‘O‚Ì’i‚ª‹óU‚è‚È‚çA‹ó’†ƒRƒ“ƒ{‚Í‘±‚©‚È‚¢
+			//å‰ã®æ®µãŒç©ºæŒ¯ã‚Šãªã‚‰ã€ç©ºä¸­ã‚³ãƒ³ãƒœã¯ç¶šã‹ãªã„
 			return;
 		}
-		m_bAirComboAllowed = false;   //‚±‚Ì’i‚ª“–‚½‚Á‚½‚çÄ‚Ñ true ‚É‚È‚é
+		m_bAirComboAllowed = false;   //ã“ã®æ®µãŒå½“ãŸã£ãŸã‚‰å†ã³ true ã«ãªã‚‹
 		SetAirHover(true);
 	}
 
-	//ƒXƒe[ƒg‚ÌXV
+	//ã‚¹ãƒ†ãƒ¼ãƒˆã®æ›´æ–°
 	m_iCurrentComboIndex = StepIndex;
+	m_AttackStartTime = GetWorld()->GetTimeSeconds();
 	m_bIsAttacking = true;
 	m_bComboWindowOpen = false;
 	m_bComboInputBuffered = false;
 	HitActorsThisAttack.Empty();
 
-	//ˆÈ‘O‚ÌƒRƒ“ƒ{ƒŠƒZƒbƒgƒ^ƒCƒ}[‚ğƒNƒŠƒAAÄƒZƒbƒg
+	//ä»¥å‰ã®ã‚³ãƒ³ãƒœãƒªã‚»ãƒƒãƒˆã‚¿ã‚¤ãƒãƒ¼ã‚’ã‚¯ãƒªã‚¢ã€å†ã‚»ãƒƒãƒˆ
 	GetWorld()->GetTimerManager().ClearTimer(ComboResetTimerHandle);
 	GetWorld()->GetTimerManager().SetTimer(
 		ComboResetTimerHandle,
@@ -265,10 +266,10 @@ void UCombatComponent::ExecuteComboStep(int32 StepIndex)
 		false
 	);
 
-	//ƒ_ƒbƒVƒ…‚Ì¨‚¢‚ğÁ‚·i“¥‚İ‚İ‚æ‚èæ‚És‚¤j
+	//ãƒ€ãƒƒã‚·ãƒ¥ã®å‹¢ã„ã‚’æ¶ˆã™ï¼ˆè¸ã¿è¾¼ã¿ã‚ˆã‚Šå…ˆã«è¡Œã†ï¼‰
 	OwnerCharacter->GetCharacterMovement()->StopMovementImmediately();
 
-	//UŒ‚•ûŒü‚ÌŒˆ’è ¨ Œü‚«’¼‚è ¨ “¥‚İ‚İ
+	//æ”»æ’ƒæ–¹å‘ã®æ±ºå®š â†’ å‘ãç›´ã‚Š â†’ è¸ã¿è¾¼ã¿
 	AActor* AssistTarget = nullptr;
 	const FVector AttackDir = ResolveAttackDirection(OwnerCharacter, AssistTarget);
 	StartTurn(OwnerCharacter, AttackDir);
@@ -287,7 +288,7 @@ void UCombatComponent::ExecuteComboStep(int32 StepIndex)
 			Anim->Montage_Play(Step.Montage, Step.m_PlayRate,
 				EMontagePlayReturnType::MontageLength, Step.m_StartTime);
 
-			//ƒ‚[ƒVƒ‡ƒ“I—¹‚É‹ó’†UŒ‚‚ğI‚í‚ç‚¹‚é
+			//ãƒ¢ãƒ¼ã‚·ãƒ§ãƒ³çµ‚äº†æ™‚ã«ç©ºä¸­æ”»æ’ƒã‚’çµ‚ã‚ã‚‰ã›ã‚‹
 			FOnMontageEnded EndDelegate;
 			EndDelegate.BindUObject(this, &UCombatComponent::OnAttackMontageEnded);
 			Anim->Montage_SetEndDelegate(EndDelegate, Step.Montage);
@@ -299,7 +300,7 @@ void UCombatComponent::OpenComboWindow()
 {
 	m_bComboWindowOpen = true;
 
-	//ƒ{ƒ^ƒ“˜A‘Å‚³‚ê‚½‚çŸ‚ÌƒRƒ“ƒ{‚ğ‘¦À‚É”­“®‚³‚¹‚é
+	//ãƒœã‚¿ãƒ³é€£æ‰“ã•ã‚ŒãŸã‚‰æ¬¡ã®ã‚³ãƒ³ãƒœã‚’å³åº§ã«ç™ºå‹•ã•ã›ã‚‹
 	if (m_bComboInputBuffered)
 	{
 		m_bComboInputBuffered = false;
@@ -316,7 +317,7 @@ void UCombatComponent::CloseComboWindow()
 
 void UCombatComponent::OnComboResetTimeout()
 {
-	//—P—\ŠÔ‚É“ü—Í‚ª‚È‚¯‚ê‚ÎƒRƒ“ƒ{ƒXƒe[ƒg‚ğ‰Šú‰»
+	//çŒ¶äºˆæ™‚é–“ã«å…¥åŠ›ãŒãªã‘ã‚Œã°ã‚³ãƒ³ãƒœã‚¹ãƒ†ãƒ¼ãƒˆã‚’åˆæœŸåŒ–
 	m_iCurrentComboIndex = 0;
 	m_bIsAttacking = false;
 	m_bComboWindowOpen = false;
@@ -328,6 +329,9 @@ void UCombatComponent::OnComboResetTimeout()
 
 void UCombatComponent::CheckHit()
 {
+	//å›é¿ã‚­ãƒ£ãƒ³ã‚»ãƒ«ã§æ”»æ’ƒã‚’ä¸­æ–­ã—ãŸå¾Œã€æ¶ˆãˆã‹ã‘ã®ãƒ¢ãƒ¼ã‚·ãƒ§ãƒ³ã®é€šçŸ¥ã§å½“ãŸã‚‰ãªã„ã‚ˆã†ã«
+	if (!m_bIsAttacking) return;
+
 	if (!ComboSteps.IsValidIndex(m_iCurrentComboIndex)) return;
 
 	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
@@ -335,14 +339,14 @@ void UCombatComponent::CheckHit()
 
 	const FComboStepData& Step = ComboSteps[m_iCurrentComboIndex];
 
-	//©g‚ÌˆÊ’u‚©‚çƒLƒƒƒ‰ƒNƒ^[‚Ì‘O•û‚ÖƒŠ[ƒ`‚Ì•ª‚¾‚¯L‚Î‚µ‚½ü•ª‚ğì¬
+	//è‡ªèº«ã®ä½ç½®ã‹ã‚‰ã‚­ãƒ£ãƒ©ã‚¯ã‚¿ãƒ¼ã®å‰æ–¹ã¸ãƒªãƒ¼ãƒã®åˆ†ã ã‘ä¼¸ã°ã—ãŸç·šåˆ†ã‚’ä½œæˆ
 	FVector Start = OwnerCharacter->GetActorLocation();
 	FVector End = Start + OwnerCharacter->GetActorForwardVector() * Step.HitRange;
 
 	TArray<FHitResult> HitResults;
 	FCollisionShape Sphere = FCollisionShape::MakeSphere(Step.HitRadius);
 
-	//ƒfƒoƒbƒO—piƒtƒ‰ƒO‚ªƒIƒ“‚Ì‚Æ‚«‚¾‚¯•\¦j
+	//ãƒ‡ãƒãƒƒã‚°ç”¨ï¼ˆãƒ•ãƒ©ã‚°ãŒã‚ªãƒ³ã®ã¨ãã ã‘è¡¨ç¤ºï¼‰
 	if (m_bDebugDrawHit)
 	{
 		DrawDebugSphere(GetWorld(), Start, Step.HitRadius, 12, FColor::Yellow, false, 1.f);
@@ -350,7 +354,7 @@ void UCombatComponent::CheckHit()
 		DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1.f);
 	}
 
-	//“–‚½‚è”»’è—p‚Ì‹…‘Ì‚ğˆÚ“®‚³‚¹‚é
+	//å½“ãŸã‚Šåˆ¤å®šç”¨ã®çƒä½“ã‚’ç§»å‹•ã•ã›ã‚‹
 	bool bHit = GetWorld()->SweepMultiByChannel(
 		HitResults, Start, End,
 		FQuat::Identity, ECC_Pawn, Sphere);
@@ -361,34 +365,34 @@ void UCombatComponent::CheckHit()
 	{
 		AActor* HitActor = Hit.GetActor();
 
-		//©g‚ğ–³‹A‘¼ƒAƒNƒ^‚Éd•¡‚µ‚Ä“–‚½‚ç‚È‚¢‚æ‚¤‚É‚·‚é
+		//è‡ªèº«ã‚’ç„¡è¦–ã€ä»–ã‚¢ã‚¯ã‚¿ã«é‡è¤‡ã—ã¦å½“ãŸã‚‰ãªã„ã‚ˆã†ã«ã™ã‚‹
 		if (!HitActor || HitActor == OwnerCharacter) continue;
 		if (HitActorsThisAttack.Contains(HitActor)) continue;
-		//“GˆÈŠOiƒvƒŒƒCƒ„[E•ªg‚È‚Çj‚É‚Í“–‚½‚ç‚È‚¢‚æ‚¤‚É‚·‚é
+		//æ•µä»¥å¤–ï¼ˆãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ãƒ»åˆ†èº«ãªã©ï¼‰ã«ã¯å½“ãŸã‚‰ãªã„ã‚ˆã†ã«ã™ã‚‹
 		if (!EnemyQuery::IsEnemy(HitActor)) continue;
 		HitActorsThisAttack.Add(HitActor);
 
-		//UE•W€‚Ì”Ä—pƒ_ƒ[ƒWƒVƒXƒeƒ€‚ğ“K‰
+		//UEæ¨™æº–ã®æ±ç”¨ãƒ€ãƒ¡ãƒ¼ã‚¸ã‚·ã‚¹ãƒ†ãƒ ã‚’é©å¿œ
 		UGameplayStatics::ApplyDamage(
 			HitActor, Step.Damage,
 			OwnerCharacter->GetController(),
 			OwnerCharacter,
 			UDamageType::StaticClass());
 
-		//‚«”ò‚Î‚µ—Í‚ªİ’è‚³‚ê‚Ä‚¢‚éê‡ƒmƒbƒNƒoƒbƒNˆ—
+		//å¹ãé£›ã°ã—åŠ›ãŒè¨­å®šã•ã‚Œã¦ã„ã‚‹å ´åˆãƒãƒƒã‚¯ãƒãƒƒã‚¯å‡¦ç†
 		if (Step.LaunchForce > 0.f)
 		{
 			if (ACharacter* HitCharacter = Cast<ACharacter>(HitActor))
 			{
-				//©•ª‚©‚ç“G‚Ö‚Ì•ûŒüƒxƒNƒgƒ‹‚íZo
+				//è‡ªåˆ†ã‹ã‚‰æ•µã¸ã®æ–¹å‘ãƒ™ã‚¯ãƒˆãƒ«ã‚ç®—å‡º
 				FVector LaunchDir = (HitActor->GetActorLocation() - OwnerCharacter->GetActorLocation()).GetSafeNormal();
-				LaunchDir.Z = 0.2f; //­‚µÎ‚ßã‚É‘Å‚¿ã‚°‚é
-				//“G‚ÌˆÚ“®‘¬“x‚ğƒŠƒZƒbƒg
+				LaunchDir.Z = 0.2f; //å°‘ã—æ–œã‚ä¸Šã«æ‰“ã¡ä¸Šã’ã‚‹
+				//æ•µã®ç§»å‹•é€Ÿåº¦ã‚’ãƒªã‚»ãƒƒãƒˆ
 				HitCharacter->LaunchCharacter(LaunchDir * Step.LaunchForce, true, true);
 			}
 		}
 
-		//“G‚É“–‚½‚Á‚½‚çƒLƒƒƒ‰ƒNƒ^[‘¤‚ÉƒGƒlƒ‹ƒM[‚ğ‘—‚éiã‚Å“G‚¾‚¯‚Éi‚Á‚Ä‚¢‚é‚Ì‚Å”»’è‚Í•s—vj
+		//æ•µã«å½“ãŸã£ãŸã‚‰ã‚­ãƒ£ãƒ©ã‚¯ã‚¿ãƒ¼å´ã«ã‚¨ãƒãƒ«ã‚®ãƒ¼ã‚’é€ã‚‹ï¼ˆä¸Šã§æ•µã ã‘ã«çµã£ã¦ã„ã‚‹ã®ã§åˆ¤å®šã¯ä¸è¦ï¼‰
 		bHitEnemy = true;
 		OnHitEnemy.Broadcast(Step.m_EnergyGain);
 
@@ -417,7 +421,7 @@ bool UCombatComponent::IsPlayingAttackMontage() const
 }
 
 // -----------------------------------------------------------------------
-// ‹ó’†UŒ‚
+// ç©ºä¸­æ”»æ’ƒ
 // -----------------------------------------------------------------------
 void UCombatComponent::SetAirHover(bool bEnable)
 {
@@ -440,7 +444,7 @@ void UCombatComponent::EndAirAttack()
 
 void UCombatComponent::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
-	//Ÿ‚Ì’i‚ÉØ‚è‘Ö‚í‚Á‚½‚¾‚¯‚È‚çUŒ‚Œp‘±’†‚È‚Ì‚Å‰½‚à‚µ‚È‚¢
+	//æ¬¡ã®æ®µã«åˆ‡ã‚Šæ›¿ã‚ã£ãŸã ã‘ãªã‚‰æ”»æ’ƒç¶™ç¶šä¸­ãªã®ã§ä½•ã‚‚ã—ãªã„
 	if (IsPlayingAttackMontage()) return;
 	EndAirAttack();
 }
@@ -452,14 +456,20 @@ void UCombatComponent::ResetAirAttack()
 }
 
 // -----------------------------------------------------------------------
-// ‰ñ”ğ
+// å›é¿
 // -----------------------------------------------------------------------
 void UCombatComponent::ExecuteDodge(const FVector& OverrideDirection)
 {
 	if (!m_bCanDodge || m_bIsDodging) return;
 
-	//UŒ‚ƒ‚[ƒVƒ‡ƒ“’†‚¾‚¯‰ñ”ğ•s‰Â
-	if (IsPlayingAttackMontage()) return;
+	//æ”»æ’ƒãƒ¢ãƒ¼ã‚·ãƒ§ãƒ³ä¸­ã®å›é¿ã‚­ãƒ£ãƒ³ã‚»ãƒ«
+	const bool bCancelAttack = IsPlayingAttackMontage();
+	if (bCancelAttack)
+	{
+		if (!m_bDodgeCancelAttack) return;
+		//å‡ºã—ãŸç›´å¾Œã¯ã‚­ãƒ£ãƒ³ã‚»ãƒ«ã§ããªã„è¨­å®šã®ã¨ã
+		if (GetWorld()->GetTimeSeconds() - m_AttackStartTime < m_DodgeCancelDelay) return;
+	}
 
 	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
 	if (!OwnerCharacter) return;
@@ -474,25 +484,38 @@ void UCombatComponent::ExecuteDodge(const FVector& OverrideDirection)
 	if (bInAir && m_bHasAirDodged) return;
 
 	if (bInAir) m_bHasAirDodged = true;
-	m_bIsDodging = true;
 
-	//“ü—Í•ûŒü‚ğ‰ñ”ğ•ûŒü‚Æ‚·‚éB“ü—Í‚ª‚È‚¢ê‡‚Í³–Ê•ûŒü
-	FVector DodgeDirection = !OverrideDirection.IsNearlyZero()
-		? OverrideDirection
-		: MoveComp->GetLastInputVector();
-	if (DodgeDirection.IsNearlyZero())
+	//å›é¿ãŒç¢ºå®šã—ãŸã®ã§ã€æ”»æ’ƒãƒ¢ãƒ¼ã‚·ãƒ§ãƒ³ã‚’æ­¢ã‚ã¦ã‚³ãƒ³ãƒœã‚’ãƒªã‚»ãƒƒãƒˆ
+	if (bCancelAttack)
 	{
-		DodgeDirection = OwnerCharacter->GetActorForwardVector();
+		if (UAnimInstance* Anim = OwnerCharacter->GetMesh()->GetAnimInstance())
+		{
+			Anim->Montage_Stop(m_DodgeCancelBlendOut, ComboSteps[m_iCurrentComboIndex].Montage);
+		}
+		CancelAttack();   //ã‚³ãƒ³ãƒœçŠ¶æ…‹ã®ãƒªã‚»ãƒƒãƒˆï¼‹ç©ºä¸­æ”»æ’ƒã®æ»ç©ºã‚’è§£é™¤
 	}
 
-	//‰ñ”ğƒN[ƒ‹ƒ_ƒEƒ“ƒ^ƒCƒ}[‚ÌŠJn
+	m_bIsDodging = true;
+
+	//å›é¿æ–¹å‘ï¼šAIæŒ‡å®š â†’ ã‚¹ãƒ†ã‚£ãƒƒã‚¯ã®å‘ã â†’ å…¥åŠ›ãªã—ãªã‚‰å¾Œã‚ï¼ˆã¾ãŸã¯å‰ï¼‰
+	//æ”»æ’ƒä¸­ã¯ç§»å‹•å…¥åŠ›ãŒã‚­ãƒ£ãƒ©ã«æ¸¡ã‚‰ãªã„ã®ã§ã€æ”»æ’ƒä¸­ã‚‚è¨˜éŒ²ã—ã¦ã„ã‚‹ m_DesiredDirection ã‚’ä½¿ã†
+	FVector DodgeDirection = OverrideDirection;
+	if (DodgeDirection.IsNearlyZero()) DodgeDirection = m_DesiredDirection;
+	if (DodgeDirection.IsNearlyZero()) DodgeDirection = MoveComp->GetLastInputVector();
+	if (DodgeDirection.IsNearlyZero())
+	{
+		const FVector Forward = OwnerCharacter->GetActorForwardVector();
+		DodgeDirection = m_bBackstepWhenNoInput ? -Forward : Forward;
+	}
+
+	//å›é¿ã‚¯ãƒ¼ãƒ«ãƒ€ã‚¦ãƒ³ã‚¿ã‚¤ãƒãƒ¼ã®é–‹å§‹
 	m_bCanDodge = false;
 	GetWorld()->GetTimerManager().SetTimer(
 		DodgeCoolDownTimerHandle, this,
 		&UCombatComponent::ResetDodgeCooldown,
 		m_DodgeCooldown, false);
 
-	//UŒ‚ƒLƒƒƒ“ƒZƒ‹—p
+	//æ”»æ’ƒã‚­ãƒ£ãƒ³ã‚»ãƒ«ç”¨
 	MoveComp->RemoveRootMotionSource(LungeRootMotionName);
 
 	MoveComp->StartDodge(DodgeDirection, m_DodgeForce);
