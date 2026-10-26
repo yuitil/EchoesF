@@ -30,6 +30,8 @@ public:
 	TSubclassOf<UEventBase> GetEventClass() const { return m_UseEventClass; }
 	FEventData GetEventData() const { return m_EventData; }
 
+	void SetIsEventExecution(const bool _isExecute) { m_IsEventExecution = _isExecute; }
+
 protected:
 	UFUNCTION()
 	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,

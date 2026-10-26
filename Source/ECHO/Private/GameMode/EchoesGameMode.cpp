@@ -2,6 +2,7 @@
 
 #include "GameMode/EchoesGameMode.h"
 
+#include "DSP/MelScale.h"
 #include "Player/ActionCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -39,6 +40,13 @@ void AEchoesGameMode::RespawnPlayer(AActionCharacter* _player)
 
 	_player->SetActorTransform(m_RespawnTransform, false, nullptr, ETeleportType::TeleportPhysics);
 	_player->OnRespawn();
+
+	//ステージの初期化処理呼んであげる
+	UStageEventSubsystem* StageEventSubsystem = GetWorld()->GetSubsystem<UStageEventSubsystem>();
+
+	if (!StageEventSubsystem) return;
+
+	StageEventSubsystem->OnPlayerRespawn();
 }
 
 void AEchoesGameMode::OnFinalEventFinish()

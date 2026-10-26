@@ -63,6 +63,7 @@ void UStageEventSubsystem::EventStart(AEventTriggerVolume* _eventTrigger)
 
 	// イベントを生成
 	m_CurrentEvent = NewObject<UEventBase>(this, EventClass);
+	m_CurrentVolume = _eventTrigger;
 
 	if (!IsValid(m_CurrentEvent)) return;
 
@@ -86,7 +87,7 @@ void UStageEventSubsystem::EventFinish()
 	SetGateOpen(true, m_CurrentEvent->GetEventData());
 
 	m_CurrentEvent = nullptr;
-
+	m_CurrentVolume = nullptr;
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Blue, TEXT("Event Finish"));
@@ -116,4 +117,15 @@ void UStageEventSubsystem::SetGateOpen(bool _isOpen, FEventData& _eventData)
 void UStageEventSubsystem::NotifyFinalEventFinished()
 {
 	OnFinalEventFinished.Broadcast();
+}
+
+void UStageEventSubsystem::OnPlayerRespawn()
+{
+	if (m_CurrentVolume)
+	{
+		//イベントの進行を戻す
+		m_CurrentVolume->SetIsEventExecution(false);
+	}
+
+	EventFinish();
 }

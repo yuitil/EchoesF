@@ -45,10 +45,13 @@ public:
 	// ステージ最終ボスイベント終了
 	void NotifyFinalEventFinished();
 	
+	void OnPlayerRespawn();
 private:
 	UPROPERTY()
 	TObjectPtr<UEventBase> m_CurrentEvent;
 	
+	UPROPERTY()
+	TObjectPtr<AEventTriggerVolume> m_CurrentVolume;
 public:
 	// ステージ最終ボスイベント終了通知
 	UPROPERTY(BlueprintAssignable, Category = "Event")
