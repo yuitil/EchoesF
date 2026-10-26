@@ -22,6 +22,17 @@ public:
 private:
 	// クリアWidgetを表示
 	void ShowClearWidget();
+	
+	void StartClearSlowMotion();
+
+	UFUNCTION()
+	void EndClearSlowMotion();
+	
+	void SpawnNextEnemy();
+	void FillEnemies();
+	void CheckEventClear();
+	
+	void DestroyAllSpawnedEnemies();
 protected:
 	// イベント全体で生成する敵の数
 	UPROPERTY(EditAnywhere, Category = "Param", meta = (ClampMin = "1"))
@@ -70,13 +81,4 @@ private:
 	TSubclassOf<UUserWidget> m_ClearWidgetClass;
 	
 	FTimerHandle m_ClearSlowTimerHandle;
-
-	void StartClearSlowMotion();
-
-	UFUNCTION()
-	void EndClearSlowMotion();
-	
-	void SpawnNextEnemy();
-	void FillEnemies();
-	void CheckEventClear();
 };

@@ -18,6 +18,7 @@ void UEnemyEliminationEvent::Enter(const FEventData& _data)
 	m_EnemyIndex = 0;
 	m_PointIndex = 0;
 
+	m_SpawnedEnemies.Empty();
 
 	UWorld* World = GetWorld();
 	if (!World) return;
@@ -54,6 +55,8 @@ void UEnemyEliminationEvent::Finish()
 			EnemyManager->OnEventEnemyDefeated.RemoveAll(this);
 		}
 	}
+
+	DestroyAllSpawnedEnemies();
 
 	Super::Finish();
 }
@@ -126,6 +129,9 @@ void UEnemyEliminationEvent::SpawnNextEnemy()
 
 	if (!IsValid(Enemy)) return;
 
+	// 生成した敵を配列に登録
+	m_SpawnedEnemies.Add(Enemy);
+
 	++m_CurrentEnemyCount;
 	++m_TotalSpawnedCount;
 
@@ -156,6 +162,9 @@ void UEnemyEliminationEvent::FillEnemies()
 void UEnemyEliminationEvent::OnEventEnemyDead(AEnemyCharacterBase* _enemy)
 {
 	if (!IsValid(_enemy)) return;
+
+	// このイベントで生成した敵か確認
+	if (m_SpawnedEnemies.Remove(_enemy) == 0) return;
 
 	if (m_CurrentEnemyCount <= 0) return;
 
@@ -194,4 +203,16 @@ void UEnemyEliminationEvent::CheckEventClear()
 	StartClearSlowMotion();
 	ShowClearWidget();
 	EndEvent();
+}
+
+void UEnemyEliminationEvent::DestroyAllSpawnedEnemies()
+{
+	for (AEnemyCharacterBase* Enemy : m_SpawnedEnemies)
+	{
+		if (!IsValid(Enemy)) continue;
+
+		Enemy->Destroy();
+	}
+
+	m_SpawnedEnemies.Empty();
 }
