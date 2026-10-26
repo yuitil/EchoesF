@@ -8,6 +8,12 @@
 #include "Player/LockOnComponent.h"
 #include "Combat/EnemyQuery.h"
 #include "Components/CapsuleComponent.h"
+#include "GameFramework/SpringArmComponent.h"
+#include "GameFramework/Character.h"
+#include "Animation/AnimInstance.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "TimerManager.h"
 #include "GameFramework/RootMotionSource.h"
@@ -102,6 +108,8 @@ void USkillComponent::EndSkill()
 	SetComponentTickEnabled(false);
 	SetPassThroughEnemies(false);
 	SetMoveSpeedRate(1.f);
+	FreezeCamera(false);
+	ClearChargeEffect();
 
 	if (m_bHovering)
 	{
@@ -115,6 +123,10 @@ void USkillComponent::EndSkill()
 		m_bHovering = false;
 	}
 
+	if (m_bDebugDraw && m_State != ESkillState::None)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Green, TEXT("Skill End"));
+	}
 	m_State = ESkillState::None;
 	m_ChargeLevel = 0;
 	m_PendingTargets.Reset();
@@ -208,6 +220,35 @@ void USkillComponent::SetMoveSpeedRate(float Rate)
 		{
 			Move->SetSpeedMultiplier(Rate);
 		}
+	}
+}
+
+//カメラ（SpringArm）をその場に止める／元に戻す
+void USkillComponent::FreezeCamera(bool bFreeze)
+{
+	AActionCharacter* Owner = GetOwnerCharacter();
+	if (!Owner) return;
+
+	if (bFreeze)
+	{
+		USpringArmComponent* Boom = Owner->FindComponentByClass<USpringArmComponent>();
+		if (!Boom || m_FrozenBoom.IsValid()) return;
+
+		m_FrozenBoom = Boom;
+		m_BoomRelativeLocation = Boom->GetRelativeLocation();
+		const FVector WorldLocation = Boom->GetComponentLocation();
+		//親（キャラ）について行かないようにして、今のワールド位置に置く
+		//（SetWorldLocation だと移動量が0とみなされて位置が更新されず、原点に飛ぶので直接入れる）
+		Boom->SetUsingAbsoluteLocation(true);
+		Boom->SetRelativeLocation_Direct(WorldLocation);
+		Boom->UpdateComponentToWorld();
+	}
+	else if (USpringArmComponent* Boom = m_FrozenBoom.Get())
+	{
+		Boom->SetUsingAbsoluteLocation(false);
+		Boom->SetRelativeLocation_Direct(m_BoomRelativeLocation);
+		Boom->UpdateComponentToWorld();
+		m_FrozenBoom.Reset();
 	}
 }
 
@@ -378,9 +419,12 @@ bool USkillComponent::UseTempest()
 
 	AActionCharacter* Owner = GetOwnerCharacter();
 	const FVector Dir = GetInputOrForward();
-	AActor* Target = FindTarget(D.m_SearchRadius, Dir);
+	//中心：敵を狙う設定なら近くの敵、そうでなければ発動した場所
+	AActor* Target = D.m_bCenterOnTarget ? FindTarget(D.m_SearchRadius, Dir) : nullptr;
 	m_TempestTarget = Target;
-	m_TempestCenter = Target ? Target->GetActorLocation() : Owner->GetActorLocation() + Dir * D.m_OrbitRadius;
+	m_TempestCenter = Target ? Target->GetActorLocation() : Owner->GetActorLocation();
+
+	if (D.m_bFreezeCamera) FreezeCamera(true);
 
 	//今いる位置の角度から始める
 	const FVector FromCenter = Owner->GetActorLocation() - m_TempestCenter;
@@ -428,7 +472,12 @@ void USkillComponent::Tempest_Step()
 		return;
 	}
 
-	//締め：中心を向いて大きく斬る
+	//締め：発動した場所が中心なら、その場所に戻ってから大きく斬る
+	//（カメラ固定を解いたときに画面が飛ばないように）
+	if (!m_TempestTarget.IsValid())
+	{
+		DashTo(m_TempestCenter, D.m_DashTime);
+	}
 	const FVector ToCenter = (m_TempestCenter - Owner->GetActorLocation()).GetSafeNormal2D();
 	if (!ToCenter.IsNearlyZero()) Owner->SetActorRotation(ToCenter.Rotation());
 	PlayMontage(D.FinishMontage);
@@ -439,8 +488,9 @@ void USkillComponent::Tempest_Step()
 }
 
 // =======================================================================
-// 最終奥義：ため斬り
-// 押している間ためる（段階 = ためた時間）→ 離すと段階ぶんゲージを消費して放つ
+// 最終奥義：ため斬り（エクスカリバー型）
+// 押している間ためる（段階 = ためた時間）→ 離すと段階ぶんゲージを消費し、
+// 少し遅れて（振り下ろしの瞬間に）向いている方向へV字の光の斬撃を放つ
 // =======================================================================
 bool USkillComponent::StartCharge()
 {
@@ -478,45 +528,118 @@ void USkillComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 	if (NewLevel != m_ChargeLevel)
 	{
 		m_ChargeLevel = NewLevel;
+		UpdateChargeEffect();
 		OnChargeLevelChanged.Broadcast(m_ChargeLevel);
 		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Cyan,
 			FString::Printf(TEXT("Charge Lv %d"), m_ChargeLevel));
 	}
 }
 
+//剣にまとわせるエフェクトを、今の段階のものに差し替える
+void USkillComponent::UpdateChargeEffect()
+{
+	ClearChargeEffect();
+	if (m_ChargeLevel <= 0) return;
+
+	const FUltimateData& U = SkillData->Ultimate;
+	UNiagaraSystem* Effect = U.Levels[m_ChargeLevel - 1].ChargeEffect;
+	UStaticMeshComponent* Weapon = GetOwnerCharacter()->GetWeaponMesh();
+	if (!Effect || !Weapon) return;
+
+	m_ChargeFX = UNiagaraFunctionLibrary::SpawnSystemAttached(Effect, Weapon, U.m_ChargeEffectSocket,
+		FVector::ZeroVector, FRotator::ZeroRotator, EAttachLocation::SnapToTarget, true);
+}
+
+void USkillComponent::ClearChargeEffect()
+{
+	if (UNiagaraComponent* FX = m_ChargeFX.Get())
+	{
+		FX->DestroyComponent();
+	}
+	m_ChargeFX.Reset();
+}
+
 void USkillComponent::ReleaseCharge()
 {
 	if (!IsCharging()) return;
 
+	const FUltimateData& U = SkillData->Ultimate;
 	AActionCharacter* Owner = GetOwnerCharacter();
 	SetComponentTickEnabled(false);
 	SetMoveSpeedRate(1.f);
-	if (SkillData->Ultimate.ChargeMontage) Owner->StopAnimMontage(SkillData->Ultimate.ChargeMontage);
+	ClearChargeEffect();
 
 	//1段もたまっていなければ何もせず終わり（ゲージは減らない）
 	if (m_ChargeLevel <= 0 || !TryConsume(m_ChargeLevel))
 	{
+		if (U.ChargeMontage) Owner->StopAnimMontage(U.ChargeMontage);
 		EndSkill();
 		return;
 	}
 
-	const FUltimateLevelData& L = SkillData->Ultimate.Levels[m_ChargeLevel - 1];
+	const FUltimateLevelData& L = U.Levels[m_ChargeLevel - 1];
 	m_UltLevel = m_ChargeLevel;
-	m_UltHitsLeft = L.m_HitCount;
 	m_State = ESkillState::Ultimate;
 	Owner->GetCharacterMovement()->StopMovementImmediately();
+
+	//ロックオン中なら敵の方へ向き直ってから放つ
+	if (Owner->LockOnComponent && Owner->LockOnComponent->IsLockedOn())
+	{
+		if (const AActor* Target = Owner->LockOnComponent->GetTarget())
+		{
+			FVector To = Target->GetActorLocation() - Owner->GetActorLocation();
+			To.Z = 0.f;
+			if (!To.IsNearlyZero()) Owner->SetActorRotation(To.Rotation());
+		}
+	}
+
+	//モーション：段階専用があればそれ、なければため用モンタージュの振り下ろしへ
+	UAnimInstance* Anim = Owner->GetMesh()->GetAnimInstance();
+	if (L.Montage)
+	{
+		if (U.ChargeMontage) Owner->StopAnimMontage(U.ChargeMontage);
+		PlayMontage(L.Montage);
+	}
+	else if (Anim && U.ChargeMontage && Anim->Montage_IsPlaying(U.ChargeMontage)
+		&& U.ChargeMontage->GetSectionIndex(U.m_ReleaseSectionName) != INDEX_NONE)
+	{
+		Anim->Montage_JumpToSection(U.m_ReleaseSectionName, U.ChargeMontage);
+	}
+	else if (U.ChargeMontage)
+	{
+		Owner->StopAnimMontage(U.ChargeMontage);
+	}
 
 	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Magenta,
 		FString::Printf(TEXT("ULTIMATE Lv %d"), m_UltLevel));
 
-	PlayMontage(L.Montage);
+	//振り下ろしの瞬間に合わせて斬撃を出す
+	GetWorld()->GetTimerManager().SetTimer(m_StepTimer, this, &USkillComponent::Ultimate_Fire,
+		FMath::Max(U.m_ReleaseDelay, 0.01f), false);
+}
+
+void USkillComponent::Ultimate_Fire()
+{
+	const FUltimateLevelData& L = SkillData->Ultimate.Levels[m_UltLevel - 1];
+	AActionCharacter* Owner = GetOwnerCharacter();
+
+	//放った瞬間の位置と向きで固定（多段ヒットの間に向きが変わっても斬撃はまっすぐ）
+	m_UltOrigin = Owner->GetActorLocation();
+	m_UltDir = Owner->GetActorForwardVector().GetSafeNormal2D();
+
+	if (L.BeamEffect)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, L.BeamEffect, m_UltOrigin, m_UltDir.Rotation());
+	}
+
+	m_UltHitsLeft = L.m_HitCount;
 	Ultimate_Hit();
 }
 
 void USkillComponent::Ultimate_Hit()
 {
 	const FUltimateLevelData& L = SkillData->Ultimate.Levels[m_UltLevel - 1];
-	DamageInSphere(GetOwnerCharacter()->GetActorLocation(), L.m_Radius, L.m_Damage);
+	DamageInWedge(m_UltOrigin, m_UltDir, L);
 
 	if (--m_UltHitsLeft > 0)
 	{
@@ -527,6 +650,62 @@ void USkillComponent::Ultimate_Hit()
 	{
 		FinishSkill(L.m_RecoveryTime);
 	}
+}
+
+//前方にV字（先に行くほど広がる帯）の範囲にいる敵にダメージ
+int32 USkillComponent::DamageInWedge(const FVector& Origin, const FVector& Dir, const FUltimateLevelData& L)
+{
+	AActionCharacter* Owner = GetOwnerCharacter();
+	const float Tan = FMath::Tan(FMath::DegreesToRadians(L.m_HalfAngle));
+
+	//まず届く範囲の敵をざっくり集める
+	TArray<FOverlapResult> Overlaps;
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(SkillWedge), false, Owner);
+	GetWorld()->OverlapMultiByObjectType(Overlaps, Origin, FQuat::Identity,
+		FCollisionObjectQueryParams(ECC_Pawn), FCollisionShape::MakeSphere(L.m_Length + 200.f), Params);
+
+	TSet<AActor*> Done;
+	for (const FOverlapResult& R : Overlaps)
+	{
+		AActor* Enemy = R.GetActor();
+		if (!EnemyQuery::IsAliveEnemy(Enemy) || Done.Contains(Enemy)) continue;
+
+		FVector To = Enemy->GetActorLocation() - Origin;
+		if (FMath::Abs(To.Z) > L.m_HalfHeight) continue;
+		To.Z = 0.f;
+
+		//前にどれだけ進んだ位置か / 中心線から横にどれだけずれているか
+		const float Forward = FVector::DotProduct(To, Dir);
+		if (Forward < 0.f || Forward > L.m_Length) continue;
+		const float Side = FMath::Abs(FVector::CrossProduct(Dir, To).Z);
+
+		//その位置での帯の幅（敵の太さぶん少し甘くする）
+		float EnemyRadius = 0.f;
+		if (const ACharacter* EnemyChara = Cast<ACharacter>(Enemy))
+		{
+			EnemyRadius = EnemyChara->GetCapsuleComponent()->GetScaledCapsuleRadius();
+		}
+		if (Side > L.m_BaseWidth + Forward * Tan + EnemyRadius) continue;
+
+		Done.Add(Enemy);
+		UGameplayStatics::ApplyDamage(Enemy, L.m_Damage, Owner->GetController(), Owner, nullptr);
+	}
+
+	if (m_bDebugDraw)
+	{
+		const FVector Right = FVector::CrossProduct(FVector::UpVector, Dir);
+		const float EndWidth = L.m_BaseWidth + L.m_Length * Tan;
+		const FVector NearL = Origin - Right * L.m_BaseWidth;
+		const FVector NearR = Origin + Right * L.m_BaseWidth;
+		const FVector FarL = Origin + Dir * L.m_Length - Right * EndWidth;
+		const FVector FarR = Origin + Dir * L.m_Length + Right * EndWidth;
+		const FColor Color = Done.Num() > 0 ? FColor::Red : FColor::Yellow;
+		DrawDebugLine(GetWorld(), NearL, FarL, Color, false, 1.f, 0, 4.f);
+		DrawDebugLine(GetWorld(), NearR, FarR, Color, false, 1.f, 0, 4.f);
+		DrawDebugLine(GetWorld(), FarL, FarR, Color, false, 1.f, 0, 4.f);
+		DrawDebugLine(GetWorld(), NearL, NearR, Color, false, 1.f, 0, 4.f);
+	}
+	return Done.Num();
 }
 
 // -----------------------------------------------------------------------

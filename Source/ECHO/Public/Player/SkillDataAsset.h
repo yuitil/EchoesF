@@ -1,4 +1,4 @@
-//SkillDataAsset.h
+﻿//SkillDataAsset.h
 //強力な技（ゲージ技）の調整データ。BPのコンポーネントではなくデータアセットに置くことで、
 //ヘッダー変更でBPが壊れても数値が消えないようにしている
 
@@ -9,6 +9,7 @@
 #include "SkillDataAsset.generated.h"
 
 class UAnimMontage;
+class UNiagaraSystem;
 
 // -----------------------------------------------------------------------
 // 1ゲージ技：一閃（前方へ一瞬で駆け抜け、通り過ぎた敵をまとめて斬る）
@@ -77,6 +78,14 @@ struct FTempestData
 	UPROPERTY(EditAnywhere, Category = "Tempest", meta = (ClampMin = "0"))
 	int32 m_Cost = 3;
 
+	//true：近くの敵を中心に飛び回る　false：発動した場所を中心に斬りまくる
+	UPROPERTY(EditAnywhere, Category = "Tempest")
+	bool m_bCenterOnTarget = false;
+
+	//技の間、カメラを発動した位置に止めておく
+	UPROPERTY(EditAnywhere, Category = "Tempest")
+	bool m_bFreezeCamera = true;
+
 	//1撃ごとに順番に再生する斬りモーション（空でも動く）
 	UPROPERTY(EditAnywhere, Category = "Tempest")
 	TArray<TObjectPtr<UAnimMontage>> SlashMontages;
@@ -103,7 +112,7 @@ struct FTempestData
 
 	//中心のまわりを飛び回る半径
 	UPROPERTY(EditAnywhere, Category = "Tempest", meta = (ClampMin = "0"))
-	float m_OrbitRadius = 300.f;
+	float m_OrbitRadius = 250.f;
 
 	//1撃ごとの範囲（中心から）
 	UPROPERTY(EditAnywhere, Category = "Tempest", meta = (ClampMin = "1"))
@@ -123,33 +132,56 @@ struct FTempestData
 };
 
 // -----------------------------------------------------------------------
-// 最終奥義：ため斬り（ためた段数ぶんゲージを消費。段数ごとに性能が変わる）
+// 最終奥義：ため斬り（エクスカリバー型）
+// ためた段数ぶんゲージを消費し、向いている方向へV字に広がる光の斬撃を放つ
+// 段数が上がるほど、長く・太く・多段になる
 // -----------------------------------------------------------------------
 USTRUCT(BlueprintType)
 struct FUltimateLevelData
 {
 	GENERATED_BODY()
 
-	//放つときのモーション
+	//放つときのモーション（空なら ChargeMontage の Release セクションへ進む）
 	UPROPERTY(EditAnywhere, Category = "Ultimate")
 	TObjectPtr<UAnimMontage> Montage;
 
+	//この段階のとき、剣にまとわせるエフェクト（段階が上がると差し替わる）
+	UPROPERTY(EditAnywhere, Category = "Ultimate")
+	TObjectPtr<UNiagaraSystem> ChargeEffect;
+
+	//放った瞬間の光の斬撃エフェクト（キャラの位置・向きに出す）
+	UPROPERTY(EditAnywhere, Category = "Ultimate")
+	TObjectPtr<UNiagaraSystem> BeamEffect;
+
+	//斬撃が届く長さ
 	UPROPERTY(EditAnywhere, Category = "Ultimate", meta = (ClampMin = "1"))
-	float m_Radius = 300.f;
+	float m_Length = 1000.f;
+
+	//V字の広がり（片側の角度）
+	UPROPERTY(EditAnywhere, Category = "Ultimate", meta = (ClampMin = "0", ClampMax = "60"))
+	float m_HalfAngle = 10.f;
+
+	//根元の幅（片側）。目の前の敵を取りこぼさないため
+	UPROPERTY(EditAnywhere, Category = "Ultimate", meta = (ClampMin = "0"))
+	float m_BaseWidth = 120.f;
+
+	//上下の判定の高さ（片側）
+	UPROPERTY(EditAnywhere, Category = "Ultimate", meta = (ClampMin = "1"))
+	float m_HalfHeight = 300.f;
 
 	//1ヒットあたりのダメージ
 	UPROPERTY(EditAnywhere, Category = "Ultimate", meta = (ClampMin = "0"))
 	float m_Damage = 50.f;
 
-	//ヒット数（回転斬りの回数）
+	//ヒット数（光が当たり続ける間の多段ヒット）
 	UPROPERTY(EditAnywhere, Category = "Ultimate", meta = (ClampMin = "1"))
 	int32 m_HitCount = 1;
 
 	UPROPERTY(EditAnywhere, Category = "Ultimate", meta = (ClampMin = "0.02"))
-	float m_HitInterval = 0.15f;
+	float m_HitInterval = 0.1f;
 
 	UPROPERTY(EditAnywhere, Category = "Ultimate", meta = (ClampMin = "0"))
-	float m_RecoveryTime = 0.5f;
+	float m_RecoveryTime = 0.6f;
 };
 
 USTRUCT(BlueprintType)
@@ -157,9 +189,19 @@ struct FUltimateData
 {
 	GENERATED_BODY()
 
-	//ため中のモーション（ループさせる）
+	//ため中のモーション
+	//「掲げる → ため(ループ) → 振り下ろし」を1本のモンタージュにして、
+	//振り下ろしを m_ReleaseSectionName のセクションにしておくと、離した瞬間にそこへ飛ぶ
 	UPROPERTY(EditAnywhere, Category = "Ultimate")
 	TObjectPtr<UAnimMontage> ChargeMontage;
+
+	//振り下ろしのセクション名
+	UPROPERTY(EditAnywhere, Category = "Ultimate")
+	FName m_ReleaseSectionName = TEXT("Release");
+
+	//ため中のエフェクトを付ける剣のソケット（None なら剣の原点）
+	UPROPERTY(EditAnywhere, Category = "Ultimate")
+	FName m_ChargeEffectSocket;
 
 	//1段階上がるのにかかる時間
 	UPROPERTY(EditAnywhere, Category = "Ultimate", meta = (ClampMin = "0.05"))
@@ -168,6 +210,10 @@ struct FUltimateData
 	//ため中の移動速度の倍率
 	UPROPERTY(EditAnywhere, Category = "Ultimate", meta = (ClampMin = "0", ClampMax = "1"))
 	float m_ChargeMoveSpeedRate = 0.3f;
+
+	//離してから斬撃が出るまで（振り下ろした瞬間に合わせる）
+	UPROPERTY(EditAnywhere, Category = "Ultimate", meta = (ClampMin = "0"))
+	float m_ReleaseDelay = 0.25f;
 
 	//段階ごとの性能 [0]=1段 … [4]=5段（要素数が最大段数になる）
 	UPROPERTY(EditAnywhere, Category = "Ultimate")
