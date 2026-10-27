@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 using UnrealBuildTool;
 
@@ -11,8 +11,8 @@ public class ECHO : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
 			"Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "AIModule", "NavigationSystem",
-			"GameplayTasks", "GameplayAbilities", "GameplayTags"
-		});
+			"GameplayTasks", "GameplayAbilities", "GameplayTags","MoviePlayer", "Slate", "SlateCore", "UMG"
+        });
 
 		//
 		PrivateDependencyModuleNames.AddRange(new string[]

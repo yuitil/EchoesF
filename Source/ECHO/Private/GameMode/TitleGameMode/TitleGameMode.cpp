@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "GameMode/TitleGameMode/TitleGameMode.h"
@@ -6,6 +6,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Widget/TitleWidget/TitleWidget.h"
+#include "Engine/AssetManager.h"
 
 void ATitleGameMode::BeginPlay()
 {
@@ -22,7 +23,11 @@ void ATitleGameMode::BeginPlay()
 
 void ATitleGameMode::StartGamePlay()
 {
-	if (m_NextLevel.IsNull())return;
+	if (m_NextLevel.IsNull())
+	{
+		UE_LOG(LogTemp, Error, TEXT("NextLevel is null"));
+		return;
+	}
 
 	UGameplayStatics::OpenLevelBySoftObjectPtr(this, m_NextLevel);
 }
