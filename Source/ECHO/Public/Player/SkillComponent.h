@@ -50,6 +50,16 @@ public:
 	bool IsInvincible() const { return IsBusy() && !IsCharging(); }
 	int32 GetChargeLevel() const { return m_ChargeLevel; }
 
+	//アニメーション通知から呼ぶ（ABP の AnimNotify_SkillHit / AnimNotify_SkillFinish）
+	UFUNCTION(BlueprintCallable, Category = "Skill")
+	void SkillHit();
+
+	UFUNCTION(BlueprintCallable, Category = "Skill")
+	void SkillFinish();
+
+	//技でカメラを動かしている間 true（ロックオンのカメラ処理を止めるため）
+	bool IsCameraOverridden() const { return m_CamBlendAlpha > 0.f || m_CamBlendDir != 0; }
+
 	FOnChargeLevelChanged OnChargeLevelChanged;
 
 protected:
@@ -82,6 +92,15 @@ private:
 	TWeakObjectPtr<USpringArmComponent> m_FrozenBoom;
 	FVector m_BoomRelativeLocation = FVector::ZeroVector;
 
+	// --- 俯瞰カメラ ---
+	float m_CamBlendAlpha = 0.f;     //0 = 通常、1 = 俯瞰
+	int32 m_CamBlendDir = 0;         //+1 = 俯瞰へ、-1 = 通常へ、0 = 止まっている
+	float m_CamBlendTime = 0.25f;
+	float m_SavedArmLength = 0.f;
+	float m_SavedPitch = 0.f;
+	float m_TargetArmLength = 0.f;
+	float m_TargetPitch = 0.f;
+
 	// --- 最終奥義 ---
 	float m_ChargeTime = 0.f;
 	int32 m_ChargeLevel = 0;
@@ -108,8 +127,12 @@ private:
 	void SetPassThroughEnemies(bool bEnable);
 	void SetMoveSpeedRate(float Rate);
 	void PlayMontage(UAnimMontage* Montage);
-	void FreezeCamera(bool bFreeze);
-	int32 DamageInSphere(const FVector& Center, float Radius, float Damage);
+	void FreezeCamera(bool bFreeze, const FVector& Offset = FVector::ZeroVector);
+	void StartOverheadCamera(float ArmLength, float Pitch, float BlendTime);
+	void StopOverheadCamera();
+	void UpdateOverheadCamera(float DeltaTime);
+	void OnTempestMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+	int32 DamageInSphere(const FVector& Center, float Radius, float Damage, TArray<AActor*>* OutHitActors = nullptr);
 	void CollectAlongPath(const FVector& Start, const FVector& End, float Radius);
 
 	void DashSlash_Go();

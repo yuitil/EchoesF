@@ -164,7 +164,8 @@ void AActionCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	//ロックオン中はカメラをターゲットへ追従させる
-	if (LockOnComponent && LockOnComponent->IsLockedOn())
+	if (LockOnComponent && LockOnComponent->IsLockedOn()
+		&& !(SkillComponent && SkillComponent->IsCameraOverridden()))
 	{
 		UpdateLockOnCamera(DeltaTime);
 	}
@@ -436,7 +437,7 @@ void AActionCharacter::OnHitEnemy(float EnergyGain)
 
 	SetEnergy(m_CurrentEnergy + EnergyGain);
 
-	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan,
+	if (m_bDebugHP) GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan,
 	                                 FString::Printf(
 		                                 TEXT("Energy: %.1f / %.1f (Stock %d)"), m_CurrentEnergy, m_MaxEnergy,
 		                                 GetEnergyStock()));

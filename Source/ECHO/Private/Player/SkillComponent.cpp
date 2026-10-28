@@ -106,6 +106,7 @@ void USkillComponent::EndSkill()
 	GetWorld()->GetTimerManager().ClearTimer(m_StepTimer);
 	GetWorld()->GetTimerManager().ClearTimer(m_EndTimer);
 	SetComponentTickEnabled(false);
+	StopOverheadCamera();   //俯瞰カメラは Tick でゆっくり元に戻す
 	SetPassThroughEnemies(false);
 	SetMoveSpeedRate(1.f);
 	FreezeCamera(false);
@@ -224,7 +225,7 @@ void USkillComponent::SetMoveSpeedRate(float Rate)
 }
 
 //カメラ（SpringArm）をその場に止める／元に戻す
-void USkillComponent::FreezeCamera(bool bFreeze)
+void USkillComponent::FreezeCamera(bool bFreeze, const FVector& Offset)
 {
 	AActionCharacter* Owner = GetOwnerCharacter();
 	if (!Owner) return;
@@ -236,7 +237,7 @@ void USkillComponent::FreezeCamera(bool bFreeze)
 
 		m_FrozenBoom = Boom;
 		m_BoomRelativeLocation = Boom->GetRelativeLocation();
-		const FVector WorldLocation = Boom->GetComponentLocation();
+		const FVector WorldLocation = Boom->GetComponentLocation() + Offset;
 		//親（キャラ）について行かないようにして、今のワールド位置に置く
 		//（SetWorldLocation だと移動量が0とみなされて位置が更新されず、原点に飛ぶので直接入れる）
 		Boom->SetUsingAbsoluteLocation(true);
@@ -252,6 +253,69 @@ void USkillComponent::FreezeCamera(bool bFreeze)
 	}
 }
 
+
+//俯瞰カメラ：距離と角度を、BlendTime かけて切り替える
+void USkillComponent::StartOverheadCamera(float ArmLength, float Pitch, float BlendTime)
+{
+	AActionCharacter* Owner = GetOwnerCharacter();
+	USpringArmComponent* Boom = Owner ? Owner->FindComponentByClass<USpringArmComponent>() : nullptr;
+	if (!Boom || !Owner->GetController()) return;
+
+	//戻っている途中に再発動したときは、元の値を取り直さない
+	if (m_CamBlendAlpha <= 0.f)
+	{
+		m_SavedArmLength = Boom->TargetArmLength;
+		//Pitch は 0〜360 で入っていることがあるので -180〜180 に直す（そのままだと遠回りする）
+		m_SavedPitch = FRotator::NormalizeAxis(Owner->GetController()->GetControlRotation().Pitch);
+	}
+	m_TargetArmLength = ArmLength;
+	m_TargetPitch = Pitch;
+	m_CamBlendTime = FMath::Max(BlendTime, 0.01f);
+	m_CamBlendDir = 1;
+	SetComponentTickEnabled(true);
+}
+
+//元のカメラへ戻し始める
+void USkillComponent::StopOverheadCamera()
+{
+	if (m_CamBlendAlpha > 0.f || m_CamBlendDir > 0)
+	{
+		m_CamBlendDir = -1;
+		SetComponentTickEnabled(true);
+	}
+}
+
+//毎フレーム、距離と角度を少しずつ動かす
+void USkillComponent::UpdateOverheadCamera(float DeltaTime)
+{
+	if (m_CamBlendDir == 0) return;
+
+	AActionCharacter* Owner = GetOwnerCharacter();
+	USpringArmComponent* Boom = Owner ? Owner->FindComponentByClass<USpringArmComponent>() : nullptr;
+	AController* Controller = Owner ? Owner->GetController() : nullptr;
+	if (!Boom || !Controller)
+	{
+		m_CamBlendDir = 0;
+		m_CamBlendAlpha = 0.f;
+		return;
+	}
+
+	m_CamBlendAlpha = FMath::Clamp(m_CamBlendAlpha + m_CamBlendDir * DeltaTime / m_CamBlendTime, 0.f, 1.f);
+	//動き出しと止まり際をなめらかにする
+	const float T = FMath::InterpEaseInOut(0.f, 1.f, m_CamBlendAlpha, 2.f);
+
+	Boom->TargetArmLength = FMath::Lerp(m_SavedArmLength, m_TargetArmLength, T);
+	FRotator Rot = Controller->GetControlRotation();
+	Rot.Pitch = FMath::Lerp(m_SavedPitch, m_TargetPitch, T);
+	Controller->SetControlRotation(Rot);
+
+	//着いたら止める
+	if ((m_CamBlendDir > 0 && m_CamBlendAlpha >= 1.f) || (m_CamBlendDir < 0 && m_CamBlendAlpha <= 0.f))
+	{
+		m_CamBlendDir = 0;
+	}
+}
+
 void USkillComponent::PlayMontage(UAnimMontage* Montage)
 {
 	if (Montage)
@@ -261,7 +325,7 @@ void USkillComponent::PlayMontage(UAnimMontage* Montage)
 }
 
 //範囲内の敵全員にダメージ。当たった数を返す
-int32 USkillComponent::DamageInSphere(const FVector& Center, float Radius, float Damage)
+int32 USkillComponent::DamageInSphere(const FVector& Center, float Radius, float Damage, TArray<AActor*>* OutHitActors)
 {
 	AActionCharacter* Owner = GetOwnerCharacter();
 
@@ -283,6 +347,9 @@ int32 USkillComponent::DamageInSphere(const FVector& Center, float Radius, float
 	{
 		DrawDebugSphere(GetWorld(), Center, Radius, 16, Done.Num() > 0 ? FColor::Red : FColor::Yellow, false, 0.6f);
 	}
+	//呼び出し側が当たった敵を使いたいとき（吹き飛ばしなど）
+	if (OutHitActors) *OutHitActors = Done.Array();
+
 	return Done.Num();
 }
 
@@ -424,7 +491,33 @@ bool USkillComponent::UseTempest()
 	m_TempestTarget = Target;
 	m_TempestCenter = Target ? Target->GetActorLocation() : Owner->GetActorLocation();
 
-	if (D.m_bFreezeCamera) FreezeCamera(true);
+	//発動した瞬間のキャラの正面方向へずらして固定する（横向きで出しても、アニメが進む方向と一致する）
+	if (D.m_bFreezeCamera)
+	{
+		const FVector Forward = Owner->GetActorForwardVector().GetSafeNormal2D();
+		FreezeCamera(true, Forward * D.m_CameraForwardOffset);
+	}
+
+	if (D.m_bOverheadCamera) StartOverheadCamera(D.m_CameraArmLength, D.m_CameraPitch, D.m_CameraBlendTime);
+
+	//アニメーション型：動きはモーションに任せ、当たり判定は通知（SkillHit / SkillFinish）で入れる
+	if (D.Montage)
+	{
+		SetPassThroughEnemies(true);
+		UAnimInstance* Anim = Owner->GetMesh()->GetAnimInstance();
+		if (!Anim)
+		{
+			EndSkill();
+			return true;
+		}
+		Anim->Montage_Play(D.Montage);
+
+		//モーションが終わったら技を終える
+		FOnMontageEnded EndDelegate;
+		EndDelegate.BindUObject(this, &USkillComponent::OnTempestMontageEnded);
+		Anim->Montage_SetEndDelegate(EndDelegate, D.Montage);
+		return true;
+	}
 
 	//今いる位置の角度から始める
 	const FVector FromCenter = Owner->GetActorLocation() - m_TempestCenter;
@@ -487,6 +580,59 @@ void USkillComponent::Tempest_Step()
 	FinishSkill(D.m_RecoveryTime);
 }
 
+
+//アニメーション型テンペスト：斬る瞬間の通知
+void USkillComponent::SkillHit()
+{
+	if (m_State != ESkillState::Tempest || !SkillData) return;
+	const FTempestData& D = SkillData->Tempest;
+	const FVector Center = D.m_bHitAroundCharacter ? GetOwnerCharacter()->GetActorLocation() : m_TempestCenter;
+	DamageInSphere(Center, D.m_HitRadius, D.m_Damage);
+}
+
+//アニメーション型テンペスト：締めの一撃の通知
+void USkillComponent::SkillFinish()
+{
+	if (m_State != ESkillState::Tempest || !SkillData) return;
+	const FTempestData& D = SkillData->Tempest;
+	AActionCharacter* Owner = GetOwnerCharacter();
+	const FVector Center = D.m_bHitAroundCharacter ? Owner->GetActorLocation() : m_TempestCenter;
+
+	//先に当たる敵だけ集める（ダメージ0を渡すと ApplyDamage は何もしないので、ここではダメージは入らない）
+	TArray<AActor*> HitActors;
+	DamageInSphere(Center, D.m_FinishRadius, 0.f, &HitActors);
+
+	for (AActor* Enemy : HitActors)
+	{
+		ACharacter* EnemyChara = Cast<ACharacter>(Enemy);
+		if (!EnemyChara) continue;
+
+		//中心から外側へ
+		FVector Dir = EnemyChara->GetActorLocation() - Center;
+		Dir.Z = 0.f;
+		Dir = Dir.IsNearlyZero() ? Owner->GetActorForwardVector() : Dir.GetSafeNormal();
+
+		//ダメージより先に飛ばす
+		//（敵はダメージを受けると、ひるみ処理で自分の動きを止めるため、後からだと打ち消される）
+		EnemyChara->LaunchCharacter(Dir * D.m_FinishKnockback + FVector(0.f, 0.f, D.m_FinishKnockUp), true, true);
+
+		UGameplayStatics::ApplyDamage(EnemyChara, D.m_FinishDamage, Owner->GetController(), Owner, nullptr);
+	}
+
+	if (m_bDebugDraw)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Orange,
+			FString::Printf(TEXT("Tempest Finish : %d hit"), HitActors.Num()));
+	}
+}
+
+//モーションが終わったら技も終わり（後隙はモーションの中に含まれている）
+void USkillComponent::OnTempestMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (m_State != ESkillState::Tempest) return;
+	EndSkill();
+}
+
 // =======================================================================
 // 最終奥義：ため斬り（エクスカリバー型）
 // 押している間ためる（段階 = ためた時間）→ 離すと段階ぶんゲージを消費し、
@@ -515,7 +661,14 @@ void USkillComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 	FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	if (!IsCharging()) return;
+	UpdateOverheadCamera(DeltaTime);
+
+	if (!IsCharging())
+	{
+		//カメラの切り替えも終わっていれば Tick を止める
+		if (m_CamBlendDir == 0) SetComponentTickEnabled(false);
+		return;
+	}
 
 	const FUltimateData& U = SkillData->Ultimate;
 	m_ChargeTime += DeltaTime;

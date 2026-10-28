@@ -14,6 +14,7 @@
 #include "Engine/OverlapResult.h"
 #include "Combat/EnemyQuery.h"
 #include "Player/ComboDataAsset.h"
+#include "Sound/SoundBase.h"
 
 static const FName LungeRootMotionName(TEXT("AttackLunge"));
 
@@ -361,6 +362,8 @@ void UCombatComponent::CheckHit()
 
 	bool bHitEnemy = false;
 
+	TArray<AActor*> HitThisCheck;   //今回の判定で当たった敵（ヒットストップと音に使う）
+
 	for (const FHitResult& Hit : HitResults)
 	{
 		AActor* HitActor = Hit.GetActor();
@@ -394,8 +397,22 @@ void UCombatComponent::CheckHit()
 
 		//敵に当たったらキャラクター側にエネルギーを送る（上で敵だけに絞っているので判定は不要）
 		bHitEnemy = true;
+		HitThisCheck.Add(HitActor);
 		OnHitEnemy.Broadcast(Step.m_EnergyGain);
 
+	}
+
+	//当たったときの手応え（ヒットストップと音）
+	if (bHitEnemy)
+	{
+		StartHitStop(HitThisCheck, Step.m_HitStopTime);
+
+		//何体に当たっても音は1回だけ
+		if (Step.HitSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(this, Step.HitSound,
+				HitThisCheck[0]->GetActorLocation(), m_HitSoundVolume);
+		}
 	}
 
 	if (m_bAirAttack)
@@ -545,4 +562,47 @@ void UCombatComponent::ResetDodgeCooldown()
 void UCombatComponent::ResetAirDodge()
 {
 	m_bHasAirDodged = false;
+}
+
+// -----------------------------------------------------------------------
+// ヒットストップ
+// -----------------------------------------------------------------------
+void UCombatComponent::StartHitStop(const TArray<AActor*>& HitActors, float Duration)
+{
+	const float Time = Duration * m_HitStopScale;
+	if (Time <= 0.f) return;
+
+	//前のヒットストップが残っていれば先に戻す
+	EndHitStop();
+
+	//自分と、当たった敵だけ時間を遅くする（ほかのキャラはそのまま動く）
+	m_HitStopActors.Add(GetOwner());
+	for (AActor* Actor : HitActors)
+	{
+		m_HitStopActors.Add(Actor);
+	}
+	for (const TWeakObjectPtr<AActor>& Actor : m_HitStopActors)
+	{
+		if (Actor.IsValid()) Actor->CustomTimeDilation = m_HitStopTimeDilation;
+	}
+
+	//タイマーは世界の時間で進むので、遅くしたキャラの影響を受けずに戻せる
+	GetWorld()->GetTimerManager().SetTimer(HitStopTimerHandle, this, &UCombatComponent::EndHitStop, Time, false);
+}
+
+void UCombatComponent::EndHitStop()
+{
+	GetWorld()->GetTimerManager().ClearTimer(HitStopTimerHandle);
+	for (const TWeakObjectPtr<AActor>& Actor : m_HitStopActors)
+	{
+		if (Actor.IsValid()) Actor->CustomTimeDilation = 1.f;
+	}
+	m_HitStopActors.Reset();
+}
+
+void UCombatComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	//止めたまま消えると、敵が遅いままになるので戻す
+	EndHitStop();
+	Super::EndPlay(EndPlayReason);
 }

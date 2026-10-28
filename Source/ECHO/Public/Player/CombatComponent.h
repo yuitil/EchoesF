@@ -70,9 +70,18 @@ struct FComboStepData
 	//空中攻撃時の前進距離（0なら前進しない）
 	UPROPERTY(EditAnywhere)
 	float m_AirLungeDistance = 30.f;
+
+	//当たった瞬間に止まる時間（秒）。0でヒットストップなし
+	UPROPERTY(EditAnywhere)
+	float m_HitStopTime = 0.06f;
+
+	//当たったときに鳴らす音（空なら鳴らさない）
+	UPROPERTY(EditAnywhere)
+	TObjectPtr<USoundBase> HitSound = nullptr;
 };
 
 class UComboDataAsset;
+class USoundBase;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class ECHO_API UCombatComponent : public UActorComponent
@@ -83,6 +92,8 @@ public:
 	UCombatComponent();
 
 	virtual void BeginPlay() override;
+
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
 		FActorComponentTickFunction* ThisTickFunction) override;
@@ -141,7 +152,7 @@ protected:
 	float m_AssistRange = 400.f;
 	//吸い付く角度（基準方向から左右それぞれ何度まで）
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Assist")
-	float m_AssistHalfAngle = 15.f;
+	float m_AssistHalfAngle = 40.f;
 	//敵の中心からこの距離で踏み込みを止める（敵にめり込まないように）
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Assist")
 	float m_LungeStopDistance = 150.f;
@@ -181,6 +192,18 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Combat|Debug")
 	bool m_bDebugDrawHit = false;
 
+	//ヒットストップ中の時間の速さ（0.05 = ほぼ止まる）
+	UPROPERTY(EditAnywhere, Category = "Combat|HitStop", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float m_HitStopTimeDilation = 0.05f;
+
+	//ヒットストップの長さの倍率（分身は小さくする。0でなし）
+	UPROPERTY(EditAnywhere, Category = "Combat|HitStop", meta = (ClampMin = "0"))
+	float m_HitStopScale = 1.f;
+
+	//当たったときの音の音量（分身は小さくする）
+	UPROPERTY(EditAnywhere, Category = "Combat|Sound", meta = (ClampMin = "0"))
+	float m_HitSoundVolume = 1.f;
+
 private:
 	//攻撃方向を決める（吸い付き対象がいればOutTargetに入る）
 	FVector ResolveAttackDirection(ACharacter* Owner, AActor*& OutTarget) const;
@@ -216,6 +239,12 @@ private:
 	FTimerHandle ComboResetTimerHandle;
 	FTimerHandle DodgeTimerHandle;
 	FTimerHandle DodgeCoolDownTimerHandle;
+
+	// --- ヒットストップ ---
+	FTimerHandle HitStopTimerHandle;
+	TArray<TWeakObjectPtr<AActor>> m_HitStopActors;   //止めている相手（自分も含む）
+	void StartHitStop(const TArray<AActor*>& HitActors, float Duration);
+	void EndHitStop();
 
 	// --- 回避制御の内部状態変数 ---
 	bool m_bCanDodge;               //現在回避可能かどうか

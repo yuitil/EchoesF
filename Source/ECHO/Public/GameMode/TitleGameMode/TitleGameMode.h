@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -12,6 +12,7 @@
  */
 
 class UTitleWidget;
+struct FStreamableHandle;
 
 UCLASS()
 class ECHO_API ATitleGameMode : public AGameModeBase
@@ -29,12 +30,13 @@ protected:
 	void OpenSettings();
 	void ExitGame();
 
-
+private:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UTitleWidget> m_TitleWidgetClass = nullptr;
 
 	UPROPERTY()
 	TObjectPtr<UTitleWidget> m_TitleWidget = nullptr;
+
 
 	UPROPERTY(EditAnywhere, Category="Level")
 	TSoftObjectPtr<UWorld> m_NextLevel = nullptr;
