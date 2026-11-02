@@ -19,6 +19,18 @@ public:
 	AActor* SelectMinionTarget();
 
 public:
+	//本体が見える時は、分身より本体を優先する。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Target")
+	bool m_preferPlayer = false;
+
+	//一体の分身を担当する敵の上限。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Target", meta=(ClampMin="1", ClampMax="2"))
+	int32 m_cloneLimit = 1;
+
+	//分身に向かわせる敵の割合。本体への圧力を残す。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Target", meta=(ClampMin="0", ClampMax="0.75"))
+	float m_cloneRatio = .5f;
+
 	//指定された分身だけを狙う。消えた後にプレイヤーへ切り替えない。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Target")
 	bool m_lockTarget = false;

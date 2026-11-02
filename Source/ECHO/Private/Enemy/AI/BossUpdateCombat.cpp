@@ -68,9 +68,7 @@ void UBossUpdateCombat::TickNode(UBehaviorTreeComponent& _ownerComp, uint8* _nod
 	//行動の共通条件は敵本体で一度だけ調べる。
 	const bool canDecide = enemy->CanDecide();
 	//相手までの距離を、攻撃と追跡で共有する。
-	const float distance = IsValid(target)
-		? FVector::Dist2D(enemy->GetActorLocation(), target->GetActorLocation())
-		: BossUpdateCombatTuning::noTargetRange;
+	const float distance = IsValid(target) ? FVector::Dist2D(enemy->GetActorLocation(), target->GetActorLocation()) : BossUpdateCombatTuning::noTargetRange;
 	//コンボ中でなく、剣が届かない時は近づく。
 	const bool canMove = canDecide && !enemy->m_stationary && enemy->GetPendingComboId().IsNone()
 		&& distance > enemy->GetMeleeDistance() + BossUpdateCombatTuning::rangeMargin;

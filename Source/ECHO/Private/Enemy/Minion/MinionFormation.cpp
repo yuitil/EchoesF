@@ -202,6 +202,9 @@ void UMinionFormation::TickComponent(float _delta,ELevelTick _type,FActorCompone
         return;
     }
     SetOrbit(true);
+    //近すぎる時は相手を向いたまま素早く離れる。
+    const bool retreat = FVector::Dist2D(enemy->GetActorLocation(), m_target->GetActorLocation()) < m_radius - MinionFormationTuning::stopRange;
+    enemy->GetCharacterMovement()->MaxWalkSpeed = FMath::Max(MinionFormationTuning::minOrbitSpeed, retreat ? m_retreatSpeed : m_orbitSpeed);
     if (enemy->m_defense->ShouldStartGuard())
     {
         SetOrbit(false);
@@ -240,7 +243,7 @@ void UMinionFormation::TickComponent(float _delta,ELevelTick _type,FActorCompone
     const float step=angle+FMath::Clamp(FMath::FindDeltaAngleDegrees(angle,desired),-MinionFormationTuning::maxOrbitStep,MinionFormationTuning::maxOrbitStep);
    
     //判定に使う半径。
-    const float radius=FMath::FInterpConstantTo(radial.Size2D(),m_radius,MinionFormationTuning::moveStep,MinionFormationTuning::ringSpeed);
+    const float radius=FMath::FInterpConstantTo(radial.Size2D(),m_radius,MinionFormationTuning::moveStep,m_retreatSpeed);
     
     //経路上の次の位置。
     const FVector waypoint=center+FRotator(0,step,0).Vector()*radius;

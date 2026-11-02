@@ -27,7 +27,6 @@
 #include "NavigationSystem.h"
 #include "Enemy/EnemyManager/EnemyManager.h"
 
-#include "Player/CombatComponent.h"
 
 
 //判定に使う幅や待ち時間。
@@ -117,9 +116,7 @@ float AEnemyCharacterBase::GetAttackRate(const FEnemyActionData& _action) const
 	//対象となる攻撃。
 	const bool attack = _action.m_kind != EEnemyAction::Guard && _action.m_kind != EEnemyAction::Dodge
 		&& _action.m_kind != EEnemyAction::Recovery && _action.m_kind != EEnemyAction::Presentaiton;
-	return FMath::Clamp(
-		m_definition && m_definition->m_commonRate && attack ? m_definition->m_attackRate : _action.m_playRate,
-		EnemyCharacterBaseTuning::minStep, 2.f);
+	return FMath::Clamp( m_definition && m_definition->m_commonRate && attack ? m_definition->m_attackRate : _action.m_playRate, EnemyCharacterBaseTuning::minStep, 2.f);
 }
 
 //攻撃に対して防御できる時間の幅を返す。
@@ -129,20 +126,12 @@ float AEnemyCharacterBase::GetDefenseWindow(EDefenseResult _result, FName _actio
 	const FEnemyActionData* action = GetActiveAction();
 	if (!_actionId.IsNone())
 	{
-		action = m_definition
-			         ? m_definition->m_actions.FindByPredicate([_actionId](const FEnemyActionData& item)
-			         {
-				         return item.m_actionId == _actionId;
-			         })
-			         : nullptr;
+		action = m_definition ? m_definition->m_actions.FindByPredicate([_actionId](const FEnemyActionData& item) { return item.m_actionId == _actionId; }) : nullptr;
 	}
 	if (!action || action->m_damage <= 0.f) { return 0.f; }
 	if (_result == EDefenseResult::PerfectDodge)
 	{
-		return m_definition && m_definition->m_perfectDodge
-			       ? FMath::Clamp(action->m_dodgeWindow > 0.f ? action->m_dodgeWindow : m_definition->m_dodgeWindow,
-			                      0.f, .5f)
-			       : 0.f;
+		return m_definition && m_definition->m_perfectDodge ? FMath::Clamp(action->m_dodgeWindow > 0.f ? action->m_dodgeWindow : m_definition->m_dodgeWindow, 0.f, .5f) : 0.f;
 	}
 	if (action->m_unblockable) { return 0.f; }
 	if (_result == EDefenseResult::Parry) { return FMath::Clamp(action->m_parryWindow, 0.f, .5f); }
@@ -162,14 +151,8 @@ bool AEnemyCharacterBase::IsDefenseInputValid(EDefenseResult _result, float _ela
 float AEnemyCharacterBase::GetActionTimeout(const FEnemyActionData& _action) const
 {
 	//攻撃の減速に使う値。
-	const float slow = m_definition && m_definition->m_perfectDodge
-		                   ? FMath::Clamp(m_definition->m_slowRate, EnemyCharacterBaseTuning::minStep, 1.f)
-		                   : 1.f;
-	return _action.m_montage
-		       ? _action.m_montage->GetPlayLength() / FMath::Max(EnemyCharacterBaseTuning::minRate,
-		                                                         GetAttackRate(_action) * _action.m_montage->RateScale *
-		                                                         slow) + EnemyCharacterBaseTuning::timeoutMargin
-		       : EnemyCharacterBaseTuning::timeoutMargin;
+	const float slow = m_definition && m_definition->m_perfectDodge ? FMath::Clamp(m_definition->m_slowRate, EnemyCharacterBaseTuning::minStep, 1.f) : 1.f;
+	return _action.m_montage ? _action.m_montage->GetPlayLength() / FMath::Max(EnemyCharacterBaseTuning::minRate, GetAttackRate(_action) * _action.m_montage->RateScale * slow) + EnemyCharacterBaseTuning::timeoutMargin : EnemyCharacterBaseTuning::timeoutMargin;
 }
 
 //ジャスト回避された攻撃を減速する。
@@ -207,6 +190,12 @@ bool AEnemyCharacterBase::ApplyPerfectDodge(AActor* _target)
 	                                                     1.f));
 	m_nextActionId = NAME_None;
 	m_combat->EndLift();
+
+    //回避に成功した相手へ、演出用の通知を一度だけ送る。
+    if(_target->GetClass()->ImplementsInterface(UEBDefenseFeedback::StaticClass()))
+    {
+        IEBDefenseFeedback::Execute_AttackDefended(_target, this, EDefenseResult::PerfectDodge);
+    }
 	return true;
 }
 
@@ -366,10 +355,7 @@ float AEnemyCharacterBase::TakeDamage(float _damage, const FDamageEvent& _damage
 	OnAttackReceived(attacker);
 
 	//受けたダメージの情報。
-	const UEBCombatDamageType* damageInfo = _damageEvent.DamageTypeClass
-		                                        ? Cast<UEBCombatDamageType>(
-			                                        _damageEvent.DamageTypeClass->GetDefaultObject())
-		                                        : nullptr;
+	const UEBCombatDamageType* damageInfo = _damageEvent.DamageTypeClass ? Cast<UEBCombatDamageType>( _damageEvent.DamageTypeClass->GetDefaultObject()) : nullptr;
 
 	//ガードできない攻撃か。
 	const bool unblockable = damageInfo && !damageInfo->m_bBlockable;
@@ -418,9 +404,7 @@ float AEnemyCharacterBase::TakeDamage(float _damage, const FDamageEvent& _damage
 	if (applied > 0.f && result != EDefenseResult::Guard)
 	{
 		//ぶつかった場所の情報。
-		const FHitResult* hit = _damageEvent.IsOfType(FPointDamageEvent::ClassID)
-			                        ? &static_cast<const FPointDamageEvent&>(_damageEvent).HitInfo
-			                        : nullptr;
+		const FHitResult* hit = _damageEvent.IsOfType(FPointDamageEvent::ClassID) ? &static_cast<const FPointDamageEvent&>(_damageEvent).HitInfo : nullptr;
 		m_hitFx->PlayHit(attacker, hit);
 	}
 
@@ -431,13 +415,7 @@ float AEnemyCharacterBase::TakeDamage(float _damage, const FDamageEvent& _damage
 	m_abilitySystemComponent->ApplyHealthDelta(-accepted, _instigator ? _instigator->GetPawn() : _causer, _causer);
 	m_defense->PublishResult(attacker, result);
 
-	if (applied > 0.f && IsValid(attacker))
-	{
-		if (auto* combat = attacker->FindComponentByClass<UCombatComponent>())
-		{
-			if (combat->IsPlayingAttackMontage()) combat->OnHitEnemy.Broadcast(applied);
-		}
-	}
+	//エネルギー加算は攻撃側で行う。敵から重ねて通知しない。
 
 	return applied;
 }
@@ -568,9 +546,7 @@ bool AEnemyCharacterBase::CanUseAction(int32 _actionIndex, float _distance) cons
 	const double* cooldown = m_actionCooldowns.Find(action.m_actionId);
 
 	//相手までの距離。
-	const float distance = _distance >= 0.f
-		                       ? _distance
-		                       : FVector::Dist2D(GetActorLocation(), m_combatTarget->GetActorLocation());
+	const float distance = _distance >= 0.f ? _distance : FVector::Dist2D(GetActorLocation(), m_combatTarget->GetActorLocation());
 
 	return action.m_reviewed && action.m_montage && !action.m_actionId.IsNone() && action.m_kind !=
 		EEnemyAction::Presentaiton
@@ -682,9 +658,7 @@ int32 AEnemyCharacterBase::ChooseAction() const
 		}
 
 		//同じ攻撃が続く時の選ばれやすさの倍率。
-		const float repeat = action.m_actionId == m_lastAction
-			                     ? FMath::Clamp(m_definition->m_repeatWeight, EnemyCharacterBaseTuning::minWeight, 1.f)
-			                     : 1.f;
+		const float repeat = action.m_actionId == m_lastAction ? FMath::Clamp(m_definition->m_repeatWeight, EnemyCharacterBaseTuning::minWeight, 1.f) : 1.f;
 
 		//抽選での選ばれやすさ。
 		const float weight = FMath::Max(0.f, action.m_weight) * GetActionWeightMultiplier(action) * repeat;
@@ -901,10 +875,7 @@ void AEnemyCharacterBase::FinishAction(bool _cancelled)
 			m_nextActionId = NAME_None;
 		}
 
-		m_readyTime = GetWorld()->GetTimeSeconds() + (m_nextActionId.IsNone()
-			                                              ? FMath::Max(EnemyCharacterBaseTuning::minRecovery,
-			                                                           action->m_recovery)
-			                                              : FMath::Max(0.f, action->m_comboGap));
+		m_readyTime = GetWorld()->GetTimeSeconds() + (m_nextActionId.IsNone() ? FMath::Max(EnemyCharacterBaseTuning::minRecovery, action->m_recovery) : FMath::Max(0.f, action->m_comboGap));
 	}
 
 	if (action && action->m_airOnly && m_nextActionId.IsNone())
@@ -1015,9 +986,7 @@ FTransform AEnemyCharacterBase::AimAttackMove(const FTransform& _move, UCharacte
 FVector AEnemyCharacterBase::EvadeDirection(const FEnemyActionData& _action) const
 {
 	//正面の方向。
-	FVector forward = IsValid(m_combatTarget)
-		                  ? (m_combatTarget->GetActorLocation() - GetActorLocation()).GetSafeNormal2D()
-		                  : GetActorForwardVector();
+	FVector forward = IsValid(m_combatTarget) ? (m_combatTarget->GetActorLocation() - GetActorLocation()).GetSafeNormal2D() : GetActorForwardVector();
 	return forward.RotateAngleAxis(_action.m_evadeAngle, FVector::UpVector);
 }
 

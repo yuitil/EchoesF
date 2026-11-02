@@ -11,6 +11,9 @@ class ECHO_API UMinionCombatDirector : public UWorldSubsystem
 	GENERATED_BODY()
 
 public:
+	//近くの味方と分身担当の数から、追加で分身へ向かえるか調べる。
+	bool CanAssignClone(AActor* _enemy, AActor* _player, AActor* _clone, float _range, float _ratio, int32 _limit) const;
+
 	//集団戦を管理する対象に敵を登録する。
 	void Register(UMinionFormation* _member);
 

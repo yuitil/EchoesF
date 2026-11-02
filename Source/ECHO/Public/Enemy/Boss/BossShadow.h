@@ -31,6 +31,14 @@ public:
     virtual void Tick(float _delta) override;
 
 public:
+    //本体の振り終わりから影が攻めるまでの秒数。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shadow|Combat", meta=(ClampMin="0"))
+    float m_followGap = .25f;
+
+    //本体と同じ攻撃を続ける時の選びやすさ。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shadow|Combat", meta=(ClampMin="0", ClampMax="1"))
+    float m_sameMoveWeight = .35f;
+
     //体から漏れる煙。使用するNiagaraはBPで選ぶ。
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Shadow|FX")
     TObjectPtr<UNiagaraComponent> m_aura;
@@ -95,6 +103,9 @@ protected:
     virtual void OnActionEnded() override;
 
 private:
+    //本体が振り終わるまで次の攻撃を待つ時刻。
+    double m_followTime = 0.;
+
     //活動中のプレイヤーの分身を探す。
     AActor* FindClone() const;
 

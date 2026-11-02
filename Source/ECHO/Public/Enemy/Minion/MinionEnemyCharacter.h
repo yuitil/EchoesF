@@ -4,6 +4,7 @@
 #include "MinionEnemyCharacter.generated.h"
 class UMinionFormation;
 class UMinionParryResponse;
+class USphereComponent;
 
 //雑魚敵の攻撃、ひるみ、死亡を管理する。
 UCLASS()
@@ -12,6 +13,26 @@ class ECHO_API AMinionEnemyCharacter : public AEnemyCharacterBase
 	GENERATED_BODY()
 
 public:
+	//手にも被弾判定を付けるか。大型の敵だけで使う。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Hands")
+	bool m_handHits = false;
+
+	//左手の判定を付ける骨。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Hands")
+	FName m_leftBone;
+
+	//右手の判定を付ける骨。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Hands")
+	FName m_rightBone;
+
+	//大きな敵の左手を攻撃できる判定。骨と大きさはBPで指定する。
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Enemy|Hands")
+	TObjectPtr<USphereComponent> m_leftHand;
+
+	//大きな敵の右手を攻撃できる判定。
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Enemy|Hands")
+	TObjectPtr<USphereComponent> m_rightHand;
+
 	//雑魚敵の攻撃、ひるみ、死亡を管理する。
 	AMinionEnemyCharacter();
 
@@ -47,6 +68,9 @@ public:
 	bool m_interruptAttack = false;
 
 protected:
+	//BPで選んだ手の骨へ判定をつなぐ。
+	virtual void BeginPlay() override;
+
 	//現在の状態で選べる攻撃か調べる。
 	virtual bool IsActionAllowed(const FEnemyActionData& _action) const override;
 

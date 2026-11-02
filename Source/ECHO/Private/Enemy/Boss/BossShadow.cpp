@@ -1,5 +1,6 @@
 ﻿#include "Enemy/Boss/BossShadow.h"
 #include "Enemy/Audio/EnemyAudio.h"
+#include "Enemy/Combat/Combat.h"
 #include "Enemy/Boss/BossShadowSummon.h"
 #include "Enemy/Boss/BossApproach.h"
 #include "Enemy/Boss/BossSpacing.h"
@@ -97,12 +98,14 @@ void ABossShadow::Setup(AActor* _target, float _life)
     m_targeting->m_fixedTarget = _target;
     m_combatTarget = _target;
     m_life = FMath::Max(m_riseTime, _life);
+    //通常召喚でも次の分身を探す範囲を引き継ぐ。
+    if(auto* boss = Cast<ABossEnemyCharacter>(GetOwner())) { m_cloneRange = boss->m_summon->m_range; }
 }
 
 //出現が終わるまで戦闘を待つ。
 bool ABossShadow::IsRepositioning() const
 {
-    return m_fading || m_age < m_riseTime || (m_join && (m_joinDone || m_age < m_joinDelay));
+    return m_fading || m_age < m_riseTime || GetWorld()->GetTimeSeconds() < m_followTime || (m_join && (m_joinDone || m_age < m_joinDelay));
 }
 
 //本体のフェーズ2の攻撃を抽選候補にする。
@@ -116,6 +119,13 @@ bool ABossShadow::IsActionAllowed(const FEnemyActionData& _action) const
 //固定の攻撃順ではなく既存の重み抽選を使う。
 float ABossShadow::GetActionWeightMultiplier(const FEnemyActionData& _action) const
 {
+    //同じ相手には本体と違う攻撃を選びやすくする。
+    const auto* boss = Cast<ABossEnemyCharacter>(GetOwner());
+    const auto* move = boss ? boss->GetActiveAction() : nullptr;
+    if(boss && boss->m_combatTarget == m_combatTarget && move && move->m_actionId == _action.m_actionId)
+    {
+        return FMath::Clamp(m_sameMoveWeight, 0.f, 1.f);
+    }
     return 1.f;
 }
 
@@ -152,6 +162,17 @@ AActor* ABossShadow::FindClone() const
         if(!ghost->EnemyComponent || ghost->IsHidden() || !ghost->CanBeDamaged()) { continue; }
         const auto state = ghost->EnemyComponent->GetLifecycleState();
         if(state != EGhostLifecycleState::Friendly && state != EGhostLifecycleState::Warning) { continue; }
+        //もう一体の影が受け持つ分身は選ばない。
+        const auto* boss = Cast<ABossEnemyCharacter>(GetOwner());
+        bool taken = false;
+        if(boss && boss->m_summon)
+        {
+            for(auto* shadow : {boss->m_summon->m_shadow.Get(), boss->m_summon->m_secondShadow.Get()})
+            {
+                if(IsValid(shadow) && shadow != this && shadow->IsCombatActive() && shadow->m_combatTarget == ghost) { taken = true; }
+            }
+        }
+        if(taken) { continue; }
         const float distance = FVector::DistSquared2D(GetActorLocation(), ghost->GetActorLocation());
         if(distance < best) { best = distance; target = ghost; }
     }
@@ -190,6 +211,18 @@ void ABossShadow::Tick(float _delta)
 {
     Super::Tick(_delta);
     m_age += _delta;
+    //同じ相手への新しい攻撃は、本体の振り終わりに続ける。
+    auto* boss = Cast<ABossEnemyCharacter>(GetOwner());
+    if(HasAuthority() && !m_fading && !IsActing() && boss && boss->m_combatTarget == m_combatTarget
+        && boss->m_combat && boss->m_combat->IsHitWindowOpen())
+    {
+        m_followTime = GetWorld()->GetTimeSeconds() + FMath::Max(0.f, m_followGap);
+    }
+    //担当が消えた時は、残っている別の分身へ切り替える。
+    if(HasAuthority() && !m_join && !m_fading && !IsActing() && !m_targeting->SelectTarget())
+    {
+        if(auto* clone = FindClone()) { Setup(clone, m_life); }
+    }
     //連携中に分身が出たら、プレイヤーへの攻撃を止めて担当を変える。
     if(HasAuthority() && m_join && !m_fading)
     {

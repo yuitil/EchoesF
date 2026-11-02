@@ -40,5 +40,5 @@ void UEnemyGroundHit::Notify(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _
         UGameplayStatics::PlaySoundAtLocation(enemy, m_sound, floor, FRotator::ZeroRotator, m_gain, 1.f, 0.f,
             enemy->m_audio->m_range, enemy->m_audio->m_limit, enemy);
     }
-    if(m_shake) { UGameplayStatics::PlayWorldCameraShake(enemy, m_shake, floor, 0.f, m_range); }
+    if(m_shake) { UGameplayStatics::PlayWorldCameraShake(enemy, m_shake, floor, FMath::Clamp(m_nearRange, 0.f, m_range), m_range); }
 }

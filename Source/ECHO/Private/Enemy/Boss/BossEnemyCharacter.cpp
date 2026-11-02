@@ -1,4 +1,4 @@
-#include "Enemy/Boss/BossEnemyCharacter.h"
+﻿#include "Enemy/Boss/BossEnemyCharacter.h"
 #include "Enemy/Audio/EnemyAudio.h"
 #include "Enemy/Boss/BossShadowSummon.h"
 #include "Enemy/Boss/BossCrowd.h"
@@ -166,8 +166,8 @@ bool ABossEnemyCharacter::IsActionAllowed(const FEnemyActionData& _action) const
 //状況に合わせて攻撃の選びやすさを返す。
 float ABossEnemyCharacter::GetActionWeightMultiplier(const FEnemyActionData& _action) const
 {
-	//フェーズ2は観察した癖を使い、分身が多ければ広い攻撃も選ぶ。
-	float weight = m_bossPhase == EBossPhase::PhaseTwo ? m_observation->AdaptWeight(uint8(_action.m_kind)) : 1.0f;
+	//両フェーズで観察を使い、分身が多ければ広い攻撃も選ぶ。
+	float weight = m_observation->GetActionWeight(_action);
 	if(m_summon->GetCloneCount() >= m_summon->m_cloneLimit && m_summon->m_crowdMoves.Contains(_action.m_actionId))
 	{
 		weight *= m_summon->m_crowdWeight;
@@ -178,7 +178,7 @@ float ABossEnemyCharacter::GetActionWeightMultiplier(const FEnemyActionData& _ac
 //相手の攻撃や移動を観察する。
 void ABossEnemyCharacter::ObserveTarget(AActor* _target)
 {
-	if (m_bossPhase == EBossPhase::PhaseOne)
+	if (IsCombatActive())
 	{
 		m_observation->Observe(_target, GetBossData());
 	}
@@ -240,7 +240,7 @@ float ABossEnemyCharacter::TakeDamage(float _damage, const FDamageEvent& _event,
 {
     //致命傷によるフェーズ切り替えでは体勢を減らさない。
     const EBossPhase phase = m_bossPhase;
-    const float taken = Super::TakeDamage(_damage, _event, _instigator, _causer);
+    const float taken = Super::TakeDamage(_damage * FMath::Clamp(m_takenScale, .1f, 2.f), _event, _instigator, _causer);
     if(taken > 0.f && phase == m_bossPhase && IsCombatActive()) { m_posture->Hit(taken); }
     return taken;
 }

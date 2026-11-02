@@ -8,6 +8,26 @@
 #include "NavigationPath.h"
 #include "Engine/World.h"
 
+//本体の担当を残し、同じ分身に集まりすぎないようにする。
+bool UMinionCombatDirector::CanAssignClone(AActor* _enemy, AActor* _player, AActor* _clone, float _range, float _ratio, int32 _limit) const
+{
+    int32 nearby = 0;
+    int32 clones = 0;
+    int32 same = 0;
+    for (const auto& item : m_members)
+    {
+        const auto* member = item.Get();
+        const auto* enemy = member ? member->Enemy() : nullptr;
+        if (!enemy || !enemy->IsCombatActive() || FVector::Dist2D(enemy->GetActorLocation(), _enemy->GetActorLocation()) > _range) { continue; }
+        ++nearby;
+        if (enemy == _enemy) { continue; }
+        if (IsValid(enemy->m_combatTarget) && enemy->m_combatTarget != _player) { ++clones; }
+        if (enemy->m_combatTarget == _clone) { ++same; }
+    }
+    const int32 budget = FMath::FloorToInt(nearby * FMath::Clamp(_ratio, 0.f, .75f));
+    return clones < budget && same < FMath::Max(1, _limit);
+}
+
 //判定に使う幅や待ち時間。
 namespace MinionCombatDirectorTuning
 {
@@ -159,7 +179,7 @@ void UMinionCombatDirector::Update()
             });
         
         //攻撃人数や待ち時間を守り、一斉攻撃を防ぐ。
-        if (active.Num() >= limit || (!counterWaiting && ((pause && now<*pause) || (!active.IsEmpty() && (now-active[0]->m_granted < active[0]->m_secondDelay || !active[0]->Enemy()->IsActing())))))
+        if (active.Num() >= limit || (!counterWaiting && ((pause && now<*pause) || (!active.IsEmpty() && (now-active[0]->m_granted < active[0]->m_secondDelay || !active[0]->Enemy()->IsActing() && now-active[0]->m_granted < active[0]->m_turnTimeout)))))
         { 
             for(auto* member:group)
             {
@@ -177,7 +197,7 @@ void UMinionCombatDirector::Update()
             
             //攻撃された相手への反撃か。
             const bool counter = member->WantsCounter();
-            if(duel && owner && !counter) { continue; }
+            if(duel && owner && !counter && !member->m_allowSupport) { continue; }
             
             //状態が始まった時刻。
             const double since=member->m_gapSince; member->m_gapSince=-1.;

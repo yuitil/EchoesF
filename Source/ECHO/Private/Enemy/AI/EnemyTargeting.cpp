@@ -1,4 +1,4 @@
-#include "Enemy/AI/EnemyTargeting.h"
+﻿#include "Enemy/AI/EnemyTargeting.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
 #include "Ghost/GhostCharacter/GhostCharacter.h"
 #include "Ghost/GhostEnemy/GhostEnemyComponent.h"
@@ -35,6 +35,12 @@ AActor* UEnemyTargeting::SelectTarget()
     if(const auto* formation=enemy->FindComponentByClass<UMinionFormation>(); formation && formation->IsProvoked() && IsCandidate(enemy->m_combatTarget)
         && FVector::Dist2D(enemy->GetActorLocation(),enemy->m_combatTarget->GetActorLocation()) <= m_range) { return enemy->m_combatTarget; }
     if(enemy->IsActing()) { return IsCandidate(enemy->m_combatTarget) ? enemy->m_combatTarget.Get() : nullptr; }
+
+    //ボスは行動の切れ目で本体へ戻る。影の固定相手は上で処理済み。
+    auto* player = UGameplayStatics::GetPlayerPawn(this, 0);
+    auto* controller = Cast<AAIController>(enemy->GetController());
+    if (m_preferPlayer && IsCandidate(player) && FVector::Dist2D(enemy->GetActorLocation(), player->GetActorLocation()) <= m_range
+        && controller && controller->LineOfSightTo(player)) { return player; }
 
     if(m_followTarget && IsCandidate(enemy->m_combatTarget)
         && (m_chaseRange <= 0.f || FVector::Dist2D(enemy->GetActorLocation(), enemy->m_combatTarget->GetActorLocation()) <= m_chaseRange)) { return enemy->m_combatTarget; }
@@ -90,7 +96,17 @@ AActor* UEnemyTargeting::SelectMinionTarget()
             return IsCandidate(actor) && FVector::DistSquared2D(enemy->GetActorLocation(),actor->GetActorLocation()) <= FMath::Square(keepRange); 
         };
 
-    if(formation && formation->IsProvoked() && keep(formation->GetCounterTarget())) { return formation->GetCounterTarget(); }
+    //プレイヤー担当は分身に釣られず、本体へ戻る。
+    auto* player = UGameplayStatics::GetPlayerPawn(this, 0);
+    auto* director = GetWorld()->GetSubsystem<UMinionCombatDirector>();
+    const bool playerNear = IsCandidate(player) && FVector::Dist2D(enemy->GetActorLocation(), player->GetActorLocation()) <= m_range;
+    if (playerNear && m_keepPlayerDuel && director->GetPlayerGuard(player) == enemy) { return player; }
+
+    if(formation && formation->IsProvoked() && keep(formation->GetCounterTarget()))
+    {
+        auto* counter = formation->GetCounterTarget();
+        if (counter == player || !playerNear || director->CanAssignClone(enemy, player, counter, m_range, m_cloneRatio, m_cloneLimit)) { return counter; }
+    }
     if(formation && formation->HasTurn() && keep(enemy->m_combatTarget)) { return enemy->m_combatTarget; }
     if(!m_preferClones || !m_targetClones) { return SelectTarget(); }
     
@@ -106,7 +122,8 @@ AActor* UEnemyTargeting::SelectMinionTarget()
     {
         //狙っている相手。
         auto* target = *it;
-        if (!IsCandidate(target)) continue;
+        if (!IsCandidate(target)) { continue; }
+        if (playerNear && !director->CanAssignClone(enemy, player, target, m_range, m_cloneRatio, m_cloneLimit)) { continue; }
        
         //相手までの距離。
         float distance = FVector::Dist2D(enemy->GetActorLocation(), target->GetActorLocation());
@@ -122,8 +139,10 @@ AActor* UEnemyTargeting::SelectMinionTarget()
     }
 
     //対象のプレイヤー。
-    auto* player = UGameplayStatics::GetPlayerPawn(this,0);
     if(best && m_keepPlayerDuel && IsCandidate(player) && GetWorld()->GetSubsystem<UMinionCombatDirector>()->GetPlayerGuard(player) == enemy) { return player; }
 
-    return best ? best : SelectTarget();
+    if (best) { return best; }
+    //分身の担当枠が埋まった時に、通常の近距離抽選で分身へ戻さない。
+    if (playerNear && ai && ai->LineOfSightTo(player)) { return player; }
+    return SelectTarget();
 }

@@ -144,6 +144,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Formation|Movement", meta=(ClampMin="50"))
 	float m_orbitSpeed=180.f;
 
+public:
+    //攻撃後に距離を取り直す速度。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Formation|Movement", meta=(ClampMin="50"))
+    float m_retreatSpeed = 280.f;
+
 protected:
 	//ゲーム開始時に必要な状態を準備する。
 	virtual void BeginPlay() override;

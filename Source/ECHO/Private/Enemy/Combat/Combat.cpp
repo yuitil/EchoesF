@@ -322,7 +322,9 @@ void UCombat::TickComponent(float _deltaTime, ELevelTick _type, FActorComponentT
 
 			enemy->AttackDefended_Implementation(hitActor, response);
 			if (m_bDebug) { UE_LOG(LogTemp, Display, TEXT("BossCombat Defense result=%d"), int32(response)); }
-			break;
+            //攻撃自体が止まった時だけ終了し、他の命中相手も調べる。
+            if(!enemy->IsActing() || !m_bHitWindow) { break; }
+            continue;
 		}
 
 		//実際に与えたダメージ。

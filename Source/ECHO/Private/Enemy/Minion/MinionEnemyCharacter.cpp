@@ -6,6 +6,8 @@
 #include "Animation/AnimMontage.h"
 #include "Enemy/Minion/MinionFormation.h"
 #include "Enemy/Minion/MinionParryResponse.h"
+#include "Components/SphereComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 
 //判定に使う幅や待ち時間。
 namespace MinionEnemyCharacterTuning
@@ -23,8 +25,32 @@ namespace MinionEnemyCharacterTuning
 //初期設定と必要な部品を用意する。
 AMinionEnemyCharacter::AMinionEnemyCharacter()
 {
+    //不要な敵では無効のまま。PrimeのBPだけで有効にする。
+    m_leftHand = CreateDefaultSubobject<USphereComponent>(TEXT("LeftHandHit"));
+    m_rightHand = CreateDefaultSubobject<USphereComponent>(TEXT("RightHandHit"));
+    for (auto* hand : {m_leftHand.Get(), m_rightHand.Get()})
+    {
+        hand->SetupAttachment(GetMesh());
+        hand->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        hand->SetCollisionResponseToAllChannels(ECR_Ignore);
+        hand->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+        hand->SetGenerateOverlapEvents(false);
+    }
     m_formation=CreateDefaultSubobject<UMinionFormation>(TEXT("Formation"));
     m_parry=CreateDefaultSubobject<UMinionParryResponse>(TEXT("ParryResponse"));
+}
+
+//手の骨が未設定なら、体の中心に余計な判定を出さない。
+void AMinionEnemyCharacter::BeginPlay()
+{
+    Super::BeginPlay();
+    m_leftHand->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, m_leftBone);
+    m_rightHand->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, m_rightBone);
+    for (auto* hand : {m_leftHand.Get(), m_rightHand.Get()})
+    {
+        const bool enabled = m_handHits && !hand->GetAttachSocketName().IsNone() && GetMesh()->DoesSocketExist(hand->GetAttachSocketName());
+        hand->SetCollisionEnabled(enabled ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
+    }
 }
 
 //現在の状態で選べる攻撃か調べる。
@@ -78,6 +104,8 @@ void AMinionEnemyCharacter::FinishParryReaction(UAnimMontage* _montage,float _du
 //体力がなくなった時の処理を行う。
 void AMinionEnemyCharacter::HandleHealthDepleted()
 {
+    m_leftHand->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    m_rightHand->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     Super::HandleHealthDepleted();
     DetachFromControllerPendingDestroy();
     

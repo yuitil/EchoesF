@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
@@ -60,6 +60,10 @@ public:
 	void BossDefeated();
 
 public:
+    //受けるHPダメージの倍率。影は別のBPで調整する。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Health", meta=(ClampMin="0.1", ClampMax="2"))
+    float m_takenScale = 1.f;
+
 	//分身に囲まれた時に間合いを作る部品。
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Boss")
 	TObjectPtr<UBossCrowd> m_crowd;

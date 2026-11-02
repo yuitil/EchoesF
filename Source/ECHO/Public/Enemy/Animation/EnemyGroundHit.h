@@ -58,4 +58,8 @@ public:
     //揺れが届く距離。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ground", meta=(ClampMin="1"))
     float m_range = 800.f;
+
+    //近くでは揺れを弱めない距離。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ground", meta=(ClampMin="0"))
+    float m_nearRange = 200.f;
 };
