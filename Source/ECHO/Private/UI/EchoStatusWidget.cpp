@@ -228,6 +228,7 @@ void UEchoStatusWidget::UpdateHeal(float DeltaTime)
 
 	if (HealCircle)    HealCircle->SetColorAndOpacity(Color);
 	if (HealArrow)     HealArrow->SetColorAndOpacity(Color);
+	if (HealIcon)      HealIcon->SetColorAndOpacity(Color);
 	if (HealCountText) HealCountText->SetColorAndOpacity(FSlateColor(Color));
 
 	//膨らんだ大きさを1に戻していく

@@ -127,6 +127,10 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	UImage* HealArrow;
 
+	//ポーションのアイコン
+	UPROPERTY(meta = (BindWidgetOptional))
+	UImage* HealIcon;
+
 	//残り回数の数字
 	UPROPERTY(meta = (BindWidgetOptional))
 	UTextBlock* HealCountText;
