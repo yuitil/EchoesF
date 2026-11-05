@@ -10,6 +10,11 @@
 #include "Enemy/Boss/BossData.h"
 #include "Enemy/Boss/BossPosture.h"
 #include "Enemy/Combat/Defense.h"
+#include "Enemy/Combat/Combat.h"
+#include "Engine/DamageEvents.h"
+#include "Engine/GameInstance.h"
+#include "GameFramework/WorldSettings.h"
+#include "GameFramework/GameModeBase.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -25,6 +30,9 @@ bool FEnemyTacticsTest::RunTest(const FString& _parameters)
 {
     UWorld* world = UWorld::CreateWorld(EWorldType::Game, false, TEXT("EnemyTacticsWorld"));
     GEngine->CreateNewWorldContext(EWorldType::Game).SetCurrentWorld(world);
+    world->SetGameInstance(NewObject<UGameInstance>(GEngine));
+    world->GetWorldSettings()->DefaultGameMode = AGameModeBase::StaticClass();
+    TestTrue(TEXT("Damage test has authority game mode"), world->SetGameMode(FURL()));
     auto* director = world->GetSubsystem<UMinionCombatDirector>();
     auto* history = world->GetSubsystem<UEnemyPlayerHistory>();
     auto* player = world->SpawnActor<AActor>();
@@ -107,6 +115,40 @@ bool FEnemyTacticsTest::RunTest(const FString& _parameters)
     posture->Hit(50.f);
     TestEqual(TEXT("Broken posture does not take additional hit cost"), posture->m_value, 95.f);
     boss->m_defense->m_bGuardBroken = false;
+    //第二形態で通常ガードを繰り返しても崩れず、強攻撃三回で崩れる。
+    auto* data = NewObject<UBossData>(boss);
+    boss->m_definition = data;
+    boss->m_bossPhase = EBossPhase::PhaseTwo;
+    data->m_useGuard = true;
+    data->m_useSpecialDefense = false;
+    data->m_heavyHitsCount = 3;
+    data->m_useGuardBreak = true;
+    data->m_dodgeOnly = true;
+    data->m_perfectDodge = true;
+    slash.m_damage = 10.f;
+    slash.m_actionId = TEXT("CutTest");
+    slash.m_unblockable = true;
+    data->m_actions.Add(slash);
+    TestEqual(TEXT("Unblockable move has no perfect dodge window"), boss->GetDefenseWindow(EDefenseResult::PerfectDodge, slash.m_actionId), 0.f);
+    data->m_actions[0].m_unblockable = false;
+    data->m_actions[0].m_dodgeWindow = .15f;
+    TestTrue(TEXT("Regular move still allows perfect dodge"), boss->GetDefenseWindow(EDefenseResult::PerfectDodge, slash.m_actionId) > 0.f);
+    FDamageEvent normal(UEBCombatDamageType::StaticClass());
+    FDamageEvent strong(UEBHeavyDamageType::StaticClass());
+    boss->m_combat->m_bGuarding = true;
+    posture->m_value = 2.f;
+    for(int32 i = 0; i < 4; ++i)
+    {
+        TestEqual(TEXT("Blocked slash deals no HP damage"), boss->TakeDamage(10.f, normal, nullptr, seenPlayer), 0.f);
+    }
+    TestEqual(TEXT("Blocked slashes leave one posture"), posture->m_value, 1.f);
+    boss->TakeDamage(10.f, strong, nullptr, seenPlayer);
+    boss->TakeDamage(10.f, normal, nullptr, seenPlayer);
+    boss->TakeDamage(10.f, strong, nullptr, seenPlayer);
+    boss->TakeDamage(10.f, strong, nullptr, seenPlayer);
+    TestFalse(TEXT("Light hit resets heavy chain"), boss->m_defense->m_bGuardBroken);
+    TestEqual(TEXT("Third heavy breaks without HP damage"), boss->TakeDamage(10.f, strong, nullptr, seenPlayer), 0.f);
+    TestTrue(TEXT("Third consecutive blocked heavy breaks guard"), boss->m_defense->m_bGuardBroken);
     FFileHelper::SaveStringToFile(HasAnyErrors() ? TEXT("FAILED") : TEXT("PASSED: clone budget, one defender per clone, lone enemy, no-history fallback, phase-one adaptation, phase-two updates, BP disable"), *(FPaths::ProjectSavedDir() / TEXT("enemy_tactics_assertions.txt")));
     world->DestroyWorld(false);
     GEngine->DestroyWorldContext(world);

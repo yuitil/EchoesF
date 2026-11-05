@@ -1,4 +1,5 @@
 #include "Enemy/Animation/BossAnimation.h"
+#include "Enemy/Animation/EnemySwing.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
 #include "Enemy/Combat/Combat.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -29,6 +30,7 @@ void UBossAnimInstance::NativeUpdateAnimation(float _deltaSeconds)
 	velocity.Z = 0.f;
 	m_speed = velocity.Size();
 	m_state = enemy->m_state;
+    m_dualStance = enemy->m_combat && enemy->m_combat->HasTwoSwords();
 
 	//キャラクターを基準にした値。
 	FVector local = enemy->GetActorRotation().UnrotateVector(velocity);
@@ -47,7 +49,9 @@ void UBossCombatWindow::NotifyBegin(USkeletalMeshComponent* _mesh, UAnimSequence
 
 	if (m_window == EBossWindow::Damage)
 	{
-		enemy->m_combat->BeginHitWindow(m_damageScale, m_hitBone, m_tipOffset);
+		enemy->m_combat->BeginHitWindow(m_damageScale, m_hitBone, m_tipOffset, m_leftBlade);
+		const auto* event = _reference.GetNotify();
+		if(event && enemy->m_swing && !enemy->m_swing->UsesTrailNotify()) { enemy->m_swing->SetSwingEnd(Cast<UAnimMontage>(_anim), event->GetTime() + _duration); }
 	}
 
 	if (m_window == EBossWindow::DodgeInvulnerability)
@@ -153,4 +157,10 @@ void UBossDive::NotifyTick(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _an
 		velocity = delta.GetSafeNormal2D() * FMath::Min(m_speed, gap / FMath::Max(BossAnimationTuning::minBlend, _delta * 2.f));
 	}
 	velocity.Z = -m_fall;move->Velocity = velocity;
+}
+void UBossLeftSword::Notify(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _anim, const FAnimNotifyEventReference& _ref)
+{
+    Super::Notify(_mesh, _anim, _ref);
+    auto* enemy = _mesh ? Cast<AEnemyCharacterBase>(_mesh->GetOwner()) : nullptr;
+    if(enemy && enemy->GetMesh() == _mesh && enemy->IsCombatActive()) { enemy->m_combat->UpdateLeftBlade(m_draw); }
 }

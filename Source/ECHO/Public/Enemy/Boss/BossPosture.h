@@ -18,6 +18,13 @@ public:
     UFUNCTION(BlueprintCallable, Category="Boss|Posture")
     void Hit(float _damage);
 
+    //ガード成功時の体勢を少し減らす。
+    void BlockHit();
+
+    //通常ガード一回で減る体勢。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Posture", meta=(ClampMin="0"))
+    float m_blockCost = 1.f;
+
     //フェーズ開始時に体勢を戻す。
     UFUNCTION(BlueprintCallable, Category="Boss|Posture")
     void Reset();

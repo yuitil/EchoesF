@@ -11,6 +11,9 @@
 
 #include "GameFramework/CharacterMovementComponent.h"
 #include "AIController.h"
+#include "Navigation/PathFollowingComponent.h"
+#include "NavigationSystem.h"
+#include "Enemy/Boss/BossShadow.h"
 
 #include "Enemy/AI/EnemyTargeting.h"
 
@@ -34,6 +37,7 @@ UBossUpdateCombat::UBossUpdateCombat()
 	Interval = BossUpdateCombatTuning::updateDelay;
 	RandomDeviation = 0.0f;
 	bNotifyTick = true;
+	bCreateNodeInstance = true;
 }
 
 //BTが判断に使う敵と相手の状態を更新する。
@@ -54,9 +58,36 @@ void UBossUpdateCombat::TickNode(UBehaviorTreeComponent& _ownerComp, uint8* _nod
 	//狙っている相手。
 	AActor* target = enemy->m_targeting->SelectTarget();
 
+	//初めて会う前は待機し、見失った後だけ最後に見た場所から探す。
+	if(!enemy->IsA<ABossShadow>() && enemy->IsCombatActive())
+	{
+		const bool visible = IsValid(target) && aiController->LineOfSightTo(target);
+		if(IsValid(target) && !visible && !enemy->IsActing() && enemy->GetDistanceTo(target) > enemy->m_targeting->m_range) { target = nullptr; }
+		if(visible)
+		{
+			m_lastSeen = target->GetActorLocation();
+		}
+		if(IsValid(target) && m_searching) { aiController->StopMovement(); m_searching = false; }
+		if(!IsValid(target) && m_lastSeen.IsSet() && !enemy->IsActing() && !enemy->IsRepositioning() && !enemy->m_defense->IsBusy())
+		{
+			const double now = enemy->GetWorld()->GetTimeSeconds();
+			if(now >= m_nextLook && (!m_searching || aiController->GetMoveStatus() == EPathFollowingStatus::Idle))
+			{
+				FNavLocation point;
+				auto* nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(enemy->GetWorld());
+				if(!m_searching) { aiController->MoveToLocation(m_lastSeen.GetValue()); }
+				else if(nav && (nav->GetRandomReachablePointInRadius(m_lastSeen.GetValue(),m_searchRadius,point)
+					|| nav->GetRandomReachablePointInRadius(enemy->GetActorLocation(),m_searchRadius,point))) { aiController->MoveToLocation(point.Location); }
+				m_searching = true;
+				m_nextLook = now + 1.;
+			}
+		}
+	}
+
     if (!IsValid(target) && enemy->IsActing()) enemy->CancelAction();
 
 	enemy->m_combatTarget = target;
+    enemy->CheckComboRange();
 	//囲まれていて行動できる時は、通常の抽選より先に押し返す。
 	if(auto* boss = Cast<ABossEnemyCharacter>(enemy)) { boss->m_crowd->TryPush(); }
 	

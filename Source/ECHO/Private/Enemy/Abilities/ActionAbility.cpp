@@ -1,5 +1,6 @@
 #include "Enemy/Abilities/ActionAbility.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
+#include "Enemy/Combat/Combat.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "TimerManager.h"
 #include "Engine/World.h"
@@ -38,13 +39,30 @@ void UActionAbility::ActivateAbility(const FGameplayAbilitySpecHandle _handle, c
 		return;
 	}
 
-	//BTで実行する行動。
-	auto* task = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, actionData->m_montage, enemy->GetAttackRate(*actionData), NAME_None, true, actionData->m_rootScale);
+    GetWorld()->GetTimerManager().SetTimer(m_timerHandle, this, &UActionAbility::Interrupted, enemy->GetActionTimeout(*actionData), false);
+    if(auto* change = actionData->ChangesSwordStance() ? enemy->m_combat->GetBladeChange(actionData->m_dualBlade) : nullptr)
+    {
+        auto* task = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, change);
+        task->OnCompleted.AddDynamic(this, &UActionAbility::StartSwing);
+        task->OnCancelled.AddDynamic(this, &UActionAbility::Interrupted);
+        task->OnInterrupted.AddDynamic(this, &UActionAbility::Interrupted);
+        task->ReadyForActivation();
+        return;
+    }
+    StartSwing();
+}
+
+//抜刀や納刀の後に、元のコンボの段を再生する。
+void UActionAbility::StartSwing()
+{
+    auto* enemy = Cast<AEnemyCharacterBase>(GetAvatarActorFromActorInfo());
+    const auto* actionData = enemy ? enemy->GetActiveAction() : nullptr;
+    if(!actionData || !enemy->IsCombatActive()) { Interrupted(); return; }
+    if(actionData->ChangesSwordStance()) { enemy->m_combat->UpdateLeftBlade(actionData->m_dualBlade); }
+	auto* task = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, enemy->GetMoveMontage(*actionData), enemy->GetAttackRate(*actionData), NAME_None, true, actionData->m_rootScale);
 	task->OnCompleted.AddDynamic(this, &UActionAbility::Completed);
 	task->OnInterrupted.AddDynamic(this, &UActionAbility::Interrupted);
 	task->OnCancelled.AddDynamic(this, &UActionAbility::Interrupted);
-
-	GetWorld()->GetTimerManager().SetTimer(m_timerHandle, this, &UActionAbility::Interrupted, enemy->GetActionTimeout(*actionData), false);
 
 	task->ReadyForActivation();
 }

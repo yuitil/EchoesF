@@ -1,10 +1,12 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "BossShadowSummon.generated.h"
 
 class ABossShadow;
+class ABossEnemyCharacter;
+class UAnimMontage;
 
 //分身の数に合わせて、連携する影を最大二体呼ぶ。
 UCLASS(ClassGroup=(Enemy), meta=(BlueprintSpawnableComponent))
@@ -17,6 +19,32 @@ public:
     UBossShadowSummon();
     //戦闘をやり直す時に影と履歴を片付ける。
     void Reset();
+
+    //持ち替えや入れ替えの動作が終わるまで別の技を待つ。
+    bool IsChanging() const;
+    //本体のコンボの切れ目を記録する。
+    void QueueRelay();
+    //交代できる位置にいる影だけ、次の一撃を少し待つ。
+    bool CanCover(const ABossShadow& _partner) const;
+
+    //入れ替えに使う短い足運び。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shadow|Swap")
+    TObjectPtr<UAnimMontage> m_swapMove;
+    //同じ戦闘で連続して入れ替わらないための秒数。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shadow|Swap",meta=(ClampMin="1"))
+    float m_swapDelay = 12.f;
+    //どのくらい追跡が止まったら脱出するか。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shadow|Swap",meta=(ClampMin="1"))
+    float m_stuckTime = 2.f;
+    //このHPの割合以下で、相手の攻撃から離れる。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shadow|Swap",meta=(ClampMin="0",ClampMax="1"))
+    float m_panicHP = .35f;
+    //追跡が詰まったかを調べ始める距離。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Stance",meta=(ClampMin="0"))
+    float m_drawRange = 500.f;
+    //交代後に影が狙う地上攻撃。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shadow|Swap")
+    FName m_relayAction;
 
     //近くにいるプレイヤーの分身の数。
     int32 GetCloneCount() const { return m_cloneCount; }
@@ -99,6 +127,22 @@ protected:
 private:
     //同じ攻撃で何度も連携を抽選しないための番号。
     int32 m_lastJoin = INDEX_NONE;
+    //壁、相手の攻撃、コンボの順に交代できるか調べる。
+    bool TryStep(ABossEnemyCharacter& _boss, double _now);
+    //影が姿を現すまで、危機から離れる目的を覚えておく。
+    bool m_rescuePanic = false;
+    //生まれた影を待つ期限。
+    double m_rescueEnd = 0.;
+    //再び交代できる時刻。
+    double m_nextSwap = 0.;
+    //追跡中に足が止まった時刻。
+    double m_blockedSince = 0.;
+    //味方へ次の一撃を渡せる期限。
+    double m_relayEnd = 0.;
+    //追跡で最後に進んだ場所。
+    FVector m_lastPlace = FVector::ZeroVector;
+    //いま自分で始めた持ち替えかステップ。
+    TWeakObjectPtr<UAnimMontage> m_changeMove;
 
     //一定間隔で数えた、範囲内の分身。
     int32 m_cloneCount = 0;
@@ -106,3 +150,7 @@ private:
     //次に影を呼べる時刻。
     double m_nextTime = 0.;
 };
+
+
+
+

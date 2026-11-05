@@ -104,7 +104,10 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Enemy | GuardBreak", meta = (DisplayName = "GuardedHeavyHits"))
 	int32 m_guardedHeavyHits = 0;
 
-	//ガードが崩れているか。
+	//再生中のガード崩れを記録する。
+    TWeakObjectPtr<UAnimMontage> m_breakMove;
+
+    //ガードが崩れているか。
 	UPROPERTY(BlueprintReadOnly, Category = "Enemy | GuardBreak", meta = (DisplayName = "GuardBroken"))
 	bool m_bGuardBroken = false;
 

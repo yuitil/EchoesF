@@ -1,6 +1,8 @@
-﻿#include "Enemy/Boss/BossEnemyCharacter.h"
+#include "Enemy/Boss/BossEnemyCharacter.h"
+#include "Enemy/Combat/Defense.h"
 #include "Enemy/Audio/EnemyAudio.h"
 #include "Enemy/Boss/BossShadowSummon.h"
+#include "Enemy/Boss/BossShadow.h"
 #include "Enemy/Boss/BossCrowd.h"
 #include "Enemy/Boss/BossObservation.h"
 #include "Enemy/Boss/BossPosture.h"
@@ -14,6 +16,10 @@
 #include "TimerManager.h"
 #include "Engine/World.h"
 #include "BrainComponent.h"
+#include "Ghost/GhostCharacter/GhostCharacter.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "EngineUtils.h"
 
 //動作を確かめるための幅や待ち時間。
 namespace BossEnemyCharacterTuning
@@ -25,6 +31,7 @@ namespace BossEnemyCharacterTuning
 //初期設定と必要な部品を用意する。
 ABossEnemyCharacter::ABossEnemyCharacter()
 {
+	m_findRetreatAngle = true;
 	m_crowd = CreateDefaultSubobject<UBossCrowd>(TEXT("Crowd"));
 	m_summon = CreateDefaultSubobject<UBossShadowSummon>(TEXT("ShadowSummon"));
 	m_posture = CreateDefaultSubobject<UBossPosture>(TEXT("Posture"));
@@ -42,6 +49,27 @@ UBossData* ABossEnemyCharacter::GetBossData() const
 	return Cast<UBossData>(m_definition);
 }
 
+//フェーズ2の攻撃だけ少し速くする。
+float ABossEnemyCharacter::GetAttackRate(const FEnemyActionData& _action) const
+{
+    const float rate = Super::GetAttackRate(_action);
+    const bool attack = _action.m_kind != EEnemyAction::Guard && _action.m_kind != EEnemyAction::Dodge
+        && _action.m_kind != EEnemyAction::Recovery && _action.m_kind != EEnemyAction::Presentaiton;
+    return m_bossPhase == EBossPhase::PhaseTwo && attack && _action.m_damage > 0.f ? FMath::Min(2.f, rate * m_phaseAttackRate) : rate;
+}
+
+//第二形態はガード中の強攻撃だけを数える。
+bool ABossEnemyCharacter::HasStrongGuard() const
+{
+    return m_bossPhase == EBossPhase::PhaseTwo;
+}
+
+//ガードに成功した分だけ体勢を少し減らす。
+void ABossEnemyCharacter::OnStrongBlock()
+{
+    m_posture->BlockHit();
+}
+
 //ゲーム開始時に必要な状態を準備する。
 void ABossEnemyCharacter::BeginPlay()
 {
@@ -52,7 +80,27 @@ void ABossEnemyCharacter::BeginPlay()
 	}
 
 	Super::BeginPlay();
+    if(HasAuthority())
+    {
+        m_spawnHandle = GetWorld()->AddOnActorSpawnedHandler(FOnActorSpawned::FDelegate::CreateUObject(this, &ABossEnemyCharacter::WatchClone));
+        for(TActorIterator<AGhostCharacter> clone(GetWorld()); clone; ++clone) { WatchClone(*clone); }
+    }
 	PhaseLook(false);
+}
+
+//分身の胴体には距離を保ち、動く腕や剣には足を取られないようにする。
+void ABossEnemyCharacter::WatchClone(AActor* _actor)
+{
+    auto* clone = Cast<AGhostCharacter>(_actor);
+    if(!clone) { return; }
+    GetCapsuleComponent()->IgnoreComponentWhenMoving(clone->GetMesh(), true);
+    clone->OnEndPlay.AddUniqueDynamic(this, &ABossEnemyCharacter::ForgetClone);
+}
+
+//移動の除外に残った分身の参照を外す。
+void ABossEnemyCharacter::ForgetClone(AActor* _actor, EEndPlayReason::Type _reason)
+{
+    if(auto* clone = Cast<AGhostCharacter>(_actor)) { GetCapsuleComponent()->IgnoreComponentWhenMoving(clone->GetMesh(), false); }
 }
 
 //体力がなくなった時の処理を行う。
@@ -68,6 +116,7 @@ void ABossEnemyCharacter::HandleHealthDepleted()
 	if (m_bossPhase == EBossPhase::PhaseOne && data && data->m_bSecondLife)
 	{
 		SetLife(EBossPhase::Transition);
+        m_defense->RecordHeavyHit(nullptr, false);
 		//フェーズ1で見た相手の癖を、次のフェーズへ残す。
 		m_observation->Freeze();
 
@@ -129,7 +178,10 @@ void ABossEnemyCharacter::FinishTransition()
 	
 	//移動を使える状態へ戻してからフェーズ2を始める。
 	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
-	SetLife(EBossPhase::PhaseTwo);
+	m_spacing->Reset();
+    SetLife(EBossPhase::PhaseTwo);
+    //抜刀の途中で倒れた場合も、立ち上がったら右の刀を表示する。
+    if(m_approach->HasDrawn()) { m_approach->ShowSword(); }
 	m_readyTime = GetWorld()->GetTimeSeconds() + (GetBossData() ? FMath::Max(0.f, GetBossData()->m_phaseRecovery) : 0.f);
 	if (AAIController* controller = Cast<AAIController>(GetController()))
 	{
@@ -168,6 +220,7 @@ float ABossEnemyCharacter::GetActionWeightMultiplier(const FEnemyActionData& _ac
 {
 	//両フェーズで観察を使い、分身が多ければ広い攻撃も選ぶ。
 	float weight = m_observation->GetActionWeight(_action);
+    if(m_bossPhase == EBossPhase::PhaseTwo && _action.m_dualBlade) { weight *= m_dualWeight; }
 	if(m_summon->GetCloneCount() >= m_summon->m_cloneLimit && m_summon->m_crowdMoves.Contains(_action.m_actionId))
 	{
 		weight *= m_summon->m_crowdWeight;
@@ -197,6 +250,7 @@ void ABossEnemyCharacter::OnAcceptedHit(AActor* _attacker)
 void ABossEnemyCharacter::OnActionEnded()
 {
 	m_observation->MarkBossActionEnded();
+    if(m_actionSuccess && !GetPendingComboId().IsNone() && !IsA<ABossShadow>()) { m_summon->QueueRelay(); }
 }
 
 //次の戦闘に向けて状態を初期化する。
@@ -220,13 +274,14 @@ void ABossEnemyCharacter::ResetEncounter()
 void ABossEnemyCharacter::EndPlay(const EEndPlayReason::Type _reason)
 {
 	GetWorld()->GetTimerManager().ClearTimer(m_transitionTimer);
-	Super::EndPlay(_reason);
+	if(GetWorld() && m_spawnHandle.IsValid()) { GetWorld()->RemoveOnActorSpawnedHandler(m_spawnHandle); }
+    Super::EndPlay(_reason);
 }
 
 //間合いを取り直しているか返す。
 bool ABossEnemyCharacter::IsRepositioning() const
 {
- return (m_approach && m_approach->IsDrawing()) || (m_spacing && m_spacing->IsSpacing());
+ return (m_summon && m_summon->IsChanging()) || (m_approach && m_approach->IsDrawing()) || (m_spacing && m_spacing->IsSpacing());
 }
 
 //攻撃終了後の次の行動を準備する。

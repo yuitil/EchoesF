@@ -169,7 +169,8 @@ EDefenseResult UDefense::ResolveHit(AActor* _attacker, bool _unblockable, bool _
 			enemy->CancelAction();
 			if (auto* ai = Cast<AAIController>(enemy->GetController())) ai->StopMovement();
 			enemy->GetCharacterMovement()->StopMovementImmediately();
-			if (data->m_guardHit) enemy->PlayAnimMontage(data->m_guardHit);
+			auto* hit = enemy->m_combat->HasTwoSwords() && data->m_dualGuardHit ? data->m_dualGuardHit.Get() : data->m_guardHit.Get();
+            if(hit) { enemy->PlayAnimMontage(hit); }
 			m_guardPose = GetWorld()->GetTimeSeconds() + data->m_guardHold;
 		}
 		return result;
@@ -260,7 +261,8 @@ void UDefense::BreakFor(float _seconds)
 	//動作を続ける時間。
 	if(!enemy || !enemy->HasAuthority() || !enemy->IsCombatActive() || !enemy->m_definition || m_bGuardBroken) { return; }
 	const float duration = FMath::Max(DefenseTuning::minHold, _seconds);
-	BeginReaction(enemy->m_definition->m_guardBreakMontage, duration);
+	m_breakMove = enemy->m_combat->HasTwoSwords() && enemy->m_definition->m_dualGuardBreak ? enemy->m_definition->m_dualGuardBreak : enemy->m_definition->m_guardBreakMontage;
+    BeginReaction(m_breakMove.Get(), duration);
 	m_bGuardBroken = true;
 	enemy->ShowGuardBreak();
 
@@ -278,9 +280,9 @@ void UDefense::EndGuardBreak()
 	m_busyUntilTime = 0.0;
 	if(!enemy || !enemy->IsCombatActive()) { return; }
 
-	if (enemy->m_definition && enemy->m_definition->m_guardBreakMontage)
+	if (m_breakMove.IsValid())
 	{
-		enemy->StopAnimMontage(enemy->m_definition->m_guardBreakMontage);
+		enemy->StopAnimMontage(m_breakMove.Get());
 	}
 
 	enemy->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
@@ -345,9 +347,9 @@ void UDefense::ResetDefense()
 
 	//処理の対象となる敵。
 	AEnemyCharacterBase* enemy = Cast<AEnemyCharacterBase>(GetOwner());
-	if (enemy && enemy->m_definition && enemy->m_definition->m_guardBreakMontage && m_bGuardBroken)
+	if (enemy && m_breakMove.IsValid() && m_bGuardBroken)
 	{
-		enemy->StopAnimMontage(enemy->m_definition->m_guardBreakMontage);
+		enemy->StopAnimMontage(m_breakMove.Get());
 	}
 
 	if (m_bGuardBroken && enemy && enemy->IsCombatActive())
@@ -398,8 +400,19 @@ void UDefense::TryCounter()
 	{
 		GetWorld()->GetTimerManager().ClearTimer(m_counterTimer); return;
 	}
-	if (enemy->CanDecide() && !IsTargetAttacking(enemy->m_combatTarget) && !enemy->m_definition->m_counter.IsNone()
-		&& enemy->RequestAction(enemy->m_definition->m_counter)) GetWorld()->GetTimerManager().ClearTimer(m_counterTimer);
+	if(!enemy->CanDecide() || !IsValid(enemy->m_combatTarget) || IsTargetAttacking(enemy->m_combatTarget)) { return; }
+	const auto* data = enemy->m_definition.Get();
+	if(enemy->m_combat->HasTwoSwords())
+	{
+		const FVector toward = enemy->m_combatTarget->GetActorLocation() - enemy->GetActorLocation();
+		const FName side = FVector::DotProduct(enemy->GetActorRightVector(), toward) >= 0.f ? data->m_counterRight : data->m_counterLeft;
+		if(!side.IsNone() && enemy->RequestAction(side))
+		{
+			GetWorld()->GetTimerManager().ClearTimer(m_counterTimer);
+			return;
+		}
+	}
+	if(!data->m_counter.IsNone() && enemy->RequestAction(data->m_counter)) { GetWorld()->GetTimerManager().ClearTimer(m_counterTimer); }
 }
 
 //攻撃後のガード予約が残っているか調べる。

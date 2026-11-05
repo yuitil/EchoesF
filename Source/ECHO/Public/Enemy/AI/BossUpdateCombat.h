@@ -17,4 +17,12 @@ public:
 protected:
 	//BTが判断に使う敵と相手の状態を更新する。
 	virtual void TickNode(UBehaviorTreeComponent& _ownerComp, uint8* _nodeMemory, float _delta) override;
+	//見失った地点の周囲を探す広さ。
+	UPROPERTY(EditAnywhere, Category="Boss|Search", meta=(ClampMin="100"))
+	float m_searchRadius = 650.f;
+
+private:
+	TOptional<FVector> m_lastSeen;
+	bool m_searching = false;
+	double m_nextLook = 0.;
 };

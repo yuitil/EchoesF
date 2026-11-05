@@ -205,6 +205,16 @@ struct ECHO_API FEnemyActionData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy | Combo", meta = (DisplayName = "ComboEntry"))
 	bool m_comboEntry = true;
 
+    //この技の間だけ左手にも剣を持つ。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Combat")
+    bool m_dualBlade = false;
+
+    //急な回避や突進は、今の持ち方のまま始める。
+    bool ChangesSwordStance() const
+    {
+        return m_dualBlade || m_kind == EEnemyAction::Slash || m_kind == EEnemyAction::Heavy || m_kind == EEnemyAction::Counter;
+    }
+
 	//コンボ間の待ち時間。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy | Combo", meta = (DisplayName = "ComboGap", ClampMin = "0"))
 	float m_comboGap = 0.15f;
@@ -237,6 +247,14 @@ public:
 	//戦闘開始時の体力。
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "InitialHealth", ClampMin = "1"))
 	float m_initialHealth = 600.0f;
+
+    //一刀から二刀に持ち替える動き。
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Enemy|Dual Sword")
+    TObjectPtr<UAnimMontage> m_drawLeft;
+
+    //左の剣を納めて一刀に戻る動き。
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Enemy|Dual Sword")
+    TObjectPtr<UAnimMontage> m_sheatheLeft;
 
 	//必殺技を選ぶ確率。
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Enemy|Combat", meta=(ClampMin="0", ClampMax="1", DisplayName="Special Attack Chance"))
@@ -278,6 +296,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Defense", meta = (DisplayName = "Guard Hit Montage"))
 	TObjectPtr<UAnimMontage> m_guardHit;
 
+    //二刀で構える時のガード。
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Enemy|Defense")
+    TObjectPtr<UAnimMontage> m_dualGuard;
+
+    //二刀で攻撃を受けた時の動き。
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Enemy|Defense")
+    TObjectPtr<UAnimMontage> m_dualGuardHit;
+
+    //二刀のガードが崩れた時の動き。
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Enemy|Defense")
+    TObjectPtr<UAnimMontage> m_dualGuardBreak;
+
 	//ガード姿勢を保つ時間。
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Defense", meta = (DisplayName = "Guard Hit Hold", ClampMin = "0"))
 	float m_guardHold = .25f;
@@ -285,6 +315,13 @@ public:
 	//反撃に使う攻撃名。
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Defense", meta = (DisplayName = "Counter Action"))
 	FName m_counter;
+
+	//二刀の時、相手がいる側に合わせて使う反撃。
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Enemy|Defense")
+	FName m_counterRight;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Enemy|Defense")
+	FName m_counterLeft;
 
 	//反撃を待てる時間。
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Defense", meta = (DisplayName = "Counter Opportunity", ClampMin = "0"))
@@ -309,6 +346,10 @@ public:
 	//ジャスト回避による減速を使うか。
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Timing", meta = (DisplayName = "Perfect Dodge Enabled"))
 	bool m_perfectDodge = true;
+
+    //受け流せない技は通常の回避だけで避ける。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Combat")
+    bool m_dodgeOnly = false;
 
 	//ジャスト回避を受け付ける時間の幅。
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Timing", meta = (DisplayName = "Perfect Dodge Window", ClampMin = "0.01", ClampMax = "0.5"))

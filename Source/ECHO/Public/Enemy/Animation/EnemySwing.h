@@ -4,6 +4,7 @@
 #include "Components/ActorComponent.h"
 #include "EnemySwing.generated.h"
 
+class UAnimMontage;
 class UNiagaraSystem;
 class UNiagaraComponent;
 
@@ -22,6 +23,13 @@ public:
 
     //一振りの開始位置を記録する。
     void Start();
+    //見た目専用の通知が付いたモンタージュか調べる。
+    bool UsesTrailNotify() const;
+    //左右の刃と、光を出す区間を受け取る。
+    void StartBlade(UAnimMontage* _move, bool _left, float _start, float _end);
+
+    //モンタージュで斬撃を消す時刻を受け取る。
+    void SetSwingEnd(UAnimMontage* _move, float _end);
 
     //一振りの表示を終える。
     void Stop();
@@ -49,15 +57,44 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Swing", meta=(ClampMin="0", ClampMax="1"))
     float m_tipPart = .9f;
 
+    //刃と振る方向に沿って、一振りに一枚の斬撃を出す。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Swing")
+    bool m_bladeArc = false;
+
+    //一振りの開始位置を通知の終わりまで残す。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Swing")
+    bool m_fullSwing = false;
+
     //一振りの風切り音の大きさ。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Swing", meta=(ClampMin="0", ClampMax="2"))
     float m_gain = 1.f;
+
+    //剣が通った場所を何秒分だけ見せるか。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Swing", meta=(ClampMin="0.01",ClampMax="0.15"))
+    float m_sweepTime = .07f;
 
 private:
     //表示中の線を消す。
     void ClearTrail();
 
+    //通知中に実際に通った刃の根元と先端を記録する。
+    struct FBladePose
+    {
+        FVector base, tip;
+        double time;
+    };
+    TArray<FBladePose> m_poses;
+    void UpdateSweep(FVector _base, FVector _tip);
+
 private:
+    //現在の斬撃を出すモンタージュと終了時刻。
+    TWeakObjectPtr<UAnimMontage> m_swingMove;
+    float m_swingEnd = 0.f;
+    //斬撃通知の開始時刻と振る手。
+    float m_swingStart = 0.f;
+    bool m_notifyBlade = false;
+    bool m_left = false;
+
     //前回の剣先。敵の移動量を含めない位置。
     FVector m_lastTip = FVector::ZeroVector;
 

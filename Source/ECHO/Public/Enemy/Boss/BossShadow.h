@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Enemy/Boss/BossEnemyCharacter.h"
@@ -25,6 +25,14 @@ public:
     void StartJoin(FName _action, float _delay, float _range);
     //攻撃を止めて影を消し始める。
     void FadeOut();
+    //入れ替えの前後に足元で煙を出す。
+    void PlaySmoke();
+    //指定した場所の床に影の煙を出す。
+    void PlaySmokeAt(const FVector& _place);
+    //本体を待っている影も、出現が終われば交代できる。
+    bool CanRelay() const;
+    //次に動ける瞬間、交代位置から一撃を返す。
+    void RelayStrike(FName _action);
     //出現中と消滅中は移動や攻撃を待たせる。
     virtual bool IsRepositioning() const override;
     //出現と消滅の見た目を更新する。
@@ -105,12 +113,20 @@ protected:
 private:
     //本体が振り終わるまで次の攻撃を待つ時刻。
     double m_followTime = 0.;
+    double m_strikeEnd = 0.;
+    FName m_strikeId;
+
+    //次にプレイヤーの分身を探す時刻。
+    double m_nextSearch = 0.;
+
+    //分身を探し直す間隔。影BPで調整する。
+    UPROPERTY(EditDefaultsOnly, Category="Shadow|Combat", meta=(ClampMin="0.05", Units="s"))
+    float m_searchDelay = .2f;
 
     //活動中のプレイヤーの分身を探す。
     AActor* FindClone() const;
 
-    //足元の地面へ煙を一度だけ出す。
-    void PlaySmoke();
+
 
 private:
     //この影だけに使うマテリアル。
@@ -138,3 +154,4 @@ private:
     //消滅を開始したか。
     bool m_fading = false;
 };
+

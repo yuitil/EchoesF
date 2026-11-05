@@ -133,7 +133,7 @@ bool UBossPeformAction::StartAttack(UBehaviorTreeComponent& _ownerComp)
 		const float distance = FVector::Dist2D(enemy->GetActorLocation(), enemy->m_combatTarget->GetActorLocation());
 		if(distance > FMath::Max(m_attackDist, enemy->GetMeleeDistance()) + BossPeformActionTuning::rangeMargin) { return false; }
 		const bool tooClose = distance < enemy->GetMeleeDistance() - BossPeformActionTuning::closeMargin;
-		if(tooClose && !enemy->GetCharacterMovement()->IsFalling() && HasRetreatSpace(enemy)) { return false; }
+		if(tooClose && !enemy->GetCharacterMovement()->IsFalling() && enemy->GetReadyAction(m_retreatAction)) { return false; }
 	}
 	if(!enemy->RequestAction()) { return false; }
 
@@ -338,7 +338,7 @@ EBTNodeResult::Type UBossPeformAction::ExecuteTask(UBehaviorTreeComponent& _owne
 	//相手までの距離。
 	const float distance = FVector::Dist2D(enemy->GetActorLocation(), enemy->m_combatTarget->GetActorLocation());
 
-	if (distance < enemy->GetMeleeDistance() - BossPeformActionTuning::closeMargin && enemy->GetCharacterMovement()->IsMovingOnGround() && HasRetreatSpace(enemy))
+	if (distance < enemy->GetMeleeDistance() - BossPeformActionTuning::closeMargin && enemy->GetCharacterMovement()->IsMovingOnGround() && (enemy->GetReadyAction(m_retreatAction) || HasRetreatSpace(enemy)))
 	{
 
 		if (!m_retreatAction.IsNone() && enemy->RequestAction(m_retreatAction))

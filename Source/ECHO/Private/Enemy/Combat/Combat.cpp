@@ -1,11 +1,14 @@
-﻿#include "Enemy/Combat/Combat.h"
+#include "Enemy/Combat/Combat.h"
 #include "Enemy/Audio/EnemyAudio.h"
 #include "Enemy/Animation/EnemySwing.h"
 #include "Enemy/Combat/EnemyHitEffect.h"
 #include "GameFramework/DamageType.h"
+#include "GameFramework/PlayerController.h"
+#include "Camera/CameraShakeBase.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/MeshComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
 #include "DrawDebugHelpers.h"
@@ -116,11 +119,13 @@ void UCombat::EndPlay(const EEndPlayReason::Type _reason)
 }
 
 //剣の攻撃判定を有効にする。
-void UCombat::BeginHitWindow(float _damageScale, FName _bone, FVector _tip)
+void UCombat::BeginHitWindow(float _damageScale, FName _bone, FVector _tip, bool _leftBlade)
 {
     BindWeapon();
 
     //左右の武器を、一振りごとの通知で切り替える。
+    m_useLeft = _leftBlade;
+    if(m_useLeft) { UpdateLeftBlade(true); }
     m_hitBone = _bone;
     m_tipOffset = _tip;
 	m_hitScale = FMath::Max(0.0f, _damageScale);
@@ -128,7 +133,7 @@ void UCombat::BeginHitWindow(float _damageScale, FName _bone, FVector _tip)
 	m_hitActors.Empty();
 	m_hasPreviousHit = false;
 	m_bHitWindow = true;
-    if(auto* swing = GetOwner()->FindComponentByClass<UEnemySwing>()) { swing->Start(); }
+    if(auto* swing = GetOwner()->FindComponentByClass<UEnemySwing>()) { if(!swing->UsesTrailNotify()) { swing->Start(); } }
 
 	if (m_bDebug) { UE_LOG(LogTemp, Display, TEXT("BossCombat WindowOpen %s"), *GetNameSafe(GetOwner())); }
 
@@ -140,9 +145,116 @@ void UCombat::EndHitWindow()
 	m_bHitWindow = false;
     if(GetOwner())
     {
-        if(auto* swing = GetOwner()->FindComponentByClass<UEnemySwing>()) { swing->Stop(); }
+        if(auto* swing = GetOwner()->FindComponentByClass<UEnemySwing>()) { if(!swing->UsesTrailNotify()) { swing->Stop(); } }
     }
 	m_hasPreviousHit = false;
+}
+
+bool UCombat::HasTwoSwords() const
+{
+    return IsValid(m_leftWeapon) && m_leftWeapon->IsVisible();
+}
+
+//今の持ち方と次の技が違う時だけ持ち替える。
+UAnimMontage* UCombat::GetBladeChange(bool _dual) const
+{
+    const auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
+    const bool drawn = HasTwoSwords();
+    if(!enemy || !enemy->m_definition || drawn == _dual) { return nullptr; }
+    return _dual ? enemy->m_definition->m_drawLeft.Get() : enemy->m_definition->m_sheatheLeft.Get();
+}
+
+//刀そのものの柄を、手首と中指の付け根の間に合わせる。
+void UCombat::FitGrip(USkeletalMeshComponent& _rig, UStaticMeshComponent& _sword, bool _left)
+{
+    const FName hand = _left ? TEXT("hand_l") : TEXT("hand_r");
+    const FTransform joint = _rig.GetSocketTransform(hand);
+    const auto point = [&](FName bone)
+    {
+        return joint.InverseTransformPosition(_rig.GetSocketLocation(bone));
+    };
+    const FName middle = _left ? TEXT("middle_01_l") : TEXT("middle_01_r");
+    const FName index = _left ? TEXT("index_01_l") : TEXT("index_01_r");
+    const FName pinky = _left ? TEXT("pinky_01_l") : TEXT("pinky_01_r");
+    if(!_rig.DoesSocketExist(middle) || !_rig.DoesSocketExist(index) || !_rig.DoesSocketExist(pinky)) { return; }
+    const FVector base = _sword.GetSocketTransform(m_baseSocket,RTS_Component).GetLocation();
+    const FVector tip = _sword.GetSocketTransform(m_tipSocket,RTS_Component).GetLocation();
+    FTransform grip = _sword.GetRelativeTransform();
+    grip.SetScale3D(grip.GetScale3D().GetAbs());
+    const FVector blade = grip.TransformVector(tip-base).GetSafeNormal();
+    const FVector aim = (point(index)-point(pinky)).GetSafeNormal();
+    if(blade.IsNearlyZero() || aim.IsNearlyZero()) { return; }
+    grip.SetRotation(FQuat::FindBetweenNormals(blade,aim)*grip.GetRotation());
+    if(_left) { grip.ConcatenateRotation(m_leftGrip.Quaternion()); }
+    grip.SetTranslation(point(middle)*.5 - grip.TransformVector(m_handlePoint));
+    _sword.SetRelativeTransform(grip);
+}
+
+//右剣の親を使い、見えている騎士と同じ手を読む。
+void UCombat::RefreshGrip()
+{
+    if(!m_fitGrip) { return; }
+    auto* right = Cast<UStaticMeshComponent>(m_weapon.Get());
+    if(!right || right->GetAttachSocketName() != TEXT("hand_r")) { return; }
+    auto* rig = Cast<USkeletalMeshComponent>(right->GetAttachParent());
+    if(!rig || (m_gripRig.Get()==rig && m_rightSword.Get()==right)) { return; }
+    if(auto* old=m_gripRig.Get()) { RemoveTickPrerequisiteComponent(old); }
+    AddTickPrerequisiteComponent(rig);
+    m_gripRig = rig;
+    m_rightSword = right;
+    FitGrip(*rig,*right,false);
+    if(m_leftWeapon)
+    {
+        m_leftWeapon->AttachToComponent(rig,FAttachmentTransformRules::KeepRelativeTransform,TEXT("hand_l"));
+        FitGrip(*rig,*m_leftWeapon,true);
+    }
+}
+
+//右の剣の握りと素材を左手に写す。
+void UCombat::UpdateLeftBlade(bool _show)
+{
+    if(_show) { RefreshGrip(); }
+    if(!_show || m_leftWeapon)
+    {
+        if(m_leftWeapon && m_leftWeapon->IsVisible() != _show) { m_leftWeapon->SetVisibility(_show); }
+        return;
+    }
+    auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
+    auto* right = Cast<UStaticMeshComponent>(m_weapon.Get());
+    if(!enemy || !right || !right->GetStaticMesh()) { return; }
+    auto* body = m_fitGrip && m_gripRig.IsValid() ? m_gripRig.Get() : enemy->GetMesh();
+    if(!body->DoesSocketExist(TEXT("hand_l")) || !body->DoesSocketExist(TEXT("hand_r"))) { return; }
+    m_leftWeapon = NewObject<UStaticMeshComponent>(enemy);
+    m_leftWeapon->SetStaticMesh(right->GetStaticMesh());
+    m_leftWeapon->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    m_leftWeapon->SetCanEverAffectNavigation(false);
+    m_leftWeapon->SetupAttachment(body, TEXT("hand_l"));
+    const FTransform rightHand = body->GetSocketTransform(TEXT("hand_r"));
+    const FTransform leftHand = body->GetSocketTransform(TEXT("hand_l"));
+    const auto handPoint = [body,&leftHand](FName bone)
+    {
+        return leftHand.InverseTransformPosition(body->GetSocketLocation(bone));
+    };
+    //剣の原点は柄と一致しないので、実際の刃元と剣先を基準にする。
+    const FVector base = right->GetSocketTransform(m_baseSocket,RTS_Component).GetLocation();
+    const FVector tip = right->GetSocketTransform(m_tipSocket,RTS_Component).GetLocation();
+    FTransform grip = right->GetComponentTransform().GetRelativeTransform(rightHand);
+    grip.SetScale3D(grip.GetScale3D().GetAbs());
+    const FVector blade = grip.TransformVector(tip-base).GetSafeNormal();
+    if(body->DoesSocketExist(TEXT("pinky_01_l")) && body->DoesSocketExist(TEXT("index_01_l")))
+    {
+        //握った手の小指側から人差し指側へ刃を出す。
+        const FVector aim = (handPoint(TEXT("index_01_l"))-handPoint(TEXT("pinky_01_l"))).GetSafeNormal();
+        if(!blade.IsNearlyZero() && !aim.IsNearlyZero()) { grip.SetRotation(FQuat::FindBetweenNormals(blade,aim)*grip.GetRotation()); }
+    }
+    grip.ConcatenateRotation(m_leftGrip.Quaternion());
+    const FVector palm = body->DoesSocketExist(TEXT("middle_01_l")) ? handPoint(TEXT("middle_01_l"))*.5 : FVector::ZeroVector;
+    const FVector edge = grip.TransformVector(tip-base).GetSafeNormal();
+    grip.SetTranslation(palm + edge*m_gripDepth - grip.TransformVector(base));
+    m_leftWeapon->SetRelativeTransform(m_fitGrip ? right->GetRelativeTransform() : grip);
+    for(int32 i = 0; i < right->GetNumMaterials(); ++i) { m_leftWeapon->SetMaterial(i, right->GetMaterial(i)); }
+    m_leftWeapon->RegisterComponent();
+    if(m_fitGrip) { FitGrip(*body,*m_leftWeapon,true); }
 }
 
 //攻撃と防御の判定を初期化する。
@@ -153,6 +265,15 @@ void UCombat::ResetWindows()
 	m_hitActors.Empty();
 	m_bInvulnerable = false;
 	m_bGuarding = false;
+}
+
+bool UCombat::GetBladePoints(bool _left, FVector& _base, FVector& _tip) const
+{
+    const UMeshComponent* blade = _left ? static_cast<UMeshComponent*>(m_leftWeapon.Get()) : m_weapon.Get();
+    if(!IsValid(blade) || !blade->IsVisible() || !blade->DoesSocketExist(m_baseSocket) || !blade->DoesSocketExist(m_tipSocket)) { return false; }
+    _base = blade->GetSocketLocation(m_baseSocket);
+    _tip = blade->GetSocketLocation(m_tipSocket);
+    return true;
 }
 
 //攻撃と残り線で、同じボーンとソケットを使う。
@@ -169,6 +290,7 @@ bool UCombat::GetWeaponPoints(FVector& _base, FVector& _tip) const
     const FName tip = !m_hitBone.IsNone() ? m_hitBone : (body ? action->m_hitTip : m_tipSocket);
     //対象のモデル。
     UMeshComponent* mesh = body ? enemy->GetMesh() : (m_useWeapon ? m_weapon.Get() : enemy->GetMesh());
+    if(m_useLeft) { mesh = m_leftWeapon.Get(); }
 
 	if (!IsValid(mesh) || mesh->GetOwner() != enemy || !mesh->DoesSocketExist(base) || !mesh->DoesSocketExist(tip))
 	{
@@ -187,6 +309,7 @@ bool UCombat::GetWeaponPoints(FVector& _base, FVector& _tip) const
 void UCombat::TickComponent(float _deltaTime, ELevelTick _type, FActorComponentTickFunction* _function)
 {
 	Super::TickComponent(_deltaTime, _type, _function);
+    RefreshGrip();
 
 	//処理の対象となる敵。
 	AEnemyCharacterBase* enemy = GetOwner() ? Cast<AEnemyCharacterBase>(GetOwner()) : nullptr;
@@ -194,6 +317,8 @@ void UCombat::TickComponent(float _deltaTime, ELevelTick _type, FActorComponentT
 
 	//使用する行動の設定。
 	const FEnemyActionData* action = enemy ? enemy->GetActiveAction() : nullptr;
+    //戦闘が止まったら、次の抜刀に備えて片付ける。
+    if(!enemy || !enemy->IsCombatActive()) { UpdateLeftBlade(false); }
 	//狙っている相手。
 	AActor* target = enemy ? enemy->m_combatTarget.Get() : nullptr;
 	//相手の攻撃や回避の状態を確認する部品。
@@ -308,7 +433,9 @@ void UCombat::TickComponent(float _deltaTime, ELevelTick _type, FActorComponentT
 		const auto* hitCombat = hitActor->FindComponentByClass<UCombatComponent>();
 		if ((hitCombat && hitCombat->IsDodging()) || enemy->IsAttackSlowed()) { continue; }
 		//防御の結果。
-		const EDefenseResult response = enemy->ResolveTargetDefense(hitActor);
+		EDefenseResult response = enemy->ResolveTargetDefense(hitActor);
+        //BPから届く結果にも、この攻撃の回避ルールを適用する。
+        if(response == EDefenseResult::PerfectDodge && action->m_unblockable && enemy->m_definition && enemy->m_definition->m_dodgeOnly) { response = EDefenseResult::None; }
 
         if (action->m_special && action->m_unblockable && response == EDefenseResult::Guard)
         {
@@ -334,6 +461,18 @@ void UCombat::TickComponent(float _deltaTime, ELevelTick _type, FActorComponentT
 
 		if (actualDamage > 0.0f)
 		{
+            //大技を実際に受けたプレイヤーの画面だけに短い衝撃を出す。
+            if(m_hitShake && m_shakeScale > 0.f && (heavy || action->m_unblockable || action->m_special)
+                && m_shakeAction != enemy->m_actionSerial)
+            {
+                APawn* pawn = Cast<APawn>(hitActor);
+                auto* player = pawn ? Cast<APlayerController>(pawn->GetController()) : nullptr;
+                if(player)
+                {
+                    m_shakeAction = enemy->m_actionSerial;
+                    player->ClientStartCameraShake(m_hitShake, m_shakeScale);
+                }
+            }
 			enemy->RecordAttackHit();
 			if(enemy->m_hitFx) { enemy->m_hitFx->ShowStrike(hit.ImpactPoint, hit.ImpactNormal.GetSafeNormal()); }
 			if (hitActor == target && action->m_launch && enemy->IsActing() && !enemy->WasAttackBlocked()) { BeginLift(Cast<ACharacter>(hitActor), *action); }
@@ -352,3 +491,5 @@ void UCombat::TickComponent(float _deltaTime, ELevelTick _type, FActorComponentT
 		}
 	}
 }
+
+

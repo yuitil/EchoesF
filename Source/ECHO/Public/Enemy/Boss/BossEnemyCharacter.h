@@ -64,6 +64,18 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Health", meta=(ClampMin="0.1", ClampMax="2"))
     float m_takenScale = 1.f;
 
+    //フェーズ2で攻撃を振る速さ。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Combat", meta=(ClampMin="1",ClampMax="1.5"))
+    float m_phaseAttackRate = 1.08f;
+
+    //フェーズ2で二刀の始動技を選ぶ重み。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Combat", meta=(ClampMin="1"))
+    float m_dualWeight = 3.f;
+
+    virtual float GetAttackRate(const FEnemyActionData& _action) const override;
+    virtual bool HasStrongGuard() const override;
+    virtual void OnStrongBlock() override;
+
 	//分身に囲まれた時に間合いを作る部品。
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Boss")
 	TObjectPtr<UBossCrowd> m_crowd;
@@ -126,7 +138,17 @@ protected:
 	virtual void OnAttackFinished() override;
 
 private:
-	//ボスのフェーズを切り替える。
+	//分身の腕や足に移動だけが引っ掛かるのを防ぐ。
+    void WatchClone(AActor* _actor);
+
+    //消えた分身のメッシュを移動の除外リストから外す。
+    UFUNCTION()
+    void ForgetClone(AActor* _actor, EEndPlayReason::Type _reason);
+
+    //新しく出た分身を受け取る登録。
+    FDelegateHandle m_spawnHandle;
+
+    //ボスのフェーズを切り替える。
 	void SetLife(EBossPhase _newLife);
 
 	//立ち上がりを終えてフェーズ2を開始する。

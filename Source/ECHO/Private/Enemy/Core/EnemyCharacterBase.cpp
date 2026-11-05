@@ -1,4 +1,4 @@
-﻿#include "Enemy/Core/EnemyCharacterBase.h"
+#include "Enemy/Core/EnemyCharacterBase.h"
 #include "Enemy/Audio/EnemyAudio.h"
 #include "Enemy/Animation/EnemySwing.h"
 #include "Enemy/AI/EnemyTargeting.h"
@@ -131,7 +131,7 @@ float AEnemyCharacterBase::GetDefenseWindow(EDefenseResult _result, FName _actio
 	if (!action || action->m_damage <= 0.f) { return 0.f; }
 	if (_result == EDefenseResult::PerfectDodge)
 	{
-		return m_definition && m_definition->m_perfectDodge ? FMath::Clamp(action->m_dodgeWindow > 0.f ? action->m_dodgeWindow : m_definition->m_dodgeWindow, 0.f, .5f) : 0.f;
+		return m_definition && m_definition->m_perfectDodge && !(action->m_unblockable && m_definition->m_dodgeOnly) ? FMath::Clamp(action->m_dodgeWindow > 0.f ? action->m_dodgeWindow : m_definition->m_dodgeWindow, 0.f, .5f) : 0.f;
 	}
 	if (action->m_unblockable) { return 0.f; }
 	if (_result == EDefenseResult::Parry) { return FMath::Clamp(action->m_parryWindow, 0.f, .5f); }
@@ -148,11 +148,20 @@ bool AEnemyCharacterBase::IsDefenseInputValid(EDefenseResult _result, float _ela
 }
 
 //攻撃が終わるまで待つ時間を求める。
+UAnimMontage* AEnemyCharacterBase::GetMoveMontage(const FEnemyActionData& _action) const
+{
+    if(_action.m_kind == EEnemyAction::Guard && m_definition && m_definition->m_dualGuard && m_combat->HasTwoSwords()) { return m_definition->m_dualGuard; }
+    return _action.m_montage;
+}
+
 float AEnemyCharacterBase::GetActionTimeout(const FEnemyActionData& _action) const
 {
 	//攻撃の減速に使う値。
 	const float slow = m_definition && m_definition->m_perfectDodge ? FMath::Clamp(m_definition->m_slowRate, EnemyCharacterBaseTuning::minStep, 1.f) : 1.f;
-	return _action.m_montage ? _action.m_montage->GetPlayLength() / FMath::Max(EnemyCharacterBaseTuning::minRate, GetAttackRate(_action) * _action.m_montage->RateScale * slow) + EnemyCharacterBaseTuning::timeoutMargin : EnemyCharacterBaseTuning::timeoutMargin;
+    const auto* change = _action.ChangesSwordStance() ? m_combat->GetBladeChange(_action.m_dualBlade) : nullptr;
+    const float lead = change ? change->GetPlayLength() / FMath::Max(EnemyCharacterBaseTuning::minRate, change->RateScale) : 0.f;
+	auto* move = GetMoveMontage(_action);
+	return move ? lead + move->GetPlayLength() / FMath::Max(EnemyCharacterBaseTuning::minRate, GetAttackRate(_action) * move->RateScale * slow) + EnemyCharacterBaseTuning::timeoutMargin : EnemyCharacterBaseTuning::timeoutMargin;
 }
 
 //ジャスト回避された攻撃を減速する。
@@ -165,7 +174,7 @@ bool AEnemyCharacterBase::ApplyPerfectDodge(AActor* _target)
 	auto* anim = GetMesh()->GetAnimInstance();
 	if (!HasAuthority() || !IsActing() || !IsValid(_target) || _target != m_combatTarget || !action || action->m_damage
 		<= 0.f
-		|| !m_definition || !m_definition->m_perfectDodge || !anim || !anim->Montage_IsPlaying(action->m_montage) ||
+		|| GetDefenseWindow(EDefenseResult::PerfectDodge) <= 0.f || !anim || !anim->Montage_IsPlaying(action->m_montage) ||
 		IsAttackSlowed()) { return false; }
 	m_slowMontage = action->m_montage;
 	m_savedRate = anim->Montage_GetPlayRate(m_slowMontage);
@@ -227,6 +236,12 @@ void AEnemyCharacterBase::Tick(float _delta)
 		}
 	}
 
+	//打ち上げ後は地上の接近判断を待たず、予約した空中技を出す。
+	if(HasAuthority() && !m_nextActionId.IsNone() && GetCharacterMovement()->IsFalling() && CanDecide())
+	{
+		RequestAction(m_nextActionId);
+	}
+
 	//使用する行動の設定。
 	const auto* action = GetActiveAction();
 	if (!HasAuthority() || !action || action->m_backSpeed <= 0.f || !GetCharacterMovement()->IsMovingOnGround())
@@ -246,6 +261,7 @@ void AEnemyCharacterBase::Tick(float _delta)
 		//再生が遅くなった時は移動も遅くし、足だけ置いていかれないようにする。
 		const float rate = FMath::Abs(anim->Montage_GetPlayRate(action->m_montage) * action->m_montage->RateScale);
 		const float speed = action->m_backSpeed * rate;
+        const FVector dir = m_findRetreatAngle ? m_evadeDir : EvadeDirection(*action);
 		//地面に当たった情報。
 		FNavLocation floor;
 
@@ -253,12 +269,11 @@ void AEnemyCharacterBase::Tick(float _delta)
 		auto* nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
 
 		//次に使う区間または候補。
-		const FVector next = GetActorLocation() + EvadeDirection(*action) * speed * FMath::Max(
-			_delta, EnemyCharacterBaseTuning::minStep);
+		const FVector next = GetActorLocation() + dir * speed * _delta;
 
 		//足元の位置。
 		const float feet = GetActorLocation().Z - GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-		if (!nav || !nav->ProjectPointToNavigation(next, floor,
+		if (!nav || !nav->ProjectPointToNavigation(FVector(next.X, next.Y, feet), floor,
 		                                           FVector(EnemyCharacterBaseTuning::navWidth,
 		                                                   EnemyCharacterBaseTuning::navWidth,
 		                                                   EnemyCharacterBaseTuning::navHeight)) || FMath::Abs(
@@ -268,7 +283,14 @@ void AEnemyCharacterBase::Tick(float _delta)
 			return;
 		}
 		GetCharacterMovement()->MaxWalkSpeed = speed;
-		AddMovementInput(EvadeDirection(*action), 1.f);
+		if(m_findRetreatAngle)
+        {
+            //退避の区間だけ床に沿って動かし、壁に当たる手前で止める。
+            FHitResult hit;
+            GetCharacterMovement()->SafeMoveUpdatedComponent(dir * speed * _delta, GetActorQuat(), true, hit);
+            if(hit.IsValidBlockingHit()) { m_evadeDir = FindEvadePath(*action); }
+        }
+        else { AddMovementInput(dir, 1.f); }
 	}
 	else
 	{
@@ -369,7 +391,9 @@ float AEnemyCharacterBase::TakeDamage(float _damage, const FDamageEvent& _damage
 	if(result == EDefenseResult::Deflect || result == EDefenseResult::Parry) { m_defense->RecordHeavyHit(attacker, false); }
 
 	//ガード中も通常被弾も、同じ強攻撃の回数として数える。
-	if(result != EDefenseResult::Deflect && result != EDefenseResult::Parry && m_defense->RecordHeavyHit(attacker, heavyAttack))
+	const bool strongGuard = HasStrongGuard();
+    const bool blocked = result == EDefenseResult::Guard;
+    if(result != EDefenseResult::Deflect && result != EDefenseResult::Parry && m_defense->RecordHeavyHit(attacker, heavyAttack && (!strongGuard || blocked)))
 	{
 		result = EDefenseResult::GuardBreak;
 	}
@@ -380,7 +404,15 @@ float AEnemyCharacterBase::TakeDamage(float _damage, const FDamageEvent& _damage
 		m_hitFx->PlayClash(attacker);
 	}
 
-	if (result == EDefenseResult::Deflect || result == EDefenseResult::Parry)
+	if(strongGuard && blocked)
+    {
+        //崩した一撃まで剣で受け、次の一撃からHPに通す。
+        if(result == EDefenseResult::Guard) { OnStrongBlock(); }
+        m_defense->PublishResult(attacker, result);
+        return 0.f;
+    }
+
+    if (result == EDefenseResult::Deflect || result == EDefenseResult::Parry)
 	{
 		m_defense->PublishResult(attacker, result);
 		return 0.0f;
@@ -579,6 +611,15 @@ int32 AEnemyCharacterBase::FindComboAction(FName _actionId) const
 	return INDEX_NONE;
 }
 
+//次の一手を出せない距離・状態なら予約を外す。
+void AEnemyCharacterBase::CheckComboRange()
+{
+    if(IsActing() || m_nextActionId.IsNone() || !CanDecide()) { return; }
+    if(FindComboAction(m_nextActionId) != INDEX_NONE) { return; }
+    m_nextActionId = NAME_None;
+    m_comboSteps = 0;
+}
+
 //距離と状態に合う攻撃を抽選する。
 int32 AEnemyCharacterBase::ChooseAction() const
 {
@@ -771,6 +812,7 @@ bool AEnemyCharacterBase::RequestAction(FName _actionId)
 	m_savedTurn = GetCharacterMovement()->bOrientRotationToMovement;
 	if (m_definition->m_actions[m_activeIndex].m_backSpeed > 0.f)
 	{
+		m_evadeDir = FindEvadePath(m_definition->m_actions[m_activeIndex]);
 		GetCharacterMovement()->bOrientRotationToMovement = false;
 	}
 	m_actionStart = GetWorld()->GetTimeSeconds();
@@ -869,6 +911,18 @@ void AEnemyCharacterBase::FinishAction(bool _cancelled)
                 if(!choices.IsEmpty()) { m_nextActionId = choices[FMath::RandRange(0, choices.Num() - 1)]; }
             }
 		}
+
+        //最終段で打ち上げた時も、相手が浮いた場合だけ空中の締めを一度許す。
+        if(!_cancelled && !dodged && m_definition && action->m_dualBlade && action->m_launch
+            && m_bActionHit && !m_bActionBlocked && m_nextActionId.IsNone()
+            && m_comboSteps == FMath::Clamp(m_definition->m_maxComboSteps, 1, EnemyCharacterBaseTuning::maxComboSteps))
+        {
+            const int32 finish = FindComboAction(action->m_hitNextId);
+            if(finish != INDEX_NONE && m_definition->m_actions[finish].m_targetAir && m_definition->m_actions[finish].m_airOnly)
+            {
+                m_nextActionId = action->m_hitNextId;
+            }
+        }
 
 		if (FindComboAction(m_nextActionId) == INDEX_NONE)
 		{
@@ -993,6 +1047,27 @@ FVector AEnemyCharacterBase::EvadeDirection(const FEnemyActionData& _action) con
 //障害物を避けて回避できるか調べる。
 bool AEnemyCharacterBase::CanEvade(const FEnemyActionData& _action) const
 {
+    return !FindEvadePath(_action).IsNearlyZero();
+}
+
+//後ろ、左後ろ、右後ろの順に、最後まで移動できる向きを探す。
+FVector AEnemyCharacterBase::FindEvadePath(const FEnemyActionData& _action) const
+{
+    const FVector dir = EvadeDirection(_action);
+    if(HasEvadePath(_action, dir)) { return dir; }
+    if(!m_findRetreatAngle || !FMath::IsNearlyEqual(FMath::Abs(_action.m_evadeAngle), 180.f)) { return FVector::ZeroVector; }
+    constexpr float diagonal = 45.f;
+    for(float angle : {-diagonal, diagonal, -diagonal * 1.5f, diagonal * 1.5f})
+    {
+        const FVector side = dir.RotateAngleAxis(angle, FVector::UpVector);
+        if(HasEvadePath(_action, side)) { return side; }
+    }
+    return FVector::ZeroVector;
+}
+
+//床の高さと体が通る幅を候補ごとに確認する。
+bool AEnemyCharacterBase::HasEvadePath(const FEnemyActionData& _action, FVector _dir) const
+{
 	//歩ける場所を調べる機能。
 	auto* nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
 	if (!nav || !_action.m_montage || !GetCharacterMovement()->IsMovingOnGround()) { return false; }
@@ -1001,7 +1076,7 @@ bool AEnemyCharacterBase::CanEvade(const FEnemyActionData& _action) const
 	const FVector start = GetActorLocation();
 
 	//前回からの経過時間や値の差。
-	const FVector delta = EvadeDirection(_action) * _action.m_backSpeed * FMath::Max(
+	const FVector delta = _dir * _action.m_backSpeed * FMath::Max(
 		0.f, _action.m_backEnd - _action.m_backStart);
 
 	//足元の位置。
@@ -1010,7 +1085,7 @@ bool AEnemyCharacterBase::CanEvade(const FEnemyActionData& _action) const
 	{
 		//地面に当たった情報。
 		FNavLocation floor;
-		if (!nav->ProjectPointToNavigation(start + delta * (i / EnemyCharacterBaseTuning::pathStepCount), floor,
+		if (!nav->ProjectPointToNavigation(FVector(start.X, start.Y, feet) + delta * (i / EnemyCharacterBaseTuning::pathStepCount), floor,
 		                                   FVector(EnemyCharacterBaseTuning::pathWidth,
 		                                           EnemyCharacterBaseTuning::pathWidth,
 		                                           EnemyCharacterBaseTuning::navHeight)) || FMath::Abs(

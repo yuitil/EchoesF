@@ -5,6 +5,8 @@
 #include "Combat.generated.h"
 
 class UMeshComponent;
+class UAnimMontage;
+class UCameraShakeBase;
 
 //武器が当たった相手へダメージを渡す。
 UCLASS( ClassGroup=(Enemy), meta=(BlueprintSpawnableComponent))
@@ -26,13 +28,41 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type _reason) override;
 
 	//剣の攻撃判定を有効にする。
-	void BeginHitWindow(float _damageScale = 1.0f, FName _bone = NAME_None, FVector _tip = FVector::ZeroVector);
+	void BeginHitWindow(float _damageScale = 1.0f, FName _bone = NAME_None, FVector _tip = FVector::ZeroVector, bool _leftBlade = false);
 
 	//剣の攻撃判定を終了する。
 	void EndHitWindow();
 
+    //抜刀・納刀の通知で左の剣を出し入れする。
+    void UpdateLeftBlade(bool _show);
+
+    //左手に刀が出ているかを返す。
+    UFUNCTION(BlueprintPure, Category="Enemy|Sword")
+    bool HasTwoSwords() const;
+
+    //刀の柄を表示モデルの両手に合わせる。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Sword")
+    bool m_fitGrip = false;
+
+    //刀のモデル内で、指で握る柄の中心。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Sword")
+    FVector m_handlePoint = FVector::ZeroVector;
+
+    //左の握りをボスBPで微調整する。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Sword")
+    FRotator m_leftGrip = FRotator::ZeroRotator;
+    //手のひら中心から鍔までの長さ（cm）。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Sword", meta=(ClampMin="0",ClampMax="20"))
+    float m_gripDepth = 8.f;
+
+    //次の技に必要な持ち替えを返す。
+    UAnimMontage* GetBladeChange(bool _dual) const;
+
 	//攻撃判定と演出で同じ剣の位置を読む。
-	bool GetWeaponPoints(FVector& _base, FVector& _tip) const;
+	bool GetBladePoints(bool _left, FVector& _base, FVector& _tip) const;
+
+    //当たり判定の位置を返す。
+    bool GetWeaponPoints(FVector& _base, FVector& _tip) const;
 
 	//攻撃判定が有効か返す。
 	bool IsHitWindowOpen() const { return m_bHitWindow; }
@@ -49,6 +79,14 @@ public:
 	bool SetWeaponMesh(UMeshComponent* _mesh, FName _base = TEXT("BladeBase"), FName _tip = TEXT("BladeTip"));
 
 public:
+    //大技がプレイヤーに当たった時の揺れ。敵BPで選ぶ。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Impact")
+    TSubclassOf<UCameraShakeBase> m_hitShake;
+
+    //一撃の揺れの強さ。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Impact", meta=(ClampMin="0", ClampMax="2"))
+    float m_shakeScale = .7f;
+
 	//狙っている相手以外も、剣が直接当たれば判定する。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Combat")
 	bool m_hitNearby = false;
@@ -85,10 +123,28 @@ private:
     //剣のタグから判定部品をつなぎ直す。
     void BindWeapon();
 
+
+    //右剣を持つモデルが変わった時だけ握りを合わせ直す。
+    void RefreshGrip();
+    void FitGrip(USkeletalMeshComponent& _rig, UStaticMeshComponent& _sword, bool _left);
+    TWeakObjectPtr<USkeletalMeshComponent> m_gripRig;
+    TWeakObjectPtr<UStaticMeshComponent> m_rightSword;
+
+    //使い回す左手の剣。
+    UPROPERTY(Transient)
+    TObjectPtr<class UStaticMeshComponent> m_leftWeapon;
+
+    //現在の判定に使う手。
+    bool m_useLeft = false;
+
+
 	//命中した相手を打ち上げる。
 	void BeginLift(class ACharacter* _target, const struct FEnemyActionData& _action);
 
 private:
+    //多段技では最初にダメージを与えた一撃だけ揺らす。
+    int32 m_shakeAction = INDEX_NONE;
+
     //今の通知で指定された武器のボーン。
     FName m_hitBone;
 
@@ -157,3 +213,4 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UMeshComponent> m_weapon;
 };
+

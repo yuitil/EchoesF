@@ -1,4 +1,4 @@
-﻿#include "Enemy/Boss/BossShadow.h"
+#include "Enemy/Boss/BossShadow.h"
 #include "Enemy/Audio/EnemyAudio.h"
 #include "Enemy/Combat/Combat.h"
 #include "Enemy/Boss/BossShadowSummon.h"
@@ -30,10 +30,15 @@ ABossShadow::ABossShadow()
 //現在いる場所の床へ、出現と消滅に共通の煙を出す。
 void ABossShadow::PlaySmoke()
 {
+    PlaySmokeAt(GetActorLocation());
+}
+
+void ABossShadow::PlaySmokeAt(const FVector& _place)
+{
     if((!m_smoke && !m_gate) || GetNetMode() == NM_DedicatedServer) { return; }
     
     //壁やキャラクターではなく、足元の床を調べる。
-    const FVector start = GetActorLocation();
+    const FVector start = _place;
     FHitResult hit;
     FCollisionQueryParams params(SCENE_QUERY_STAT(ShadowSmoke), false, this);
     if(!GetWorld()->LineTraceSingleByObjectType(hit, start, start - FVector(0.f, 0.f, m_floorDepth), FCollisionObjectQueryParams(ECC_WorldStatic), params)) { return; }
@@ -206,34 +211,57 @@ void ABossShadow::FadeOut()
     }
 }
 
+bool ABossShadow::CanRelay() const
+{
+    return IsCombatActive() && !m_fading && m_age >= m_riseTime && !IsActing()
+        && (!m_join || (!m_joinDone && m_age >= m_joinDelay));
+}
+
+void ABossShadow::RelayStrike(FName _action)
+{
+    m_followTime = 0.;
+    m_strikeId = _action;
+    m_strikeEnd = GetWorld()->GetTimeSeconds()+1.f;
+}
+
 //寿命と対象の消滅を確認して見た目を薄くする。
 void ABossShadow::Tick(float _delta)
 {
     Super::Tick(_delta);
     m_age += _delta;
+    //本体の援護より先に、まだ誰も狙っていない分身を探す。
+    if(HasAuthority() && !m_fading)
+    {
+        AActor* target = m_targeting->SelectTarget();
+        const double now = GetWorld()->GetTimeSeconds();
+        if(!Cast<AGhostCharacter>(target) && (!target || now >= m_nextSearch))
+        {
+            m_nextSearch = now + FMath::Max(.05f, m_searchDelay);
+            if(auto* clone = FindClone())
+            {
+                m_join = false;
+                CancelAction();
+                m_followTime = m_strikeEnd = 0.;
+                Setup(clone, m_life);
+            }
+        }
+        if(m_join && (m_joinDone || m_age >= m_joinLimit)) { FadeOut(); }
+    }
     //同じ相手への新しい攻撃は、本体の振り終わりに続ける。
     auto* boss = Cast<ABossEnemyCharacter>(GetOwner());
     if(HasAuthority() && !m_fading && !IsActing() && boss && boss->m_combatTarget == m_combatTarget
-        && boss->m_combat && boss->m_combat->IsHitWindowOpen())
+        && m_strikeEnd == 0. && boss->m_combat && (boss->m_combat->IsHitWindowOpen() || boss->m_summon->CanCover(*this)))
     {
         m_followTime = GetWorld()->GetTimeSeconds() + FMath::Max(0.f, m_followGap);
     }
-    //担当が消えた時は、残っている別の分身へ切り替える。
-    if(HasAuthority() && !m_join && !m_fading && !IsActing() && !m_targeting->SelectTarget())
+    if(HasAuthority() && m_strikeEnd > 0.)
     {
-        if(auto* clone = FindClone()) { Setup(clone, m_life); }
-    }
-    //連携中に分身が出たら、プレイヤーへの攻撃を止めて担当を変える。
-    if(HasAuthority() && m_join && !m_fading)
-    {
-        if(auto* clone = FindClone())
+        if(!IsCombatActive() || GetWorld()->GetTimeSeconds() > m_strikeEnd) { m_strikeEnd = 0.; }
+        else if(CanDecide())
         {
-            m_join = false;
-            CancelAction();
-            m_targeting->m_fixedTarget = clone;
-            m_combatTarget = clone;
+            m_strikeEnd = 0.;
+            if(!RequestAction(m_strikeId)) { RequestAction(); }
         }
-        else if(m_joinDone || m_age >= m_joinLimit) { FadeOut(); }
     }
     if(HasAuthority() && !m_fading && (m_age >= m_life || !m_targeting->SelectTarget())) 
     {
@@ -259,3 +287,5 @@ void ABossShadow::Tick(float _delta)
         Destroy();
     }
 }
+
+

@@ -1,4 +1,4 @@
-﻿#include "Enemy/Boss/BossShadowSummon.h"
+#include "Enemy/Boss/BossShadowSummon.h"
 #include "Enemy/Boss/BossShadow.h"
 #include "Ghost/GhostCharacter/GhostCharacter.h"
 #include "Ghost/GhostEnemy/GhostEnemyComponent.h"
@@ -28,6 +28,9 @@ void UBossShadowSummon::Reset()
     {
         if(IsValid(shadow)) { shadow->FadeOut(); }
     }
+    m_rescueEnd = m_nextSwap = m_blockedSince = m_relayEnd = 0.;
+    m_lastPlace = FVector::ZeroVector;
+    m_changeMove.Reset();
     m_nextTime = 0.;
     m_lastJoin = INDEX_NONE;
     m_cloneCount = 0;
@@ -83,6 +86,7 @@ void UBossShadowSummon::TickComponent(float _delta, ELevelTick _type, FActorComp
         if(m_shadow.IsValid() && m_shadow->m_combatTarget == ghost) { continue; }
         if(distance < best) { best = distance; target = ghost; }
     }
+    if(TryStep(*boss, now)) { return; }
     const bool second = m_shadow.IsValid();
     if(!m_shadowClass || m_secondShadow.IsValid() || now < m_nextTime || boss->m_defense->IsBusy()) { return; }
     if(second && (!target || m_cloneCount < FMath::Max(2, m_twoCloneCount))) { return; }
@@ -130,3 +134,4 @@ void UBossShadowSummon::TickComponent(float _delta, ELevelTick _type, FActorComp
     const bool needSecond = !second && !join && m_cloneCount >= FMath::Max(2, m_twoCloneCount);
     m_nextTime = now + (needSecond ? PrimaryComponentTick.TickInterval : FMath::Max(0.f, join ? m_joinCooldown : m_cooldown));
 }
+

@@ -48,6 +48,14 @@ void UBossPosture::Hit(float _damage)
     m_wasBroken = enemy->m_defense->m_bGuardBroken;
 }
 
+//通常のガードでは体勢を使い切らず、連続強攻撃に崩しを任せる。
+void UBossPosture::BlockHit()
+{
+    if(!m_enabled) { return; }
+    m_lastHit = GetWorld()->GetTimeSeconds();
+    m_value = FMath::Max(FMath::Min(m_value, 1.f), m_value - m_blockCost);
+}
+
 //被弾していない間の回復を進める。
 void UBossPosture::TickComponent(float _delta, ELevelTick _type, FActorComponentTickFunction* _tick)
 {

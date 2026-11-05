@@ -24,6 +24,10 @@ public:
 	void FinishFromNotify(float _blend);
 
 private:
+    //持ち替えが終わったら選んでいた技を開始する。
+    UFUNCTION()
+    void StartSwing();
+
 	//再生完了を受けて攻撃を終了する。
 	UFUNCTION(Category = "Enemy")
 	void Completed();

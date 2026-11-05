@@ -77,10 +77,13 @@ public:
 	const FEnemyActionData* GetActiveAction() const;
 
 	//設定に合わせた攻撃の再生速度を返す。
-	float GetAttackRate(const FEnemyActionData& _action) const;
+	virtual float GetAttackRate(const FEnemyActionData& _action) const;
 
 	//攻撃が終わるまで待つ時間を求める。
 	float GetActionTimeout(const FEnemyActionData& _action) const;
+
+    //ガードは手に持っている刀の数から選ぶ。
+    UAnimMontage* GetMoveMontage(const FEnemyActionData& _action) const;
 
 	//攻撃の再生速度を通常に戻す。
 	void RestoreAttackRate();
@@ -145,6 +148,9 @@ public:
 	//次に出すコンボの名前を返す。
 	UFUNCTION(BlueprintPure, Category = "Enemy | Combo")
 	FName GetPendingComboId() const { return m_nextActionId; }
+
+    //届かなくなった次の一手を取り消し、追跡を再開する。
+    void CheckComboRange();
 
 	//今のコンボの段数を返す。
 	UFUNCTION(BlueprintPure, Category = "Enemy | Combo")
@@ -281,6 +287,12 @@ public:
 	FEnemyStateEvent m_onStateChanged;
 
 protected:
+    //強攻撃だけで崩せるガードを使うか。
+    virtual bool HasStrongGuard() const { return false; }
+
+    //ガード成功時に減らす体勢を反映する。
+    virtual void OnStrongBlock() {}
+
 	//ゲーム開始時に必要な状態を準備する。
 	virtual void BeginPlay() override;
 
@@ -334,6 +346,15 @@ protected:
 
 	//障害物を避けて回避できるか調べる。
 	bool CanEvade(const FEnemyActionData& _action) const;
+
+    //後ろが狭い時は斜め後ろを試す。
+    FVector FindEvadePath(const FEnemyActionData& _action) const;
+    bool HasEvadePath(const FEnemyActionData& _action, FVector _dir) const;
+    FVector m_evadeDir = FVector::ZeroVector;
+
+    //ボスが退避の向きを選べるようにする。
+    UPROPERTY(EditDefaultsOnly, Category="Enemy|Movement")
+    bool m_findRetreatAngle = false;
 
 	//攻撃を使う条件がそろっているか調べる。
 	bool CanUseAction(int32 _actionIndex, float _distance = -1.0f) const;

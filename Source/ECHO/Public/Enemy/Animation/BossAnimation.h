@@ -7,6 +7,20 @@
 #include "Enemy/Core/EnemyData.h"
 #include "BossAnimation.generated.h"
 
+//握り直したフレームで左の剣を出し入れする。
+UCLASS(meta=(DisplayName="Boss Left Sword"))
+class ECHO_API UBossLeftSword : public UAnimNotify
+{
+    GENERATED_BODY()
+public:
+    //抜く時はオン、納める時はオフ。
+    UPROPERTY(EditAnywhere, Category="Sword")
+    bool m_draw = true;
+
+    //本体のメッシュだけに合図する。
+    virtual void Notify(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _anim, const FAnimNotifyEventReference& _ref) override;
+};
+
 //移動の速さや向きをアニメーションへ渡す。
 UCLASS(Transient, Blueprintable)
 class ECHO_API UBossAnimInstance : public UAnimInstance
@@ -30,7 +44,11 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "InAir"))
 	bool m_bInAir = false;
 
-	//現在の状態。
+	//左手の刀が見える間だけ二刀の構えにする。
+    UPROPERTY(BlueprintReadOnly, Category="Enemy|Sword")
+    bool m_dualStance = false;
+
+    //現在の状態。
 	UPROPERTY(BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "State"))
 	EEnemyState m_state = EEnemyState::Alive;
 };
@@ -76,6 +94,10 @@ public:
     //指定したボーンから剣先までの位置。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Hit", meta=(DisplayName="Hit Tip Offset"))
     FVector m_tipOffset = FVector::ZeroVector;
+
+    //この一振りの判定と残り線を左の剣に切り替える。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Hit")
+    bool m_leftBlade = false;
 };
 
 //アニメーションから音や見た目の合図を送る。
