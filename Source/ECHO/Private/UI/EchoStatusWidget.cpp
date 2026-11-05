@@ -27,6 +27,9 @@ void UEchoStatusWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
 		return;
 	}
 
+	//回復瓶：使えない間は色を変える／使った瞬間に少し膨らむ
+	UpdateHeal(InDeltaTime);
+
 	//HPバー、減った分の帯を、少し遅れて追いかけさせる
 	if (m_TrailRatio > m_HPRatio)
 	{
@@ -64,6 +67,7 @@ void UEchoStatusWidget::NativeDestruct()
 		P->OnEnergyChanged.Remove(m_EnergyHandle);
 		P->OnGhostsChanged.Remove(m_GhostsHandle);
 		P->OnHPChanged.Remove(m_HPHandle);
+		P->OnHealCountChanged.Remove(m_HealCountHandle);
 	}
 	Super::NativeDestruct();
 }
@@ -77,6 +81,7 @@ bool UEchoStatusWidget::TryBindPlayer()
 	m_EnergyHandle = P->OnEnergyChanged.AddUObject(this, &UEchoStatusWidget::HandleEnergyChanged);
 	m_GhostsHandle = P->OnGhostsChanged.AddUObject(this, &UEchoStatusWidget::HandleGhostsChanged);
 	m_HPHandle = P->OnHPChanged.AddUObject(this, &UEchoStatusWidget::HandleHPChanged);
+	m_HealCountHandle = P->OnHealCountChanged.AddUObject(this, &UEchoStatusWidget::HandleHealCountChanged);
 
 	BuildCapsules(P->GetMaxGhostCount());
 
@@ -84,6 +89,7 @@ bool UEchoStatusWidget::TryBindPlayer()
 	HandleEnergyChanged(P->GetCurrentEnergy(), P->GetMaxEnergy());
 	HandleGhostsChanged();
 	HandleHPChanged(P->GetCurrentHP(), P->GetMaxHP());
+	HandleHealCountChanged(P->GetHealCount(), P->GetMaxHealCount());
 	return true;
 }
 
@@ -127,13 +133,9 @@ void UEchoStatusWidget::HandleEnergyChanged(float Current, float Max)
 	//画像の左の四角ぶんをずらして、中身の部分だけが0→100%になるように変換
 	if (EnergyBar)
 	{
-		EnergyBar->SetPercent(FMath::Lerp(m_BarStartRatio, m_BarEndRatio, Ratio));
-	}
-
-	//左の数字：ストック数（0〜5）
-	if (StockText)
-	{
-		StockText->SetText(FText::AsNumber(Stock));
+		const float TotalMax = PerStock * MaxStock;
+		const float Total = TotalMax > 0.f ? FMath::Clamp(Current / TotalMax, 0.f, 1.f) : 0.f;
+		EnergyBar->SetPercent(FMath::Lerp(m_BarStartRatio, m_BarEndRatio, Total));
 	}
 }
 
@@ -197,4 +199,38 @@ void UEchoStatusWidget::HandleHPChanged(float Current, float Max)
 
 	if (HPBar)      HPBar->SetPercent(ToHPBarPercent(m_HPRatio));
 	if (HPTrailBar) HPTrailBar->SetPercent(ToHPBarPercent(m_TrailRatio));
+}
+
+void UEchoStatusWidget::HandleHealCountChanged(int32 Count, int32 Max)
+{
+	if (HealCountText)
+	{
+		HealCountText->SetText(FText::AsNumber(Count));
+	}
+
+	//減ったときだけ膨らませる（最初の表示や、リスポーンで補充したときは膨らませない）
+	if (m_HealCount >= 0 && Count < m_HealCount)
+	{
+		m_HealScale = m_HealPopScale;
+	}
+	m_HealCount = Count;
+}
+
+void UEchoStatusWidget::UpdateHeal(float DeltaTime)
+{
+	AActionCharacter* P = Player.Get();
+	if (!P) return;
+
+	//残り0 → 薄く／回復動作中 → 暗く／それ以外 → 通常
+	FLinearColor Color = m_HealReadyColor;
+	if (P->GetHealCount() <= 0)  Color = m_HealEmptyColor;
+	else if (P->IsHealing())     Color = m_HealBusyColor;
+
+	if (HealCircle)    HealCircle->SetColorAndOpacity(Color);
+	if (HealArrow)     HealArrow->SetColorAndOpacity(Color);
+	if (HealCountText) HealCountText->SetColorAndOpacity(FSlateColor(Color));
+
+	//膨らんだ大きさを1に戻していく
+	m_HealScale = FMath::FInterpTo(m_HealScale, 1.f, DeltaTime, 12.f);
+	if (HealRoot) HealRoot->SetRenderScale(FVector2D(m_HealScale));
 }

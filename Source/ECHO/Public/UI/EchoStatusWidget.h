@@ -11,6 +11,7 @@ class UProgressBar;
 class UTextBlock;
 class UHorizontalBox;
 class UImage;
+class UWidget;
 class UTexture2D;
 class AActionCharacter;
 
@@ -27,9 +28,6 @@ protected:
 	// --- WBP側に同じ名前のウィジェットを置くと自動で紐づく ---
 	UPROPERTY(meta = (BindWidget))
 	UProgressBar* EnergyBar;
-
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* StockText;
 
 	UPROPERTY(meta = (BindWidget))
 	UHorizontalBox* CapsuleBox;
@@ -112,4 +110,48 @@ private:
 
 	void HandleHPChanged(float Current, float Max);
 	float ToHPBarPercent(float Ratio) const { return FMath::Lerp(m_HPBarStartRatio, m_HPBarEndRatio, Ratio); }
+
+protected:
+	//----------------
+	//回復瓶
+	//----------------
+	//丸＋数字を入れた Overlay（使ったときにこれごと膨らむ）
+	UPROPERTY(meta = (BindWidgetOptional))
+	UWidget* HealRoot;
+
+	//台座の丸
+	UPROPERTY(meta = (BindWidgetOptional))
+	UImage* HealCircle;
+
+	//十字キー↓のアイコン
+	UPROPERTY(meta = (BindWidgetOptional))
+	UImage* HealArrow;
+
+	//残り回数の数字
+	UPROPERTY(meta = (BindWidgetOptional))
+	UTextBlock* HealCountText;
+
+	//使えるとき
+	UPROPERTY(EditAnywhere, Category = "Echo|Heal")
+	FLinearColor m_HealReadyColor = FLinearColor::White;
+
+	//回復動作中（連続で使えない間）
+	UPROPERTY(EditAnywhere, Category = "Echo|Heal")
+	FLinearColor m_HealBusyColor = FLinearColor(0.35f, 0.35f, 0.35f, 1.f);
+
+	//残り0
+	UPROPERTY(EditAnywhere, Category = "Echo|Heal")
+	FLinearColor m_HealEmptyColor = FLinearColor(0.3f, 0.3f, 0.3f, 0.45f);
+
+	//使った瞬間に膨らむ大きさ
+	UPROPERTY(EditAnywhere, Category = "Echo|Heal", meta = (ClampMin = "1"))
+	float m_HealPopScale = 1.25f;
+
+private:
+	FDelegateHandle m_HealCountHandle;
+	int32 m_HealCount = -1;      //前回の回数（減ったかどうかを見る）
+	float m_HealScale = 1.f;
+
+	void HandleHealCountChanged(int32 Count, int32 Max);
+	void UpdateHeal(float DeltaTime);
 };
