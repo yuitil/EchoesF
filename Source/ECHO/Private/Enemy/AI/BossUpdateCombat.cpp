@@ -89,7 +89,7 @@ void UBossUpdateCombat::TickNode(UBehaviorTreeComponent& _ownerComp, uint8* _nod
 	enemy->m_combatTarget = target;
     enemy->CheckComboRange();
 	//囲まれていて行動できる時は、通常の抽選より先に押し返す。
-	if(auto* boss = Cast<ABossEnemyCharacter>(enemy)) { boss->m_crowd->TryPush(); }
+	if(auto* boss = Cast<ABossEnemyCharacter>(enemy); boss && boss->m_crowd->TryPush()) { target = boss->m_combatTarget.Get(); }
 	
 	//生きていて戦闘できるか。
 	const bool alive = enemy->IsCombatActive();

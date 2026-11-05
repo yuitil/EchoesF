@@ -250,9 +250,23 @@ float UBossObservation::GetActionWeight(const FEnemyActionData& _action) const
     return FMath::Clamp(1.f + PredictWeight(_action) * read + learned, BossObservationTuning::minWeight, BossObservationTuning::maxWeight);
 }
 
+//外した技にも、後でもう一度試す余地を残す。
+void UBossObservation::RecordMove(FName _move, bool _hit)
+{
+    constexpr float recentWeight = .35f;
+    float& score = m_moveScores.FindOrAdd(_move);
+    score = FMath::Lerp(score, _hit ? 1.f : -1.f, recentWeight);
+}
+
+float UBossObservation::MoveWeight(FName _move) const
+{
+    return 1.f + .5f * m_moveScores.FindRef(_move);
+}
+
 //次の戦闘に向けて状態を初期化する。
 void UBossObservation::Reset()
 {
+	m_moveScores.Reset();
 	m_seenTime = -100.;
 	m_seenAttack = m_seenFacing = false;
 	m_seenSpeed = FVector::ZeroVector;

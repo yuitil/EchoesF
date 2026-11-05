@@ -4,6 +4,7 @@
 #include "Enemy/Boss/BossShadowSummon.h"
 #include "Enemy/Boss/BossApproach.h"
 #include "Enemy/Boss/BossSpacing.h"
+#include "Enemy/Boss/BossObservation.h"
 #include "Enemy/Boss/BossPosture.h"
 #include "Enemy/AI/EnemyTargeting.h"
 #include "Enemy/UI/EnemyHealthDisplay.h"
@@ -110,6 +111,8 @@ void ABossShadow::Setup(AActor* _target, float _life)
 //出現が終わるまで戦闘を待つ。
 bool ABossShadow::IsRepositioning() const
 {
+    const auto* owner = Cast<ABossEnemyCharacter>(GetOwner());
+    if(owner && owner->m_summon->IsWaitingForSwap(this)) { return true; }
     return m_fading || m_age < m_riseTime || GetWorld()->GetTimeSeconds() < m_followTime || (m_join && (m_joinDone || m_age < m_joinDelay));
 }
 
@@ -126,12 +129,15 @@ float ABossShadow::GetActionWeightMultiplier(const FEnemyActionData& _action) co
 {
     //同じ相手には本体と違う攻撃を選びやすくする。
     const auto* boss = Cast<ABossEnemyCharacter>(GetOwner());
+    const auto* target = Cast<APawn>(m_combatTarget.Get());
+    const float learned = boss && target && target->IsPlayerControlled()
+        ? boss->m_observation->MoveWeight(_action.m_actionId) : 1.f;
     const auto* move = boss ? boss->GetActiveAction() : nullptr;
     if(boss && boss->m_combatTarget == m_combatTarget && move && move->m_actionId == _action.m_actionId)
     {
-        return FMath::Clamp(m_sameMoveWeight, 0.f, 1.f);
+        return learned * FMath::Clamp(m_sameMoveWeight, 0.f, 1.f);
     }
-    return 1.f;
+    return learned;
 }
 
 //コンボ内のつながりを保ち、終わった後の間だけ変える。

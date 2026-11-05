@@ -28,9 +28,10 @@ void UBossShadowSummon::Reset()
     {
         if(IsValid(shadow)) { shadow->FadeOut(); }
     }
-    m_rescueEnd = m_nextSwap = m_blockedSince = m_relayEnd = 0.;
+    m_restEnd = m_rescueEnd = m_nextSwap = m_blockedSince = m_relayEnd = 0.;
     m_lastPlace = FVector::ZeroVector;
     m_changeMove.Reset();
+    m_reserveShade.Reset();
     m_nextTime = 0.;
     m_lastJoin = INDEX_NONE;
     m_cloneCount = 0;

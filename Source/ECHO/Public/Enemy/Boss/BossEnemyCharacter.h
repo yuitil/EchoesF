@@ -132,6 +132,9 @@ protected:
 	virtual void OnAcceptedHit(AActor* _attacker) override;
 
 	//行動終了後の状態を整える。
+	virtual void RecordMoveResult(FName _move, bool _hit) override;
+
+    //行動の終わりを記録する。
 	virtual void OnActionEnded() override;
 
 	//攻撃終了後の次の行動を準備する。

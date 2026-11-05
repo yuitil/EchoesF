@@ -95,6 +95,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Boss")
 	void Reset();
 
+    //直近の命中と空振りを技ごとに覚える。
+    void RecordMove(FName _move, bool _hit);
+    float MoveWeight(FName _move) const;
+
 	//記録をどれだけ判断に使えるか。0なら先読みを中心にする。
 	UFUNCTION(BlueprintPure, Category="Boss|Prediction")
 	float GetConfidence() const;
@@ -170,6 +174,9 @@ public:
     float m_fastGap = 2.f;
 
 private:
+    //最近の結果を重くした技ごとの成績。
+    TMap<FName,float> m_moveScores;
+
 	//最後に見えた相手の位置。
 	FVector m_seenPos = FVector::ZeroVector;
 

@@ -1,5 +1,6 @@
 #include "Enemy/Boss/BossEnemyCharacter.h"
 #include "Enemy/Combat/Defense.h"
+#include "Enemy/Combat/Combat.h"
 #include "Enemy/Audio/EnemyAudio.h"
 #include "Enemy/Boss/BossShadowSummon.h"
 #include "Enemy/Boss/BossShadow.h"
@@ -219,8 +220,8 @@ bool ABossEnemyCharacter::IsActionAllowed(const FEnemyActionData& _action) const
 float ABossEnemyCharacter::GetActionWeightMultiplier(const FEnemyActionData& _action) const
 {
 	//両フェーズで観察を使い、分身が多ければ広い攻撃も選ぶ。
-	float weight = m_observation->GetActionWeight(_action);
-    if(m_bossPhase == EBossPhase::PhaseTwo && _action.m_dualBlade) { weight *= m_dualWeight; }
+	float weight = m_observation->GetActionWeight(_action) * m_observation->MoveWeight(_action.m_actionId);
+    if(_action.m_dualBlade && (m_combat->HasTwoSwords() || m_bossPhase == EBossPhase::PhaseTwo)) { weight *= m_dualWeight; }
 	if(m_summon->GetCloneCount() >= m_summon->m_cloneLimit && m_summon->m_crowdMoves.Contains(_action.m_actionId))
 	{
 		weight *= m_summon->m_crowdWeight;
@@ -246,11 +247,20 @@ void ABossEnemyCharacter::OnAcceptedHit(AActor* _attacker)
 	}
 }
 
+//プレイヤーに届いた技と、かわされた技を影と共有する。
+void ABossEnemyCharacter::RecordMoveResult(FName _move, bool _hit)
+{
+    const auto* player = Cast<APawn>(m_combatTarget.Get());
+    if(!player || !player->IsPlayerControlled()) { return; }
+    auto* boss = IsA<ABossShadow>() ? Cast<ABossEnemyCharacter>(GetOwner()) : this;
+    if(boss) { boss->m_observation->RecordMove(_move, _hit); }
+}
+
 //行動終了後の状態を整える。
 void ABossEnemyCharacter::OnActionEnded()
 {
 	m_observation->MarkBossActionEnded();
-    if(m_actionSuccess && !GetPendingComboId().IsNone() && !IsA<ABossShadow>()) { m_summon->QueueRelay(); }
+    if(m_actionSuccess && !IsA<ABossShadow>()) { m_summon->PlanAfterAttack(); }
 }
 
 //次の戦闘に向けて状態を初期化する。
@@ -281,7 +291,7 @@ void ABossEnemyCharacter::EndPlay(const EEndPlayReason::Type _reason)
 //間合いを取り直しているか返す。
 bool ABossEnemyCharacter::IsRepositioning() const
 {
- return (m_summon && m_summon->IsChanging()) || (m_approach && m_approach->IsDrawing()) || (m_spacing && m_spacing->IsSpacing());
+ return (m_summon && (m_summon->IsChanging() || m_summon->IsWaitingForSwap(this))) || (m_approach && m_approach->IsDrawing()) || (m_spacing && m_spacing->IsSpacing());
 }
 
 //攻撃終了後の次の行動を準備する。

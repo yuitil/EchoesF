@@ -109,7 +109,9 @@ void UBossRecovery::Notify(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _an
 	auto* asc = enemy->GetAbilitySystemComponent();
 	//対象のモンタージュ。
 	auto* montage = Cast<UAnimMontage>(_anim);
-	if(!asc || !montage || asc->GetCurrentMontage() != montage) { return; }
+	const auto* action = enemy->GetActiveAction();
+	//抜刀の通知では、その後に振る攻撃を終わらせない。
+	if(!asc || !montage || !action || enemy->GetMoveMontage(*action) != montage || asc->GetCurrentMontage() != montage) { return; }
 
 	enemy->m_combat->EndHitWindow();
 	if (!m_next.IsNone())
@@ -162,5 +164,11 @@ void UBossLeftSword::Notify(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _a
 {
     Super::Notify(_mesh, _anim, _ref);
     auto* enemy = _mesh ? Cast<AEnemyCharacterBase>(_mesh->GetOwner()) : nullptr;
-    if(enemy && enemy->GetMesh() == _mesh && enemy->IsCombatActive()) { enemy->m_combat->UpdateLeftBlade(m_draw); }
+    if(!enemy || enemy->GetMesh() != _mesh || !enemy->IsCombatActive()) { return; }
+    const auto* action = enemy->GetActiveAction();
+    //中断した抜刀の通知で、次の技の剣を出し入れしない。
+    if(action && action->ChangesSwordStance() && action->m_dualBlade == m_draw)
+    {
+        enemy->m_combat->UpdateLeftBlade(m_draw);
+    }
 }

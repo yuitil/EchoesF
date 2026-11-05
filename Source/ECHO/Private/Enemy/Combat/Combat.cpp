@@ -473,7 +473,8 @@ void UCombat::TickComponent(float _deltaTime, ELevelTick _type, FActorComponentT
                     player->ClientStartCameraShake(m_hitShake, m_shakeScale);
                 }
             }
-			enemy->RecordAttackHit();
+			//狙った相手に当たった時だけ、次の技と命中記録につなぐ。
+            if(hitActor == target) { enemy->RecordAttackHit(); }
 			if(enemy->m_hitFx) { enemy->m_hitFx->ShowStrike(hit.ImpactPoint, hit.ImpactNormal.GetSafeNormal()); }
 			if (hitActor == target && action->m_launch && enemy->IsActing() && !enemy->WasAttackBlocked()) { BeginLift(Cast<ACharacter>(hitActor), *action); }
 

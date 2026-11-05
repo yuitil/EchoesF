@@ -7,6 +7,7 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
 #include "Enemy/Combat/Defense.h"
+#include "Enemy/Combat/Combat.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
 
@@ -146,11 +147,11 @@ bool UBossPeformAction::StartAttack(UBehaviorTreeComponent& _ownerComp)
 }
 
 //突進で相手に追いつけるか調べる。
-bool UBossPeformAction::CanCatch(AEnemyCharacterBase* _enemy, float& _hitEnd, float& _moveStart) const
+bool UBossPeformAction::CanCatch(AEnemyCharacterBase* _enemy, FName _rush, float& _hitEnd, float& _moveStart) const
 {
 	if(!_enemy || !IsValid(_enemy->m_combatTarget) || m_rushSpeed <= 0.f) { return false; }
 	//使用する行動の設定。
-	const auto* action = _enemy->GetReadyAction(m_rushAction);
+	const auto* action = _enemy->GetReadyAction(_rush);
 	if(!action || !action->m_montage || !_enemy->GetPendingComboId().IsNone()) { return false; }
 	
 	//敵の行動を操作するAI。
@@ -192,11 +193,11 @@ bool UBossPeformAction::CanCatch(AEnemyCharacterBase* _enemy, float& _hitEnd, fl
 	}
 	//再生する区間。
 	const int32 section = action->m_montage->GetSectionIndex(m_moveSection);
-	if(section == INDEX_NONE) { return false; }
+	if(section == INDEX_NONE && _rush != m_dualRush) { return false; }
 	
 	//区間が終わる再生位置。
-	float sectionEnd = 0.f;
-	action->m_montage->GetSectionStartAndEndTime(section, _moveStart, sectionEnd);
+	float sectionEnd = action->m_montage->GetPlayLength();
+	if(section != INDEX_NONE) { action->m_montage->GetSectionStartAndEndTime(section, _moveStart, sectionEnd); }
 	
 	//使用する再生速度。
 	const float rate = FMath::Max(BossPeformActionTuning::minRate, _enemy->GetAttackRate(*action) * action->m_montage->RateScale);
@@ -271,7 +272,8 @@ bool UBossPeformAction::TryDash(UBehaviorTreeComponent& _ownerComp)
 	float moveStart = 0.f;
 	if(!enemy || enemy->GetWorld()->GetTimeSeconds() < m_nextCheck) { return false; }
 	m_nextCheck = enemy->GetWorld()->GetTimeSeconds() + BossPeformActionTuning::checkDelay;
-	if(!enemy || !CanCatch(enemy, hitEnd, moveStart) || !enemy->RequestAction(m_rushAction)) { return false; }
+	const FName rush = enemy->m_combat->HasTwoSwords() && !m_dualRush.IsNone() ? m_dualRush : m_rushAction;
+	if(!CanCatch(enemy, rush, hitEnd, moveStart) || !enemy->RequestAction(rush)) { return false; }
 	m_fast = true;
 	m_serial = enemy->m_actionSerial;
 	
@@ -493,6 +495,13 @@ EBTNodeResult::Type UBossPeformAction::AbortTask(UBehaviorTreeComponent& _ownerC
 
 	//処理の対象となる敵。
 	auto* enemy = ai ? Cast<AEnemyCharacterBase>(ai->GetPawn()) : nullptr;
-	if (enemy && enemy->m_actionSerial == m_serial) { enemy->CancelAction(); }
+	if (enemy && enemy->m_actionSerial == m_serial)
+    {
+        //BTの枝が切り替わっても、抜刀中に予約した一撃は続ける。
+        const auto* data = enemy->m_definition.Get();
+        const auto* montage = enemy->GetCurrentMontage();
+        const bool drawing = data && montage && montage == data->m_drawLeft;
+        if(!drawing || !enemy->IsCombatActive() || !IsValid(enemy->m_combatTarget)) { enemy->CancelAction(); }
+    }
 	return EBTNodeResult::Aborted;
 }

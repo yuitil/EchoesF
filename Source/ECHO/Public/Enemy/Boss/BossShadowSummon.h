@@ -22,8 +22,10 @@ public:
 
     //持ち替えや入れ替えの動作が終わるまで別の技を待つ。
     bool IsChanging() const;
+    //交代する二人は、影が立ち上がるまでその場で待つ。
+    bool IsWaitingForSwap(const AActor* _who) const;
     //本体のコンボの切れ目を記録する。
-    void QueueRelay();
+    void PlanAfterAttack();
     //交代できる位置にいる影だけ、次の一撃を少し待つ。
     bool CanCover(const ABossShadow& _partner) const;
 
@@ -39,6 +41,14 @@ public:
     //このHPの割合以下で、相手の攻撃から離れる。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shadow|Swap",meta=(ClampMin="0",ClampMax="1"))
     float m_panicHP = .35f;
+    //体勢がこの割合まで減ったら、影と交代して休む。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shadow|Swap",meta=(ClampMin="0",ClampMax="1"))
+    float m_lowPosture = .4f;
+
+    //交代して構え直す秒数。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shadow|Swap",meta=(ClampMin="0"))
+    float m_restTime = 1.2f;
+
     //追跡が詰まったかを調べ始める距離。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Stance",meta=(ClampMin="0"))
     float m_drawRange = 500.f;
@@ -131,6 +141,10 @@ private:
     bool TryStep(ABossEnemyCharacter& _boss, double _now);
     //影が姿を現すまで、危機から離れる目的を覚えておく。
     bool m_rescuePanic = false;
+    //脱出のために呼んだ影。
+    TWeakObjectPtr<ABossShadow> m_reserveShade;
+    //間合いを取った後、再び戦う時刻。
+    double m_restEnd = 0.;
     //生まれた影を待つ期限。
     double m_rescueEnd = 0.;
     //再び交代できる時刻。

@@ -1,4 +1,5 @@
 #include "Enemy/Boss/BossSpacing.h"
+#include "Enemy/Boss/BossShadowSummon.h"
 #include "Enemy/Boss/BossApproach.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
 #include "Enemy/Core/EnemyTraversal.h"
@@ -154,6 +155,8 @@ bool UBossSpacing::CanSpace(AEnemyCharacterBase* _enemy) const
 {
     if(!m_enabled || !_enemy || !_enemy->HasAuthority() || !_enemy->IsCombatActive()) { return false; }
     if(!IsValid(_enemy->m_combatTarget)) { return false; }
+    const auto* summon = _enemy->FindComponentByClass<UBossShadowSummon>();
+    if(summon && (summon->IsWaitingForSwap(_enemy) || summon->IsChanging())) { return false; }
     if(m_press && !IsTargetDown(_enemy->m_combatTarget)) { return false; }
     if(_enemy->IsActing() || !_enemy->GetPendingComboId().IsNone()) { return false; }
     if(_enemy->m_defense->IsBusy() || _enemy->m_traversal->IsTraversing()) { return false; }

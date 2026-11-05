@@ -681,8 +681,11 @@ int32 AEnemyCharacterBase::ChooseAction() const
 		return specials[FMath::RandRange(0, specials.Num() - 1)];
 	}
 
-	//抽選に使う値の合計。
+	//今の距離や再使用時間で選べる技だけを数える。
 	float sum = 0;
+    float comboSum = 0.f;
+    TArray<TPair<int32, float>> fullCombos;
+    const bool preferCombo = m_definition->m_comboAfter > 0 && m_attacksSinceCombo >= m_definition->m_comboAfter;
 
 	//今回抽選する候補。
 	TArray<TPair<int32, float>> choices;
@@ -708,8 +711,20 @@ int32 AEnemyCharacterBase::ChooseAction() const
 		{
 			sum += weight;
 			choices.Emplace(i, weight);
+            if(preferCombo && action.m_fullCombo)
+            {
+                fullCombos.Emplace(i, weight);
+                comboSum += weight;
+            }
 		}
 	}
+
+	//連撃が届かない時は、通常の攻撃候補を使う。
+    if(!fullCombos.IsEmpty())
+    {
+        choices = MoveTemp(fullCombos);
+        sum = comboSum;
+    }
 
 	//抽選で選ぶための値。
 	float pick = FMath::FRandRange(0.0f, sum);
@@ -886,6 +901,11 @@ void AEnemyCharacterBase::FinishAction(bool _cancelled)
 		if (!_cancelled && action->m_kind != EEnemyAction::Guard && action->m_kind != EEnemyAction::Dodge)
 		{
 			m_lastAction = action->m_actionId;
+            if(m_definition->m_comboAfter > 0 && action->m_damage > 0.f)
+            {
+                m_attacksSinceCombo = action->m_fullCombo ? 0 : FMath::Min(m_attacksSinceCombo + 1, m_definition->m_comboAfter);
+            }
+            if(action->m_damage > 0.f) { RecordMoveResult(m_lastAction, m_bActionHit && !m_bActionBlocked); }
 		}
 		m_actionCooldowns.Add(action->m_actionId, GetWorld()->GetTimeSeconds() + action->m_cooldown);
 
@@ -913,7 +933,7 @@ void AEnemyCharacterBase::FinishAction(bool _cancelled)
 		}
 
         //最終段で打ち上げた時も、相手が浮いた場合だけ空中の締めを一度許す。
-        if(!_cancelled && !dodged && m_definition && action->m_dualBlade && action->m_launch
+        if(!_cancelled && !dodged && m_definition && action->m_launch
             && m_bActionHit && !m_bActionBlocked && m_nextActionId.IsNone()
             && m_comboSteps == FMath::Clamp(m_definition->m_maxComboSteps, 1, EnemyCharacterBaseTuning::maxComboSteps))
         {
@@ -975,6 +995,7 @@ void AEnemyCharacterBase::CancelAction()
 //次の戦闘に向けて状態を初期化する。
 void AEnemyCharacterBase::ResetEncounter()
 {
+    m_attacksSinceCombo = 0;
 	if (!HasAuthority()) { return; }
 	CancelAction();
 	StopAnimMontage();

@@ -205,6 +205,10 @@ struct ECHO_API FEnemyActionData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy | Combo", meta = (DisplayName = "ComboEntry"))
 	bool m_comboEntry = true;
 
+    //一本の素材で最後まで振り切る連撃。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Combo")
+    bool m_fullCombo = false;
+
     //この技の間だけ左手にも剣を持つ。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Combat")
     bool m_dualBlade = false;
@@ -275,6 +279,10 @@ public:
 	//コンボを続ける最大段数。
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Combo", meta = (DisplayName = "MaxComboSteps", ClampMin = "1", ClampMax = "10"))
 	int32 m_maxComboSteps = 3;
+
+    //他の攻撃が何回続いたら、間合いに合う連撃を優先するか。0で無効。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Combo", meta=(ClampMin="0"))
+    int32 m_comboAfter = 0;
 
     //打ち上げ成功後、別の打ち上げも待たせる秒数。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Air", meta=(DisplayName="Launch Cooldown", ClampMin="0"))

@@ -320,6 +320,9 @@ protected:
 	}
 
 	//行動終了後の状態を整える。
+	virtual void RecordMoveResult(FName _move, bool _hit) {}
+
+	//行動が終わった時に呼ぶ。
 	virtual void OnActionEnded()
 	{
 	}
@@ -377,6 +380,9 @@ protected:
 
 	//直前に使った攻撃名。
 	FName m_lastAction;
+
+    //連撃を使ってから終えた攻撃の数。
+    int32 m_attacksSinceCombo = 0;
 
 	//減速前の再生速度。
 	float m_savedRate = 1.f;

@@ -70,8 +70,19 @@ bool UBossCrowd::CanPush() const
 bool UBossCrowd::TryPush()
 {
     auto* boss = Cast<ABossEnemyCharacter>(GetOwner());
-    if(!boss || !boss->HasAuthority() || !boss->CanDecide() || !CanPush()) { return false; }
-    if(!boss->RequestAction(m_action)) { return false; }
+    if(!boss || !boss->HasAuthority() || boss->IsActing() || !CanPush()) { return false; }
+    //遠くのプレイヤーとの距離で、足元の分身への反撃を止めない。
+    TArray<ACharacter*> targets;
+    int32 clones = 0;
+    GetTargets(targets, clones);
+    AActor* previous = boss->m_combatTarget.Get();
+    if(targets.IsEmpty()) { return false; }
+    if(!targets.Contains(Cast<ACharacter>(previous))) { boss->m_combatTarget = targets[0]; }
+    if(!boss->RequestAction(m_action))
+    {
+        boss->m_combatTarget = previous;
+        return false;
+    }
     m_nextTime = GetWorld()->GetTimeSeconds() + m_cooldown;
     return true;
 }

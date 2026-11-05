@@ -19,6 +19,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Rush", meta = (DisplayName = "Rush Action"))
 	FName m_rushAction;
 
+    //二刀のまま追いかける技。
+    UPROPERTY(EditAnywhere, Category="Rush")
+    FName m_dualRush;
+
 	//退避に使う行動名。
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (DisplayName = "Retreat Action"))
 	FName m_retreatAction;
@@ -81,7 +85,7 @@ private:
 	bool TryDash(UBehaviorTreeComponent& _ownerComp);
 
 	//突進で相手に追いつけるか調べる。
-	bool CanCatch(class AEnemyCharacterBase* _enemy, float& _hitEnd, float& _moveStart) const;
+	bool CanCatch(class AEnemyCharacterBase* _enemy, FName _rush, float& _hitEnd, float& _moveStart) const;
 
 	//突進を止めて移動設定を戻す。
 	void StopRush(UBehaviorTreeComponent& _ownerComp);
