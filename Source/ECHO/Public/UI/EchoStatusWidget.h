@@ -102,11 +102,68 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Echo|HP")
 	float m_TrailSpeed = 0.8f;
 
+
+	// --- 被弾したときの演出 ---
+	//赤く光らせるバー（HPBarと同じ長さで上に重ねる）
+	UPROPERTY(meta = (BindWidgetOptional))
+	UProgressBar* HPFlashBar;
+
+	//揺らすまとまり（HPゲージ全体が入っている Size Box）
+	UPROPERTY(meta = (BindWidgetOptional))
+	UWidget* HPRoot;
+
+	//光る色
+	UPROPERTY(EditAnywhere, Category = "Echo|HP|Damage")
+	FLinearColor m_HPFlashColor = FLinearColor(1.f, 0.15f, 0.08f, 1.f);
+
+	//光っている時間
+	UPROPERTY(EditAnywhere, Category = "Echo|HP|Damage", meta = (ClampMin = "0"))
+	float m_HPFlashTime = 0.35f;
+
+	//揺れる時間
+	UPROPERTY(EditAnywhere, Category = "Echo|HP|Damage", meta = (ClampMin = "0"))
+	float m_ShakeTime = 0.25f;
+
+	//揺れの大きさ（小さいダメージのとき／大きいダメージのとき）
+	UPROPERTY(EditAnywhere, Category = "Echo|HP|Damage", meta = (ClampMin = "0"))
+	float m_ShakeMin = 3.f;
+
+	UPROPERTY(EditAnywhere, Category = "Echo|HP|Damage", meta = (ClampMin = "0"))
+	float m_ShakeMax = 10.f;
+
+	//最大HPのこの割合以上のダメージで、一番強く揺れる
+	UPROPERTY(EditAnywhere, Category = "Echo|HP|Damage", meta = (ClampMin = "0.01", ClampMax = "1"))
+	float m_ShakeFullDamage = 0.3f;
+
+
+	// --- HPが少ないとき ---
+	//画面の端を赤くする画像（画面いっぱいに置く）
+	UPROPERTY(meta = (BindWidgetOptional))
+	UImage* LowHPVignette;
+
+	//最大HPのこの割合を下回ると赤くなり始める
+	UPROPERTY(EditAnywhere, Category = "Echo|HP|LowHP", meta = (ClampMin = "0", ClampMax = "1"))
+	float m_LowHPThreshold = 0.3f;
+
+	//一番濃いとき（HPがほぼ0）の濃さ
+	UPROPERTY(EditAnywhere, Category = "Echo|HP|LowHP", meta = (ClampMin = "0", ClampMax = "1"))
+	float m_LowHPMaxOpacity = 0.6f;
+
+	//脈打つ速さ（1秒あたりの回数）
+	UPROPERTY(EditAnywhere, Category = "Echo|HP|LowHP", meta = (ClampMin = "0"))
+	float m_LowHPPulseSpeed = 1.2f;
+
 private:
 	FDelegateHandle m_HPHandle;
 	float m_HPRatio = 1.f;
 	float m_TrailRatio = 1.f;
 	float m_TrailWaitTime = 0.f;
+	float m_FlashRemain = 0.f;      //光の残り時間
+	float m_ShakeRemain = 0.f;      //揺れの残り時間
+	float m_ShakeStrength = 0.f;    //今回の揺れの大きさ
+	float m_VignetteOpacity = 0.f;  //画面端の赤の今の濃さ
+
+	void UpdateDamageFeedback(float DeltaTime);
 
 	void HandleHPChanged(float Current, float Max);
 	float ToHPBarPercent(float Ratio) const { return FMath::Lerp(m_HPBarStartRatio, m_HPBarEndRatio, Ratio); }

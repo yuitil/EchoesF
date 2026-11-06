@@ -100,6 +100,14 @@ void UActionMovementComponent::TickComponent(
     MaxWalkSpeed = DesiredSpeed;
 }
 
+void UActionMovementComponent::BeginPlay()
+{
+    Super::BeginPlay();
+
+    //本来の重力を覚えておく（BPで変えていればその値）
+    m_DefaultGravityScale = GravityScale;
+}
+
 void UActionMovementComponent::SetMovementWeight(
     float NewAcceleration, float NewFriction)
 {
@@ -131,7 +139,8 @@ void UActionMovementComponent::SetAirHover(bool bEnable)
     }
     else
     {
-        GravityScale = m_HoverCachedGravityScale;
+        //覚えていた値ではなく本来の重力に戻す（ほかの処理と重なっても壊れないように）
+        GravityScale = m_DefaultGravityScale;
     }
 }
 
@@ -158,7 +167,9 @@ void UActionMovementComponent::EndDodge()
 {
     if (!m_bIsDodging) return;   //二重呼び出しガード
 
-    GravityScale = m_CachedGravityScale;
+    //覚えていた値ではなく本来の重力に戻す（打ち上げ中に回避しても弱い重力が残らないように）
+    GravityScale = m_DefaultGravityScale;
+
     GroundFriction = m_CachedGroundFriction;
 
     Velocity.X = 0.f;

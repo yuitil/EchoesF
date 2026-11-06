@@ -20,6 +20,10 @@
 #include "Engine/DamageEvents.h"
 #include "Kismet/GameplayStatics.h"
 #include "DrawDebugHelpers.h"
+#include "Player/JustDodgeComponent.h"
+#include "Camera/CameraShakeBase.h"
+#include "GameFramework/PlayerController.h"
+#include "Animation/AnimInstance.h"
 
 AActionCharacter::AActionCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UActionMovementComponent>(
@@ -101,6 +105,9 @@ AActionCharacter::AActionCharacter(const FObjectInitializer& ObjectInitializer)
 	//スキル
 	SkillComponent = CreateDefaultSubobject<USkillComponent>(TEXT("SkillComponent"));
 
+	//ジャスト回避
+	JustDodgeComponent = CreateDefaultSubobject<UJustDodgeComponent>(TEXT("JustDodgeComponent"));
+
 	//RespawnPoint がプレイヤーを見分けるためのタグ
 	Tags.Add(TEXT("Player"));
 }
@@ -172,6 +179,9 @@ void AActionCharacter::Tick(float DeltaTime)
 
 	//戦闘中かどうかを更新
 	UpdateCombatState(DeltaTime);
+
+	//重力がおかしいまま戻らなくなっていないか見張る
+	UpdateGravityWatchdog(DeltaTime);
 
 	//キャラクターの現在の平行移動速度を取得
 	const float Speed = GetVelocity().Size2D();
@@ -250,6 +260,7 @@ float AActionCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damag
 
 	m_LastDamageTime = Now;
 	SetHP(m_CurrentHP - Actual);
+	PlayHitShake(Actual);
 	InterruptHeal();
 	if (SkillComponent) SkillComponent->Interrupt();   //ため中ならキャンセル
 
@@ -320,10 +331,20 @@ void AActionCharacter::Die()
 	m_bIsDead = true;
 
 	EndHeal();
+	m_bIsHitStunned = false;
+	GetWorldTimerManager().ClearTimer(m_HitStunTimer);
+	if (CombatComponent) CombatComponent->CancelAttack();
 
-	//とりあえず操作不能にするだけ（演出は後で）
+	//操作だけ止める（移動処理は止めない：空中で死んでも地面まで落ちるように）
 	if (APlayerController* PC = Cast<APlayerController>(GetController())) DisableInput(PC);
-	GetCharacterMovement()->DisableMovement();
+	GetCharacterMovement()->StopMovementImmediately();
+
+	//のけぞりなど再生中のモーションを止めてから、倒れるモーション
+	StopAnimMontage();
+	if (m_DeathMontage)
+	{
+		PlayAnimMontage(m_DeathMontage, m_DeathPlayRate);
+	}
 
 	if (m_bDebugHP) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("PLAYER DEAD"));
 
@@ -435,7 +456,9 @@ void AActionCharacter::OnHitEnemy(float EnergyGain)
 {
 	m_LastCombatTime = GetWorld()->GetTimeSeconds();
 
-	SetEnergy(m_CurrentEnergy + EnergyGain);
+	//ジャスト回避の報酬中はエネルギーが倍になる
+	const float Rate = JustDodgeComponent ? JustDodgeComponent->GetEnergyRate() : 1.f;
+	SetEnergy(m_CurrentEnergy + EnergyGain * Rate);
 
 	if (m_bDebugHP) GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan,
 	                                 FString::Printf(
@@ -592,6 +615,18 @@ void AActionCharacter::Move(const FInputActionValue& Value)
 	if (UActionMovementComponent* MoveComp = GetActionMovementComponent())
 	{
 		if (MoveComp->IsDodging()) return;
+	}
+
+	//のけぞりモーションの残りは、動き出したら打ち切って歩きに切り替える
+	if (m_HitReactMontage && !MovementVector.IsNearlyZero())
+	{
+		if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
+		{
+			if (Anim->Montage_IsPlaying(m_HitReactMontage))
+			{
+				Anim->Montage_Stop(m_HitReactMoveBlendOut, m_HitReactMontage);
+			}
+		}
 	}
 
 	AddMovementInput(FRotationMatrix(Yaw).GetUnitAxis(EAxis::X), MovementVector.Y);
@@ -843,7 +878,9 @@ void AActionCharacter::GetGhostStates(TArray<EGhostLifecycleState>& OutStates) c
 
 void AActionCharacter::OnGhostHitEnemy(float EnergyGain)
 {
-	OnHitEnemy(EnergyGain * m_GhostEnergyRate);
+	//分身の攻撃にはジャスト回避の倍率をかけない（プレイヤー本人の攻撃だけ2倍）
+	m_LastCombatTime = GetWorld()->GetTimeSeconds();
+	SetEnergy(m_CurrentEnergy + EnergyGain * m_GhostEnergyRate);
 }
 
 void AActionCharacter::OnGhostDestroyed(AActor* DestroyedActor)
@@ -1009,3 +1046,58 @@ void AActionCharacter::OnSkill4()
 //スキル5：最終奥義（押してためる → 離して放つ）
 void AActionCharacter::OnSkill5Pressed() { if (CanUseSkill()) SkillComponent->StartCharge(); }
 void AActionCharacter::OnSkill5Released() { if (SkillComponent) SkillComponent->ReleaseCharge(); }
+
+void AActionCharacter::AttackDefended_Implementation(AActor* _actor, EDefenseResult _result)
+{
+	//ジャスト回避だけ受け取る（ガードなどは今は使わない）
+	if (_result != EDefenseResult::PerfectDodge) return;
+	if (JustDodgeComponent) JustDodgeComponent->TriggerJustDodge();
+}
+
+void AActionCharacter::UpdateGravityWatchdog(float DeltaTime)
+{
+	UActionMovementComponent* Move = GetActionMovementComponent();
+	if (!Move) return;
+
+	const bool bSkillBusy = SkillComponent && SkillComponent->IsBusy();
+
+	//正常に重力を止めている状態（回避中・空中技の最中）は数えない
+	const bool bLegit = Move->IsDodging() || (Move->IsAirHovering() && bSkillBusy);
+
+	//おかしい状態：重力が本来の値と違う、または技が終わったのに空中で止まったまま
+	const bool bAbnormal =
+		!FMath::IsNearlyEqual(Move->GravityScale, Move->GetDefaultGravityScale())
+		|| (Move->IsAirHovering() && !bSkillBusy);
+
+	if (bAbnormal && !bLegit)
+	{
+		m_AbnormalGravityTime += DeltaTime;
+	}
+	else
+	{
+		m_AbnormalGravityTime = 0.f;
+	}
+
+	if (m_AbnormalGravityTime >= m_GravityResetTime)
+	{
+		if (Move->IsAirHovering()) Move->SetAirHover(false);
+		Move->GravityScale = Move->GetDefaultGravityScale();
+		m_AbnormalGravityTime = 0.f;
+
+		if (m_bDebugHP)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Red, TEXT("Gravity Reset"));
+		}
+	}
+}
+
+void AActionCharacter::PlayHitShake(float Damage)
+{
+	if (!m_HitCameraShake) return;
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC) return;
+
+	//ダメージが大きいほど強く揺らす
+	const float T = FMath::Clamp(Damage / m_HitShakeFullDamage, 0.f, 1.f);
+	PC->ClientStartCameraShake(m_HitCameraShake, FMath::Lerp(m_HitShakeMin, m_HitShakeMax, T));
+}

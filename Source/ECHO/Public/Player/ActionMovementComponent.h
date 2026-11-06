@@ -34,6 +34,8 @@ public:
 protected:
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+    virtual void BeginPlay() override;
+
     // --- 歩行・ダッシュ速度設定 ---
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ActionMovement")
@@ -73,9 +75,13 @@ public:
     void SetAirHover(bool bEnable);
     bool IsAirHovering() const { return m_bAirHover; }
 
+    //本来の重力（BeginPlay時の値）
+    float GetDefaultGravityScale() const { return m_DefaultGravityScale; }
+
 private:
     bool m_bAirHover = false;
     float m_HoverCachedGravityScale = 1.f;
+    float m_DefaultGravityScale = 1.f;
 
 public:
     // --- 着地硬直関連パラメータ ---

@@ -13,6 +13,7 @@ class AActionCharacter;
 class USpringArmComponent;
 class UNiagaraComponent;
 struct FUltimateLevelData;
+class UCameraShakeBase;
 
 UENUM()
 enum class ESkillState : uint8
@@ -73,6 +74,30 @@ protected:
 	//当たり判定を表示する
 	UPROPERTY(EditAnywhere, Category = "Skill|Debug")
 	bool m_bDebugDraw = false;
+
+
+	// --- 当たったときの画面の揺れ（BPで CS_SkillImpact を設定。未設定なら揺れない） ---
+	UPROPERTY(EditAnywhere, Category = "Skill|CameraShake")
+	TSubclassOf<UCameraShakeBase> m_ImpactShake;
+
+	//一閃
+	UPROPERTY(EditAnywhere, Category = "Skill|CameraShake", meta = (ClampMin = "0"))
+	float m_DashSlashShake = 0.7f;
+
+	//テンペストの1撃ごと（多段なので小さめ）
+	UPROPERTY(EditAnywhere, Category = "Skill|CameraShake", meta = (ClampMin = "0"))
+	float m_TempestHitShake = 0.25f;
+
+	//テンペストの締め
+	UPROPERTY(EditAnywhere, Category = "Skill|CameraShake", meta = (ClampMin = "0"))
+	float m_TempestFinishShake = 1.f;
+
+	//エクスカリバー（1段ため／最大までため）
+	UPROPERTY(EditAnywhere, Category = "Skill|CameraShake", meta = (ClampMin = "0"))
+	float m_UltimateShakeMin = 0.5f;
+
+	UPROPERTY(EditAnywhere, Category = "Skill|CameraShake", meta = (ClampMin = "0"))
+	float m_UltimateShakeMax = 1.3f;
 
 private:
 	ESkillState m_State = ESkillState::None;
@@ -140,6 +165,7 @@ private:
 	void Tempest_Step();
 	void Ultimate_Fire();
 	void Ultimate_Hit();
+	void PlayImpactShake(float Scale);
 	void UpdateChargeEffect();
 	void ClearChargeEffect();
 	int32 DamageInWedge(const FVector& Origin, const FVector& Dir, const FUltimateLevelData& Level);

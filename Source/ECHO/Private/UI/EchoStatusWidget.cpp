@@ -30,6 +30,9 @@ void UEchoStatusWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
 	//回復瓶：使えない間は色を変える／使った瞬間に少し膨らむ
 	UpdateHeal(InDeltaTime);
 
+	//被弾したときの赤い光と揺れ
+	UpdateDamageFeedback(InDeltaTime);
+
 	//HPバー、減った分の帯を、少し遅れて追いかけさせる
 	if (m_TrailRatio > m_HPRatio)
 	{
@@ -192,13 +195,22 @@ void UEchoStatusWidget::HandleHPChanged(float Current, float Max)
 	{
 		//減ったときは少し待ってから帯を追いかけさせる
 		m_TrailWaitTime = m_TrailDelay;
+
+		//赤く光らせて揺らす（減った量が大きいほど強く揺れる）
+		const float Damage = m_HPRatio - NewRatio;
+		m_FlashRemain = m_HPFlashTime;
+		m_ShakeRemain = m_ShakeTime;
+		m_ShakeStrength = FMath::Lerp(m_ShakeMin, m_ShakeMax,
+			FMath::Clamp(Damage / m_ShakeFullDamage, 0.f, 1.f));
 	}
+
 	//回復したときは帯もすぐ合わせる
 	m_TrailRatio = FMath::Max(m_TrailRatio, NewRatio);
 	m_HPRatio = NewRatio;
 
 	if (HPBar)      HPBar->SetPercent(ToHPBarPercent(m_HPRatio));
 	if (HPTrailBar) HPTrailBar->SetPercent(ToHPBarPercent(m_TrailRatio));
+	if (HPFlashBar) HPFlashBar->SetPercent(ToHPBarPercent(m_HPRatio));
 }
 
 void UEchoStatusWidget::HandleHealCountChanged(int32 Count, int32 Max)
@@ -234,4 +246,51 @@ void UEchoStatusWidget::UpdateHeal(float DeltaTime)
 	//膨らんだ大きさを1に戻していく
 	m_HealScale = FMath::FInterpTo(m_HealScale, 1.f, DeltaTime, 12.f);
 	if (HealRoot) HealRoot->SetRenderScale(FVector2D(m_HealScale));
+}
+
+void UEchoStatusWidget::UpdateDamageFeedback(float DeltaTime)
+{
+	// --- 赤く光る：一瞬で光って、だんだん消える ---
+	if (HPFlashBar)
+	{
+		m_FlashRemain = FMath::Max(0.f, m_FlashRemain - DeltaTime);
+		const float Alpha = (m_HPFlashTime > 0.f) ? m_FlashRemain / m_HPFlashTime : 0.f;
+
+		FLinearColor Color = m_HPFlashColor;
+		Color.A *= Alpha;
+		HPFlashBar->SetFillColorAndOpacity(Color);
+	}
+
+	// --- 揺れ：ランダムにずらして、だんだん小さくする ---
+	if (HPRoot)
+	{
+		if (m_ShakeRemain > 0.f)
+		{
+			m_ShakeRemain = FMath::Max(0.f, m_ShakeRemain - DeltaTime);
+			const float Power = m_ShakeStrength * ((m_ShakeTime > 0.f) ? m_ShakeRemain / m_ShakeTime : 0.f);
+			HPRoot->SetRenderTranslation(FVector2D(
+				FMath::FRandRange(-Power, Power),
+				FMath::FRandRange(-Power, Power)));
+		}
+		else
+		{
+			HPRoot->SetRenderTranslation(FVector2D::ZeroVector);
+		}
+	}
+
+	// --- HPが少ないとき：画面の端を赤く、ゆっくり脈打たせる ---
+	if (LowHPVignette)
+	{
+		float Target = 0.f;
+		if (m_HPRatio > 0.f && m_HPRatio < m_LowHPThreshold)
+		{
+			//少ないほど濃く（しきい値ちょうどで3分の1、0に近いと最大）
+			const float Danger = 1.f - m_HPRatio / m_LowHPThreshold;
+			const float Time = GetWorld() ? GetWorld()->GetRealTimeSeconds() : 0.f;
+			const float Pulse = 0.75f + 0.25f * FMath::Sin(Time * m_LowHPPulseSpeed * 2.f * PI);
+			Target = FMath::Lerp(0.35f, 1.f, Danger) * m_LowHPMaxOpacity * Pulse;
+		}
+		m_VignetteOpacity = FMath::FInterpTo(m_VignetteOpacity, Target, DeltaTime, 4.f);
+		LowHPVignette->SetRenderOpacity(m_VignetteOpacity);
+	}
 }

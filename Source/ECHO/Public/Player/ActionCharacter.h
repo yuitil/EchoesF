@@ -10,6 +10,7 @@
 #include "Player/LockOnComponent.h"
 #include "Ghost/GhostCharacter/GhostCharacter.h"
 #include "Player/GhostRecorderComponent.h"
+#include "Combat/EBDefenseFeedback.h"
 #include "ActionCharacter.generated.h"
 
 class UCombatComponent;
@@ -18,6 +19,8 @@ class UCameraComponent;
 class UGhostManagerComponent;
 class UBatManagerComponent;
 class USkillComponent;
+class UJustDodgeComponent;
+class UCameraShakeBase;
 
 //エネルギーが変わったとき（現在値, 最大値）
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnEnergyChanged, float, float);
@@ -29,7 +32,7 @@ DECLARE_MULTICAST_DELEGATE_TwoParams(FOnHPChanged, float, float);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnHealCountChanged, int32, int32);
 
 UCLASS()
-class ECHO_API AActionCharacter : public ACharacter
+class ECHO_API AActionCharacter : public ACharacter, public IEBDefenseFeedback
 {
 	GENERATED_BODY()
 
@@ -189,6 +192,13 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Health|Respawn", meta = (AllowPrivateAccess = "true", ClampMin = "0"))
 	float m_RespawnDelay = 3.f;
 
+	//倒れるモーション（最後のポーズで止めたいので、モンタージュの Enable Auto Blend Out はオフにする）
+	UPROPERTY(EditAnywhere, Category = "Health|Respawn", meta = (AllowPrivateAccess = "true"))
+	class UAnimMontage* m_DeathMontage;
+
+	UPROPERTY(EditAnywhere, Category = "Health|Respawn", meta = (AllowPrivateAccess = "true", ClampMin = "0.1"))
+	float m_DeathPlayRate = 1.f;
+
 	//復帰直後の無敵時間（復帰した瞬間に殴られないように）
 	UPROPERTY(EditAnywhere, Category = "Health|Respawn", meta = (AllowPrivateAccess = "true", ClampMin = "0"))
 	float m_RespawnInvincibleTime = 2.f;
@@ -210,6 +220,13 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Skill")
 	USkillComponent* SkillComponent;
+
+	//ジャスト回避の演出と報酬
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	UJustDodgeComponent* JustDodgeComponent;
+
+	//敵からジャスト回避の通知を受け取る（IEBDefenseFeedback）
+	virtual void AttackDefended_Implementation(AActor* _actor, EDefenseResult _result) override;
 
 	//ゲージ（ストック）を消費する。足りなければ false
 	bool TryConsumeEnergyStock(int32 Count);
@@ -398,6 +415,27 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Health|HitReact", meta = (AllowPrivateAccess = "true", ClampMin = "0.1"))
 	float m_HitReactPlayRate = 1.f;
 
+	//硬直が解けたあと動き出したら、のけぞりの残りを打ち切って歩きに切り替える（切り替えにかける時間）
+	UPROPERTY(EditAnywhere, Category = "Health|HitReact", meta = (AllowPrivateAccess = "true", ClampMin = "0"))
+	float m_HitReactMoveBlendOut = 0.2f;
+
+	//被弾したときの画面の揺れ（BPで CS_Hit を設定。未設定なら揺れない）
+	UPROPERTY(EditAnywhere, Category = "Health|CameraShake")
+	TSubclassOf<UCameraShakeBase> m_HitCameraShake;
+
+	//揺れの強さ（小さいダメージのとき／大きいダメージのとき）
+	UPROPERTY(EditAnywhere, Category = "Health|CameraShake", meta = (ClampMin = "0"))
+	float m_HitShakeMin = 0.4f;
+
+	UPROPERTY(EditAnywhere, Category = "Health|CameraShake", meta = (ClampMin = "0"))
+	float m_HitShakeMax = 1.f;
+
+	//このダメージ以上で一番強く揺れる
+	UPROPERTY(EditAnywhere, Category = "Health|CameraShake", meta = (ClampMin = "1"))
+	float m_HitShakeFullDamage = 40.f;
+
+	void PlayHitShake(float Damage);
+
 	//のけぞり時間（この間は操作できない）
 	UPROPERTY(EditAnywhere, Category = "Health|HitReact", meta = (AllowPrivateAccess = "true", ClampMin = "0"))
 	float m_HitStunTime = 0.4f;
@@ -485,4 +523,14 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "Jump", meta = (AllowPrivateAccess = "true", ClampMin = "0.1"))
 	float m_SecondJumpPlayRate = 1.f;
+
+	// -----------------------------------------------------------------------
+	// 重力の見張り（浮いたまま戻らなくなったときの保険）
+	// -----------------------------------------------------------------------
+	//重力がおかしいままこの秒数たったら元に戻す
+	UPROPERTY(EditAnywhere, Category = "Movement|Safety", meta = (ClampMin = "0.5"))
+	float m_GravityResetTime = 5.f;
+
+	float m_AbnormalGravityTime = 0.f;
+	void UpdateGravityWatchdog(float DeltaTime);
 };

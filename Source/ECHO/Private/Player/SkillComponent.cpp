@@ -22,6 +22,8 @@
 #include "Engine/Engine.h"
 #include "Kismet/GameplayStatics.h"
 #include "DrawDebugHelpers.h"
+#include "Camera/CameraShakeBase.h"
+#include "GameFramework/PlayerController.h"
 
 static const FName SkillDashRootMotionName(TEXT("SkillDash"));
 
@@ -456,13 +458,17 @@ void USkillComponent::DashSlash_ApplyDamage()
 	AActionCharacter* Owner = GetOwnerCharacter();
 	SetPassThroughEnemies(false);
 
+	int32 HitCount = 0;
 	for (const TWeakObjectPtr<AActor>& Enemy : m_PendingTargets)
 	{
 		if (EnemyQuery::IsAliveEnemy(Enemy.Get()))
 		{
 			UGameplayStatics::ApplyDamage(Enemy.Get(), D.m_Damage, Owner->GetController(), Owner, nullptr);
+			++HitCount;
 		}
 	}
+	if (HitCount > 0) PlayImpactShake(m_DashSlashShake);
+
 	if (m_bDebugDraw)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow,
@@ -587,7 +593,10 @@ void USkillComponent::SkillHit()
 	if (m_State != ESkillState::Tempest || !SkillData) return;
 	const FTempestData& D = SkillData->Tempest;
 	const FVector Center = D.m_bHitAroundCharacter ? GetOwnerCharacter()->GetActorLocation() : m_TempestCenter;
-	DamageInSphere(Center, D.m_HitRadius, D.m_Damage);
+	if (DamageInSphere(Center, D.m_HitRadius, D.m_Damage) > 0)
+	{
+		PlayImpactShake(m_TempestHitShake);
+	}
 }
 
 //アニメーション型テンペスト：締めの一撃の通知
@@ -618,6 +627,8 @@ void USkillComponent::SkillFinish()
 
 		UGameplayStatics::ApplyDamage(EnemyChara, D.m_FinishDamage, Owner->GetController(), Owner, nullptr);
 	}
+
+	if (HitActors.Num() > 0) PlayImpactShake(m_TempestFinishShake);
 
 	if (m_bDebugDraw)
 	{
@@ -792,7 +803,14 @@ void USkillComponent::Ultimate_Fire()
 void USkillComponent::Ultimate_Hit()
 {
 	const FUltimateLevelData& L = SkillData->Ultimate.Levels[m_UltLevel - 1];
-	DamageInWedge(m_UltOrigin, m_UltDir, L);
+
+	if (DamageInWedge(m_UltOrigin, m_UltDir, L) > 0)
+	{
+		//ためた段数が多いほど強く揺らす
+		const int32 MaxLevel = SkillData->Ultimate.Levels.Num();
+		const float T = (MaxLevel > 1) ? float(m_UltLevel - 1) / float(MaxLevel - 1) : 1.f;
+		PlayImpactShake(FMath::Lerp(m_UltimateShakeMin, m_UltimateShakeMax, T));
+	}
 
 	if (--m_UltHitsLeft > 0)
 	{
@@ -874,4 +892,14 @@ void USkillComponent::Interrupt()
 	}
 	GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Red, TEXT("Charge Interrupted"));
 	EndSkill();
+}
+
+void USkillComponent::PlayImpactShake(float Scale)
+{
+	if (!m_ImpactShake || Scale <= 0.f) return;
+	AActionCharacter* Owner = GetOwnerCharacter();
+	if (APlayerController* PC = Owner ? Cast<APlayerController>(Owner->GetController()) : nullptr)
+	{
+		PC->ClientStartCameraShake(m_ImpactShake, Scale);
+	}
 }
