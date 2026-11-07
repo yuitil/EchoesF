@@ -5,7 +5,7 @@
 //Sets default values
 ABossSpawnTrigger::ABossSpawnTrigger()
 {
- 	//Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	//毎フレーム更新するかを決める。
 	PrimaryActorTick.bCanEverTick = false;
 
 	//コンポネント
@@ -14,7 +14,7 @@ ABossSpawnTrigger::ABossSpawnTrigger()
 
 	//デフォルトサイズ
 	m_triggerBox->SetBoxExtent(FVector(200.f, 200.f, 200.f));
-	
+
 	//コリジョン設定
 	m_triggerBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	m_triggerBox->SetCollisionObjectType(ECC_WorldDynamic);
@@ -49,4 +49,3 @@ void ABossSpawnTrigger::OnPlayerEntered(UPrimitiveComponent* _overlappedComp, AA
 	//スポーンさせるフラグが立っていたらスポーンさせる
 	if (m_bSpawnOnEnter) { m_waveManager->SpawnFinalBoss(); }
 }
-

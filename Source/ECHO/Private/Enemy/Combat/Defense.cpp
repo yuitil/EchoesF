@@ -13,12 +13,12 @@
 //動作を確かめるための幅や待ち時間。
 namespace DefenseTuning
 {
-    //一回転の角度。
-    constexpr auto fullTurn = 360.0f;
-    //判定時間の下限。
-    constexpr auto minWindow = 0.05f;
-    //姿勢を保つ時間の下限。
-    constexpr auto minHold = 0.1f;
+	//一回転の角度。
+	constexpr auto fullTurn = 360.0f;
+	//判定時間の下限。
+	constexpr auto minWindow = 0.05f;
+	//姿勢を保つ時間の下限。
+	constexpr auto minHold = 0.1f;
 }
 
 //初期設定と必要な部品を用意する。
@@ -44,11 +44,14 @@ bool UDefense::IsFrontFacing(AActor* _attacker) const
 {
 	//処理の対象となる敵。
 	const AEnemyCharacterBase* enemy = Cast<AEnemyCharacterBase>(GetOwner());
-	if(!enemy || !enemy->m_definition || !IsValid(_attacker) || _attacker == enemy) { return false; }
+	if (!enemy || !enemy->m_definition || !IsValid(_attacker) || _attacker == enemy)
+	{
+		return false;
+	}
 
 	//移動や判定に使う方向。
 	const FVector direction = (_attacker->GetActorLocation() - GetOwner()->GetActorLocation()).GetSafeNormal2D();
-	if(direction.IsNearlyZero()) { return false; }
+	if (direction.IsNearlyZero()) { return false; }
 
 	//防御できる角度の半分。
 	const float halfAngle = FMath::Clamp(enemy->m_definition->m_defenseFrontAngle, 0.0f, DefenseTuning::fullTurn) * .5f;
@@ -59,13 +62,16 @@ bool UDefense::IsFrontFacing(AActor* _attacker) const
 bool UDefense::IsThreat_Implementation(AActor* _target) const
 {
 	const auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
-	if(!enemy || !enemy->m_definition || !IsValid(_target)) { return false; }
+	if (!enemy || !enemy->m_definition || !IsValid(_target)) { return false; }
 
 	//相手から敵へ向かう方向。
 	const FVector offset = enemy->GetActorLocation() - _target->GetActorLocation();
-	if(offset.Size2D() > enemy->m_definition->m_guardRange || FMath::Abs(offset.Z) > m_threatHeight) { return false; }
+	if (offset.Size2D() > enemy->m_definition->m_guardRange || FMath::Abs(offset.Z) > m_threatHeight)
+	{
+		return false;
+	}
 	const float facing = FVector::DotProduct(_target->GetActorForwardVector().GetSafeNormal2D(), offset.GetSafeNormal2D());
-	if(facing < FMath::Cos(FMath::DegreesToRadians(m_threatAngle))) { return false; }
+	if (facing < FMath::Cos(FMath::DegreesToRadians(m_threatAngle))) { return false; }
 
 	const auto* ai = Cast<AAIController>(enemy->GetController());
 	return !ai || ai->LineOfSightTo(_target);
@@ -76,28 +82,35 @@ bool UDefense::ShouldStartGuard() const
 {
 	//処理の対象となる敵。
 	const AEnemyCharacterBase* enemy = Cast<AEnemyCharacterBase>(GetOwner());
-	if(!enemy || !enemy->m_definition || !enemy->m_definition->m_useGuard || IsBusy() || enemy->IsActing() || enemy->GetCharacterMovement()->IsFalling()
-		|| !IsFrontFacing(enemy->m_combatTarget)) { return false; }
+	if (!enemy || !enemy->m_definition || !enemy->m_definition->m_useGuard || IsBusy() || enemy->IsActing() || enemy->GetCharacterMovement()->IsFalling() || !IsFrontFacing(enemy->m_combatTarget))
+	{
+		return false;
+	}
 
 	return IsTargetAttacking(enemy->m_combatTarget) && IsThreat(enemy->m_combatTarget);
-
 }
 
 //相手が攻撃中か調べる。
 bool UDefense::IsTargetAttacking_Implementation(AActor* _target) const
 {
-	if(!IsValid(_target)) { return false; }
-	if(const UCombatComponent* combat = _target->FindComponentByClass<UCombatComponent>()) { return combat->IsAttacking() && combat->IsPlayingAttackMontage(); }
+	if (!IsValid(_target)) { return false; }
+	if (const UCombatComponent* combat = _target->FindComponentByClass<UCombatComponent>())
+	{
+		return combat->IsAttacking() && combat->IsPlayingAttackMontage();
+	}
+
 	//処理の対象となる敵。
 	const AEnemyCharacterBase* enemy = Cast<AEnemyCharacterBase>(GetOwner());
+
 	//対象のキャラクター。
 	const ACharacter* character = Cast<ACharacter>(_target);
+
 	//アニメーションを再生する部品。
 	const UAnimInstance* anim = character && character->GetMesh() ? character->GetMesh()->GetAnimInstance() : nullptr;
-	if(!enemy || !enemy->m_definition || !anim) { return false; }
+	if (!enemy || !enemy->m_definition || !anim) { return false; }
 	for (const auto& montage : enemy->m_definition->m_guardAttacks)
 	{
-		if(montage && anim->Montage_IsPlaying(montage)) { return true; }
+		if (montage && anim->Montage_IsPlaying(montage)) { return true; }
 	}
 	return false;
 }
@@ -107,8 +120,8 @@ EDefenseResult UDefense::ResolveHit(AActor* _attacker, bool _unblockable, bool _
 {
 	//処理の対象となる敵。
 	AEnemyCharacterBase* enemy = Cast<AEnemyCharacterBase>(GetOwner());
-	if (!enemy || !enemy->HasAuthority() || !enemy->m_definition || _unblockable || !enemy->IsCombatActive()
-		|| m_bGuardBroken || GetWorld()->GetTimeSeconds() < m_busyUntilTime || enemy->GetCharacterMovement()->IsFalling() || !IsFrontFacing(_attacker))
+	if (!enemy || !enemy->HasAuthority() || !enemy->m_definition || _unblockable || !enemy->IsCombatActive() || m_bGuardBroken || GetWorld()->GetTimeSeconds() < m_busyUntilTime ||
+		enemy->GetCharacterMovement()->IsFalling() || !IsFrontFacing(_attacker))
 	{
 		return EDefenseResult::None;
 	}
@@ -121,14 +134,19 @@ EDefenseResult UDefense::ResolveHit(AActor* _attacker, bool _unblockable, bool _
 
 	//使用する行動の設定。
 	const FEnemyActionData* action = enemy->GetActiveAction();
+
 	//攻撃を中断せず防御できるか。
 	const bool canReact = !enemy->IsActing() || (action && action->m_kind == EEnemyAction::Guard);
+
 	//現在の時刻。
 	const double now = GetWorld()->GetTimeSeconds();
+
 	//弾きの選ばれやすさ。
 	const float deflectWeight = FMath::Max(0.0f, data->m_deflectWeight);
+
 	//受け流しの選ばれやすさ。
 	const float parryWeight = FMath::Max(0.0f, data->m_parryWeight);
+
 	//選ばれやすさの合計。
 	const float totalWeight = deflectWeight + parryWeight;
 
@@ -143,10 +161,11 @@ EDefenseResult UDefense::ResolveHit(AActor* _attacker, bool _unblockable, bool _
 		const float chance = enemy->GetSpecialDefenseChance();
 		if (PassesChance(FMath::FRand(), chance))
 		{
-				++m_successes;
+			++m_successes;
 
 			//弾きを選んだか。
 			const bool deflect = deflectWeight > 0 && (parryWeight <= 0 || FMath::FRand() < deflectWeight / totalWeight);
+
 			//処理の結果。
 			const EDefenseResult result = deflect ? EDefenseResult::Deflect : EDefenseResult::Parry;
 			BeginReaction(deflect ? data->m_deflectMontage : data->m_parryMontage, deflect ? data->m_deflectRecovery : data->m_parryRecovery);
@@ -159,7 +178,6 @@ EDefenseResult UDefense::ResolveHit(AActor* _attacker, bool _unblockable, bool _
 	}
 
 	if (guard && canReact)
-
 	{
 		//処理の結果。
 		const EDefenseResult result = EDefenseResult::Guard;
@@ -170,11 +188,10 @@ EDefenseResult UDefense::ResolveHit(AActor* _attacker, bool _unblockable, bool _
 			if (auto* ai = Cast<AAIController>(enemy->GetController())) ai->StopMovement();
 			enemy->GetCharacterMovement()->StopMovementImmediately();
 			auto* hit = enemy->m_combat->HasTwoSwords() && data->m_dualGuardHit ? data->m_dualGuardHit.Get() : data->m_guardHit.Get();
-            if(hit) { enemy->PlayAnimMontage(hit); }
+			if (hit) { enemy->PlayAnimMontage(hit); }
 			m_guardPose = GetWorld()->GetTimeSeconds() + data->m_guardHold;
 		}
 		return result;
-
 	}
 	return EDefenseResult::None;
 }
@@ -184,10 +201,13 @@ bool UDefense::IsObservedHeavyAttack(AActor* _attacker) const
 {
 	//処理の対象となる敵。
 	const AEnemyCharacterBase* enemy = Cast<AEnemyCharacterBase>(GetOwner());
+
 	//攻撃してきた相手。
 	const ACharacter* attacker = Cast<ACharacter>(_attacker);
+
 	//アニメーションを再生する部品。
 	UAnimInstance* anim = attacker ? attacker->GetMesh()->GetAnimInstance() : nullptr;
+
 	//対象のモンタージュ。
 	UAnimMontage* montage = anim ? anim->GetCurrentActiveMontage() : nullptr;
 
@@ -201,10 +221,7 @@ void UDefense::ClearHeavyChain()
 	m_lastHeavyTime = -1;
 	m_heavyAttacker.Reset();
 
-	if (GetWorld())
-	{
-		GetWorld()->GetTimerManager().ClearTimer(m_heavyTimer);
-	}
+	if (GetWorld()) { GetWorld()->GetTimerManager().ClearTimer(m_heavyTimer); }
 }
 
 //強攻撃の連続命中によるガード崩れを調べる。
@@ -212,10 +229,15 @@ bool UDefense::RecordHeavyHit(AActor* _attacker, bool _heavyAttack)
 {
 	//処理の対象となる敵。
 	AEnemyCharacterBase* enemy = Cast<AEnemyCharacterBase>(GetOwner());
+
 	//BPから設定した敵のデータ。
 	const UEnemyData* data = enemy ? enemy->m_definition : nullptr;
 
-	if(!data || !enemy->HasAuthority() || !enemy->IsCombatActive() || m_bGuardBroken || !IsValid(_attacker)) { ClearHeavyChain(); return false; }
+	if (!data || !enemy->HasAuthority() || !enemy->IsCombatActive() || m_bGuardBroken || !IsValid(_attacker))
+	{
+		ClearHeavyChain();
+		return false;
+	}
 
 	if (!data->m_useGuardBreak || !_heavyAttack)
 	{
@@ -225,9 +247,11 @@ bool UDefense::RecordHeavyHit(AActor* _attacker, bool _heavyAttack)
 
 	//処理を待つ制限時間。
 	const float timeout = FMath::Max(DefenseTuning::minHold, data->m_heavyTimeout);
+
 	//現在の時刻。
 	const double now = GetWorld()->GetTimeSeconds();
-	if (m_heavyAttacker.Get() != _attacker || m_lastHeavyTime < 0.0 || now - m_lastHeavyTime > timeout)
+	if (m_heavyAttacker.Get() != _attacker || m_lastHeavyTime < 0.0 ||
+		now - m_lastHeavyTime > timeout)
 	{
 		m_guardedHeavyHits = 0;
 	}
@@ -241,7 +265,8 @@ bool UDefense::RecordHeavyHit(AActor* _attacker, bool _heavyAttack)
 		StartGuardBreak();
 		return true;
 	}
-	GetWorld()->GetTimerManager().SetTimer(m_heavyTimer, this, &UDefense::ClearHeavyChain, timeout, false);
+	GetWorld()->GetTimerManager().SetTimer(
+		m_heavyTimer, this, &UDefense::ClearHeavyChain, timeout, false);
 	return false;
 }
 
@@ -249,7 +274,7 @@ bool UDefense::RecordHeavyHit(AActor* _attacker, bool _heavyAttack)
 void UDefense::StartGuardBreak()
 {
 	const auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
-	if(!enemy || !enemy->m_definition) { return; }
+	if (!enemy || !enemy->m_definition) { return; }
 	BreakFor(enemy->m_definition->m_guardBreakTime);
 }
 
@@ -258,11 +283,16 @@ void UDefense::BreakFor(float _seconds)
 {
 	//処理の対象となる敵。
 	AEnemyCharacterBase* enemy = Cast<AEnemyCharacterBase>(GetOwner());
+
 	//動作を続ける時間。
-	if(!enemy || !enemy->HasAuthority() || !enemy->IsCombatActive() || !enemy->m_definition || m_bGuardBroken) { return; }
+	if (!enemy || !enemy->HasAuthority() || !enemy->IsCombatActive() || !enemy->m_definition ||
+		m_bGuardBroken)
+	{
+		return;
+	}
 	const float duration = FMath::Max(DefenseTuning::minHold, _seconds);
 	m_breakMove = enemy->m_combat->HasTwoSwords() && enemy->m_definition->m_dualGuardBreak ? enemy->m_definition->m_dualGuardBreak : enemy->m_definition->m_guardBreakMontage;
-    BeginReaction(m_breakMove.Get(), duration);
+	BeginReaction(m_breakMove.Get(), duration);
 	m_bGuardBroken = true;
 	enemy->ShowGuardBreak();
 
@@ -278,12 +308,9 @@ void UDefense::EndGuardBreak()
 	AEnemyCharacterBase* enemy = Cast<AEnemyCharacterBase>(GetOwner());
 	m_bGuardBroken = false;
 	m_busyUntilTime = 0.0;
-	if(!enemy || !enemy->IsCombatActive()) { return; }
+	if (!enemy || !enemy->IsCombatActive()) { return; }
 
-	if (m_breakMove.IsValid())
-	{
-		enemy->StopAnimMontage(m_breakMove.Get());
-	}
+	if (m_breakMove.IsValid()) { enemy->StopAnimMontage(m_breakMove.Get()); }
 
 	enemy->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 }
@@ -293,7 +320,7 @@ void UDefense::BeginReaction(UAnimMontage* _montage, float _minduration)
 {
 	//処理の対象となる敵。
 	AEnemyCharacterBase* enemy = Cast<AEnemyCharacterBase>(GetOwner());
-	if(!enemy) { return; }
+	if (!enemy) { return; }
 
 	enemy->CancelAction();
 	if (AAIController* aiController = Cast<AAIController>(enemy->GetController()))
@@ -304,7 +331,7 @@ void UDefense::BeginReaction(UAnimMontage* _montage, float _minduration)
 	enemy->GetCharacterMovement()->StopMovementImmediately();
 
 	//動作を続ける時間。
-	const float  duration = _montage ? enemy->PlayAnimMontage(_montage) : 0;
+	const float duration = _montage ? enemy->PlayAnimMontage(_montage) : 0;
 	m_busyUntilTime = GetWorld()->GetTimeSeconds() + FMath::Max(DefenseTuning::minWindow, FMath::Max(_minduration, duration));
 }
 
@@ -312,9 +339,10 @@ void UDefense::BeginReaction(UAnimMontage* _montage, float _minduration)
 void UDefense::PublishResult(AActor* _attacker, EDefenseResult _result)
 {
 	m_lastResult = _result;
-	if(_result == EDefenseResult::None) { return; }
+	if (_result == EDefenseResult::None) { return; }
 
-	if (IsValid(_attacker) && _attacker->GetClass()->ImplementsInterface(UEBDefenseFeedback::StaticClass()))
+	if (IsValid(_attacker) &&
+		_attacker->GetClass()->ImplementsInterface(UEBDefenseFeedback::StaticClass()))
 	{
 		IEBDefenseFeedback::Execute_AttackDefended(_attacker, GetOwner(), _result);
 	}
@@ -326,11 +354,16 @@ void UDefense::ReactToDefendedAttack(EDefenseResult _result)
 {
 	//処理の対象となる敵。
 	AEnemyCharacterBase* enemy = Cast<AEnemyCharacterBase>(GetOwner());
-	if(!enemy || !enemy->IsCombatActive() || !enemy->HasAuthority() || !enemy->m_definition || !enemy->IsActing()) { return; }
+	if (!enemy || !enemy->IsCombatActive() || !enemy->HasAuthority() || !enemy->m_definition || !enemy->IsActing())
+	{
+		return;
+	}
 
 	if (_result == EDefenseResult::Deflect || _result == EDefenseResult::Parry)
 	{
-		BeginReaction(enemy->m_definition->m_staggerMontage, _result == EDefenseResult::Deflect ? enemy->m_definition->m_deflectedStun : enemy->m_definition->m_parriedStun);
+		BeginReaction(enemy->m_definition->m_staggerMontage,
+			_result == EDefenseResult::Deflect ? enemy->m_definition->m_deflectedStun
+			: enemy->m_definition->m_parriedStun);
 		enemy->ShowGuardBreak();
 	}
 }
@@ -338,10 +371,7 @@ void UDefense::ReactToDefendedAttack(EDefenseResult _result)
 //ガードと反撃の状態を初期化する。
 void UDefense::ResetDefense()
 {
-	if (GetWorld())
-	{
-		GetWorld()->GetTimerManager().ClearTimer(m_breakTimer);
-	}
+	if (GetWorld()) { GetWorld()->GetTimerManager().ClearTimer(m_breakTimer); }
 
 	ClearHeavyChain();
 
@@ -359,16 +389,17 @@ void UDefense::ResetDefense()
 
 	GetWorld()->GetTimerManager().ClearTimer(m_counterTimer);
 	m_guardPending = false;
-	m_guardUntil = m_guardPose = m_counterUntil = 0.; m_guardTarget.Reset();
+	m_guardUntil = m_guardPose = m_counterUntil = 0.;
+	m_guardTarget.Reset();
 
 	m_bGuardBroken = false;
+
 	//連続で抽選し続けないよう、次の時刻を決める。
 	m_nextAttemptTime = 0.0;
 	m_busyUntilTime = 0.0;
 	m_attempts = 0;
 	m_successes = 0;
 	m_lastResult = EDefenseResult::None;
-
 }
 
 //終了時にタイマーや登録を解除する。
@@ -383,7 +414,8 @@ void UDefense::RememberHit(AActor* _attacker)
 {
 	//処理の対象となる敵。
 	auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
-	if(!enemy || !enemy->m_definition || !IsValid(_attacker)) { return; }
+	if (!enemy || !enemy->m_definition || !IsValid(_attacker)) { return; }
+
 	//使用する行動の設定。
 	const auto* action = enemy->GetActiveAction();
 	if (action && action->m_kind != EEnemyAction::Guard) m_guardPending = true;
@@ -398,21 +430,29 @@ void UDefense::TryCounter()
 	auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
 	if (!enemy || !enemy->IsCombatActive() || !enemy->m_definition || GetWorld()->GetTimeSeconds() > m_counterUntil)
 	{
-		GetWorld()->GetTimerManager().ClearTimer(m_counterTimer); return;
+		GetWorld()->GetTimerManager().ClearTimer(m_counterTimer);
+		return;
 	}
-	if(!enemy->CanDecide() || !IsValid(enemy->m_combatTarget) || IsTargetAttacking(enemy->m_combatTarget)) { return; }
+	if (!enemy->CanDecide() || !IsValid(enemy->m_combatTarget) ||
+		IsTargetAttacking(enemy->m_combatTarget))
+	{
+		return;
+	}
 	const auto* data = enemy->m_definition.Get();
-	if(enemy->m_combat->HasTwoSwords())
+	if (enemy->m_combat->HasTwoSwords())
 	{
 		const FVector toward = enemy->m_combatTarget->GetActorLocation() - enemy->GetActorLocation();
 		const FName side = FVector::DotProduct(enemy->GetActorRightVector(), toward) >= 0.f ? data->m_counterRight : data->m_counterLeft;
-		if(!side.IsNone() && enemy->RequestAction(side))
+		if (!side.IsNone() && enemy->RequestAction(side))
 		{
 			GetWorld()->GetTimerManager().ClearTimer(m_counterTimer);
 			return;
 		}
 	}
-	if(!data->m_counter.IsNone() && enemy->RequestAction(data->m_counter)) { GetWorld()->GetTimerManager().ClearTimer(m_counterTimer); }
+	if (!data->m_counter.IsNone() && enemy->RequestAction(data->m_counter))
+	{
+		GetWorld()->GetTimerManager().ClearTimer(m_counterTimer);
+	}
 }
 
 //攻撃後のガード予約が残っているか調べる。

@@ -14,7 +14,6 @@ UBTT_EnemyAttack::UBTT_EnemyAttack()
 //BTTaskNodeのExecuteTask関数をオーバーライド
 EBTNodeResult::Type UBTT_EnemyAttack::ExecuteTask(UBehaviorTreeComponent& _ownerComp, uint8* _nodeMemory)
 {
-
 	//AIControllerを取得
 	AAIController* controller = _ownerComp.GetAIOwner();
 	if (!controller) { return EBTNodeResult::Failed; }

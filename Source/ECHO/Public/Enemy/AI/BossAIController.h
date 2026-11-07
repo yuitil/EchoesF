@@ -10,9 +10,10 @@
 UCLASS()
 class ECHO_API ABossAIController : public AAIController
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 protected:
-	//操作する敵のAIを準備する。
-	virtual void OnPossess(APawn* _pawn) override;
+
+    //操作する敵のAIを準備する。
+    virtual void OnPossess(APawn* _pawn) override;
 };

@@ -5,7 +5,7 @@
 #include "BossCrowdHit.generated.h"
 
 //Montageで指定した瞬間に、周りの相手を押し返す。
-UCLASS(meta=(DisplayName="Boss Crowd Hit"))
+UCLASS(meta = (DisplayName = "Boss Crowd Hit"))
 class ECHO_API UBossCrowdHit : public UAnimNotify
 {
     GENERATED_BODY()

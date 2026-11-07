@@ -19,13 +19,10 @@
 //操作する敵のAIを準備する。
 void ABossAIController::OnPossess(APawn* _pawn)
 {
-	Super::OnPossess(_pawn);
+    Super::OnPossess(_pawn);
 
-	if (AEnemyCharacterBase* enemy = Cast<AEnemyCharacterBase>(_pawn))
-	{
-		if (enemy->m_behaviorTree)
-		{
-			RunBehaviorTree(enemy->m_behaviorTree);
-		}
-	}
+    if(AEnemyCharacterBase* enemy = Cast<AEnemyCharacterBase>(_pawn))
+    {
+        if(enemy->m_behaviorTree) { RunBehaviorTree(enemy->m_behaviorTree); }
+    }
 }

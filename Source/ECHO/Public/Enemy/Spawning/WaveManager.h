@@ -13,18 +13,21 @@ enum class EAttackRole : uint8
 {
 	//待機中
 	Waiting UMETA(DisplayName = "Waiting"),
+
 	//攻撃役
 	Attacker UMETA(DisplayName = "Attacker"),
+
 	//包囲役
 	Encircler UMETA(DisplayName = "Encircler"),
 };
 
-
 //BBキー名
 namespace WaveBBKey
 {
+
 	//BTが攻撃役か保存する項目名。
 	static const FName bIsActiveAttacker(TEXT("bIsActiveAttacker"));
+
 	//BTが周囲で待つ位置を保存する項目名。
 	static const FName EncirclePosition(TEXT("EncirclePosition"));
 }
@@ -34,12 +37,14 @@ UCLASS()
 class ECHO_API AWaveManager : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
+
+public:
+
 	//Sets default values for this actor's properties
 	AWaveManager();
 
 protected:
+
 	//Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
@@ -69,6 +74,7 @@ public:
 	int32 GetAliveEnemyCount() const;
 
 protected:
+
 	//エネミープールを参照するためのプロパティ
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WaveManager")
 	AEnemyPool* m_pEnemyPool;
@@ -110,6 +116,7 @@ protected:
 	AActor* m_finalBossSpawnPoint;
 
 private:
+
 	//アタッカー・エンサークラーを再割り当てする関数
 	void UpdateAttackerRoles();
 
@@ -129,6 +136,7 @@ private:
 	void SetEncircleRole(AEnemyChara* _enemy, const FVector& _encirclePosition);
 
 private:
+
 	//現在生存している敵のリスト
 	UPROPERTY()
 	TArray<AEnemyChara*> m_aliveEnemies;
