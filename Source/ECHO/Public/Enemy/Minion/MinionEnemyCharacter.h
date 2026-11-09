@@ -13,61 +13,66 @@ class ECHO_API AMinionEnemyCharacter : public AEnemyCharacterBase
 	GENERATED_BODY()
 
 public:
+
 	//手にも被弾判定を付けるか。大型の敵だけで使う。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Hands")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Hands")
 	bool m_handHits = false;
 
 	//左手の判定を付ける骨。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Hands")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Hands")
 	FName m_leftBone;
 
 	//右手の判定を付ける骨。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Hands")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Hands")
 	FName m_rightBone;
 
 	//大きな敵の左手を攻撃できる判定。骨と大きさはBPで指定する。
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Enemy|Hands")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy|Hands")
 	TObjectPtr<USphereComponent> m_leftHand;
 
 	//大きな敵の右手を攻撃できる判定。
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Enemy|Hands")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy|Hands")
 	TObjectPtr<USphereComponent> m_rightHand;
 
 	//雑魚敵の攻撃、ひるみ、死亡を管理する。
 	AMinionEnemyCharacter();
 
 	//受け流された後の停止を解除する。
-	void FinishParryReaction(UAnimMontage* _montage,float _duration);
+	void FinishParryReaction(UAnimMontage* _montage, float _duration);
 
 	//攻撃を防がれた結果を受け取る。
-	virtual void AttackDefended_Implementation(AActor* _defender, EDefenseResult _result) override;
+	virtual void AttackDefended_Implementation(
+		AActor* _defender, EDefenseResult _result) override;
 
 public:
+
 	//集団戦での役割を管理する部品。
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Enemy")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy")
 	TObjectPtr<UMinionFormation> m_formation;
 
 	//受け流された後の隙を管理する部品。
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Enemy")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy")
 	TObjectPtr<UMinionParryResponse> m_parry;
 
 	//死亡後に残す時間。
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Enemy|Death", meta=(ClampMin="0.1"))
+	UPROPERTY(
+		EditAnywhere, BlueprintReadOnly, Category = "Enemy|Death", meta = (ClampMin = "0.1"))
 	float m_corpseTime = 2.f;
 
 	//ダメージを受けた時のモンタージュ。
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Enemy|Hit")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy|Hit")
 	TObjectPtr<UAnimMontage> m_hitMontage;
 
 	//被弾の動作を再生する間隔。
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Enemy|Hit", meta=(ClampMin="0"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy|Hit", meta = (ClampMin = "0"))
 	float m_hitCooldown = 1.f;
 
 	//被弾で攻撃を中断するか。
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Enemy|Hit")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy|Hit")
 	bool m_interruptAttack = false;
 
 protected:
+
 	//BPで選んだ手の骨へ判定をつなぐ。
 	virtual void BeginPlay() override;
 
@@ -90,6 +95,7 @@ protected:
 	virtual void OnAttackReceived(AActor* _attacker) override;
 
 private:
+
 	//次に被弾アニメーションを再生できる時刻。
 	double m_nextHit = 0.;
 };

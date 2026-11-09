@@ -11,6 +11,7 @@ class ECHO_API UActionAbility : public UGameplayAbility
 	GENERATED_BODY()
 
 public:
+
 	//敵の攻撃を開始し、終わったら後片付けする。
 	UActionAbility();
 
@@ -24,9 +25,10 @@ public:
 	void FinishFromNotify(float _blend);
 
 private:
-    //持ち替えが終わったら選んでいた技を開始する。
-    UFUNCTION()
-    void StartSwing();
+
+	//持ち替えが終わったら選んでいた技を開始する。
+	UFUNCTION()
+	void StartSwing();
 
 	//再生完了を受けて攻撃を終了する。
 	UFUNCTION(Category = "Enemy")
@@ -37,6 +39,7 @@ private:
 	void Interrupted();
 
 private:
+
 	//攻撃の能力を終了済みか。
 	bool m_finished = false;
 

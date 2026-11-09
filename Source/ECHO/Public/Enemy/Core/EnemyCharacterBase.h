@@ -34,257 +34,249 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEnemyStateEvent, EEnemyState, state
 UCLASS()
 class ECHO_API AEnemyCharacterBase : public ACharacter, public IAbilitySystemInterface, public IEBDefenseFeedback
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	//敵に共通する体力、攻撃、移動を管理する。
-	AEnemyCharacterBase();
+    //敵に共通する体力、攻撃、移動を管理する。
+    AEnemyCharacterBase();
 
-	//地面に着いた時だけ着地音を鳴らす。
-	virtual void Landed(const FHitResult& _hit) override;
+    //地面に着いた時だけ着地音を鳴らす。
+    virtual void Landed(const FHitResult& _hit) override;
 
-	//通知で指定した区間だけ、攻撃の移動を相手へ合わせる。
-	void SetAttackAim(bool _enabled, float _range);
+    //通知で指定した区間だけ、攻撃の移動を相手へ合わせる。
+    void SetAttackAim(bool _enabled, float _range);
 
-	//敵の能力を管理する部品を返す。
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+    //敵の能力を管理する部品を返す。
+    virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
-	//防御を確認して体力を減らす。
-	virtual float TakeDamage(float _damage, const FDamageEvent& _damageEvent, AController* _instigator,
-	                         AActor* _causer) override;
+    //防御を確認して体力を減らす。
+    virtual float TakeDamage(float _damage, const FDamageEvent& _damageEvent, AController* _instigator, AActor* _causer) override;
 
-	//攻撃を防がれた結果を受け取る。
-	virtual void AttackDefended_Implementation(AActor* _defender, EDefenseResult _result) override;
+    //攻撃を防がれた結果を受け取る。
+    virtual void AttackDefended_Implementation(AActor* _defender, EDefenseResult _result) override;
 
-	//受け流しなどを選ぶ確率を返す。
-	virtual float GetSpecialDefenseChance() const;
+    //受け流しなどを選ぶ確率を返す。
+    virtual float GetSpecialDefenseChance() const;
 
-	//相手の攻撃や移動を観察する。
-	virtual void ObserveTarget(AActor* _target)
-	{
-	}
+    //相手の攻撃や移動を観察する。
+    virtual void ObserveTarget(AActor* _target) {}
 
-	//状況に合わせて次のコンボを選ぶ。
-	static FName SelectComboBranch(const FEnemyActionData& _action, bool _hit, bool _blocked);
+    //状況に合わせて次のコンボを選ぶ。
+    static FName SelectComboBranch(const FEnemyActionData& _action, bool _hit, bool _blocked);
 
-	//今回の攻撃が命中したことを記録する。
-	void RecordAttackHit();
+    //今回の攻撃が命中したことを記録する。
+    void RecordAttackHit();
 
-	//今回の攻撃が防がれたか返す。
-	bool WasAttackBlocked() const { return m_bActionBlocked; }
+    //今回の攻撃が防がれたか返す。
+    bool WasAttackBlocked() const { return m_bActionBlocked; }
 
-	//現在実行している攻撃の設定を返す。
-	const FEnemyActionData* GetActiveAction() const;
+    //現在実行している攻撃の設定を返す。
+    const FEnemyActionData* GetActiveAction() const;
 
-	//設定に合わせた攻撃の再生速度を返す。
-	virtual float GetAttackRate(const FEnemyActionData& _action) const;
+    //設定に合わせた攻撃の再生速度を返す。
+    virtual float GetAttackRate(const FEnemyActionData& _action) const;
 
-	//攻撃が終わるまで待つ時間を求める。
-	float GetActionTimeout(const FEnemyActionData& _action) const;
+    //攻撃が終わるまで待つ時間を求める。
+    float GetActionTimeout(const FEnemyActionData& _action) const;
 
     //ガードは手に持っている刀の数から選ぶ。
     UAnimMontage* GetMoveMontage(const FEnemyActionData& _action) const;
 
-	//攻撃の再生速度を通常に戻す。
-	void RestoreAttackRate();
+    //攻撃を終えて次の行動に備える。
+    void FinishAction(bool _cancelled);
 
-	//攻撃を終えて次の行動に備える。
-	void FinishAction(bool _cancelled);
+    //間合いを取り直しているか返す。
+    virtual bool IsRepositioning() const { return false; }
 
-	//間合いを取り直しているか返す。
-	virtual bool IsRepositioning() const { return false; }
+    //今選べる攻撃を返す。
+    const FEnemyActionData* GetReadyAction(FName _actionId) const;
 
-	//今選べる攻撃を返す。
-	const FEnemyActionData* GetReadyAction(FName _actionId) const;
+    //突進攻撃を開始できるか調べる。
+    bool CanRushAttack(float _distance) const;
 
-	//突進攻撃を開始できるか調べる。
-	bool CanRushAttack(float _distance) const;
-
-	//イベントフラグのセッター
-	void SetIsEventEnemy(const bool _isEventEnemy) { m_IsEventEnemy = _isEventEnemy; }
+    //イベントフラグのセッター
+    void SetIsEventEnemy(const bool _isEventEnemy) { m_IsEventEnemy = _isEventEnemy; }
 
 public:
-	//敵ごとの音をBPで調整する部品。
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Enemy|Audio")
-	TObjectPtr<UEnemyAudio> m_audio;
+    //敵ごとの音をBPで調整する部品。
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy|Audio")
+    TObjectPtr<UEnemyAudio> m_audio;
 
     //剣の残り線と振る音をBPで調整する部品。
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Enemy|Swing")
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy|Swing")
     TObjectPtr<UEnemySwing> m_swing;
 
 public:
-	//ガード崩れの演出を表示する。
-	UFUNCTION(NetMulticast, Unreliable)
-	void ShowGuardBreak();
+    //ガード崩れの演出を表示する。
+    UFUNCTION(NetMulticast, Unreliable)
+    void ShowGuardBreak();
 
-	//ガード崩れの見た目をBPで再生する。
-	UFUNCTION(BlueprintImplementableEvent, Category="Enemy|UI")
-	void GuardBreakFX();
+    //ガード崩れの見た目をBPで再生する。
+    UFUNCTION(BlueprintImplementableEvent, Category = "Enemy|UI")
+    void GuardBreakFX();
 
-	//相手の防御と回避の結果を確認する。
-	UFUNCTION(BlueprintNativeEvent, Category = "Enemy | Defense")
-	EDefenseResult ResolveTargetDefense(AActor* target) const;
+    //相手の防御と回避の結果を確認する。
+    UFUNCTION(BlueprintNativeEvent, Category = "Enemy | Defense")
+    EDefenseResult ResolveTargetDefense(AActor* target) const;
 
-	//相手のガードが崩れたことをBPへ伝える。
-	UFUNCTION(BlueprintImplementableEvent, Category="Enemy|Defense")
-	void TargetGuardBroken(AActor* target);
+    //相手のガードが崩れたことをBPへ伝える。
+    UFUNCTION(BlueprintImplementableEvent, Category = "Enemy|Defense")
+    void TargetGuardBroken(AActor* target);
 
-	//ジャスト回避された攻撃を減速する。
-	UFUNCTION(BlueprintCallable, Category = "Enemy | Defense")
-	bool ApplyPerfectDodge(AActor* target);
+    //ジャスト回避の成功を相手へ通知する。
+    UFUNCTION(BlueprintCallable, Category = "Enemy | Defense")
+    bool ApplyPerfectDodge(AActor* target);
 
-	//攻撃に対して防御できる時間の幅を返す。
-	UFUNCTION(BlueprintPure, Category = "Enemy | Timing")
-	float GetDefenseWindow(EDefenseResult result, FName actionId = NAME_None) const;
+    //攻撃に対して防御できる時間の幅を返す。
+    UFUNCTION(BlueprintPure, Category = "Enemy | Timing")
+    float GetDefenseWindow(EDefenseResult result, FName actionId = NAME_None) const;
 
-	//防御の入力タイミングが有効か調べる。
-	UFUNCTION(BlueprintPure, Category = "Enemy | Timing")
-	bool IsDefenseInputValid(EDefenseResult result, float elapsed) const;
+    //防御の入力タイミングが有効か調べる。
+    UFUNCTION(BlueprintPure, Category = "Enemy | Timing")
+    bool IsDefenseInputValid(EDefenseResult result, float elapsed) const;
 
-	//攻撃を減速しているか返す。
-	UFUNCTION(BlueprintPure, Category = "Enemy | Timing")
-	bool IsAttackSlowed() const { return m_slowMontage != nullptr; }
+    //今の攻撃でジャスト回避が成功したか返す。
+    UFUNCTION(BlueprintPure, Category = "Enemy | Timing")
+    bool WasPerfectDodged() const { return m_dodged; }
 
-	//次に出すコンボの名前を返す。
-	UFUNCTION(BlueprintPure, Category = "Enemy | Combo")
-	FName GetPendingComboId() const { return m_nextActionId; }
+    //次に出すコンボの名前を返す。
+    UFUNCTION(BlueprintPure, Category = "Enemy | Combo")
+    FName GetPendingComboId() const { return m_nextActionId; }
 
     //届かなくなった次の一手を取り消し、追跡を再開する。
     void CheckComboRange();
 
-	//今のコンボの段数を返す。
-	UFUNCTION(BlueprintPure, Category = "Enemy | Combo")
-	int32 GetComboStep() const { return m_comboSteps; }
+    //今のコンボの段数を返す。
+    UFUNCTION(BlueprintPure, Category = "Enemy | Combo")
+    int32 GetComboStep() const { return m_comboSteps; }
 
-	//敵が戦闘できる状態か返す。
-	UFUNCTION(BlueprintPure, Category = "Enemy")
-	bool IsCombatActive() const { return m_state == EEnemyState::Alive; }
+    //敵が戦闘できる状態か返す。
+    UFUNCTION(BlueprintPure, Category = "Enemy")
+    bool IsCombatActive() const { return m_state == EEnemyState::Alive; }
 
-	//現在の体力を返す。
-	UFUNCTION(BlueprintPure, Category = "Enemy")
-	float GetHealth() const;
+    //現在の体力を返す。
+    UFUNCTION(BlueprintPure, Category = "Enemy")
+    float GetHealth() const;
 
-	//最大体力を返す。
-	UFUNCTION(BlueprintPure, Category = "Enemy")
-	float GetMaxHealth() const;
+    //最大体力を返す。
+    UFUNCTION(BlueprintPure, Category = "Enemy")
+    float GetMaxHealth() const;
 
-	//敵が行動を実行中か返す。
-	UFUNCTION(BlueprintPure, Category = "Enemy")
-	bool IsActing() const { return m_activeIndex != INDEX_NONE; }
+    //敵が行動を実行中か返す。
+    UFUNCTION(BlueprintPure, Category = "Enemy")
+    bool IsActing() const { return m_activeIndex != INDEX_NONE; }
 
-	//次の行動を判断できる状態か調べる。
-	UFUNCTION(BlueprintPure, Category = "Enemy")
-	bool CanDecide() const;
+    //次の行動を判断できる状態か調べる。
+    UFUNCTION(BlueprintPure, Category = "Enemy")
+    bool CanDecide() const;
 
-	//相手を打ち上げられるか調べる。
-	UFUNCTION(BlueprintNativeEvent, Category = "Enemy | Air")
-	bool CanLiftTarget(AActor* target) const;
+    //相手を打ち上げられるか調べる。
+    UFUNCTION(BlueprintNativeEvent, Category = "Enemy | Air")
+    bool CanLiftTarget(AActor* target) const;
 
-	//剣が届く間合いを返す。
-	UFUNCTION(BlueprintPure, Category = "Enemy | Movement")
-	float GetMeleeDistance() const;
+    //剣が届く間合いを返す。
+    UFUNCTION(BlueprintPure, Category = "Enemy | Movement")
+    float GetMeleeDistance() const;
 
-	//指定した攻撃の実行を依頼する。
-	UFUNCTION(BlueprintCallable, Category = "Enemy")
-	bool RequestAction(FName _actionId = NAME_None);
+    //指定した攻撃の実行を依頼する。
+    UFUNCTION(BlueprintCallable, Category = "Enemy")
+    bool RequestAction(FName _actionId = NAME_None);
 
-	//現在の攻撃を中断する。
-	UFUNCTION(BlueprintCallable, Category = "Enemy")
-	void CancelAction();
+    //現在の攻撃を中断する。
+    UFUNCTION(BlueprintCallable, Category = "Enemy")
+    void CancelAction();
 
-	//次の戦闘に向けて状態を初期化する。
-	UFUNCTION(BlueprintCallable, Category = "Enemy")
-	virtual void ResetEncounter();
+    //次の戦闘に向けて状態を初期化する。
+    UFUNCTION(BlueprintCallable, Category = "Enemy")
+    virtual void ResetEncounter();
 
-	//敵を倒したことをBPへ知らせる。
-	UFUNCTION(BlueprintImplementableEvent, Category = "Enemy")
-	void EnemyDefeted();
-
-public:
-	//現在の行動を見分ける番号。
-	int32 m_actionSerial = 0;
-
-	//行動が成功して終わったか。
-	bool m_actionSuccess = false;
+    //敵を倒したことをBPへ知らせる。
+    UFUNCTION(BlueprintImplementableEvent, Category = "Enemy")
+    void EnemyDefeted();
 
 public:
-	//ガード崩れに使うエフェクト。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|UI")
-	TObjectPtr<UNiagaraSystem> m_guardFx;
+    //現在の行動を見分ける番号。
+    int32 m_actionSerial = 0;
 
-	//ガード崩れのエフェクトの大きさ。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|UI")
-	FVector m_guardFxScale = FVector(.7f);
+    //行動が成功して終わったか。
+    bool m_actionSuccess = false;
 
-	//命中の演出を行う部品。
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Enemy|Hit FX")
-	TObjectPtr<UEnemyHitEffect> m_hitFx;
+public:
+    //ガード崩れに使うエフェクト。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|UI")
+    TObjectPtr<UNiagaraSystem> m_guardFx;
 
-	//移動しない敵として扱うか。
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Enemy|Movement", meta=(DisplayName="Stationary"))
-	bool m_stationary = false;
+    //ガード崩れのエフェクトの大きさ。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|UI")
+    FVector m_guardFxScale = FVector(.7f);
 
-	//空中コンボを使用するか。
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Air", meta = (DisplayName = "Enable Air Combo"))
-	bool m_airCombo = false;
+    //命中の演出を行う部品。
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy|Hit FX")
+    TObjectPtr<UEnemyHitEffect> m_hitFx;
 
-	//近接攻撃を始める基本の間合い。
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Movement",
-		meta = (ClampMin = "1", DisplayName = "Melee Distance"))
-	float m_meleeDist = 160.f;
+    //移動しない敵として扱うか。
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy|Movement",meta = (DisplayName = "Stationary"))
+    bool m_stationary = false;
 
-	//体が重ならないための余裕。
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Movement",
-		meta = (ClampMin = "0", DisplayName = "Body Margin"))
-	float m_bodyMargin = 30.f;
+    //空中コンボを使用するか。
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Air", meta = (DisplayName = "Enable Air Combo"))
+    bool m_airCombo = false;
 
-	//能力とタグを管理する部品。
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "ASC"))
-	TObjectPtr<UCombatAbilitySystemComponent> m_abilitySystemComponent;
+    //近接攻撃を始める基本の間合い。
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Movement", meta = (ClampMin = "1", DisplayName = "Melee Distance"))
+    float m_meleeDist = 160.f;
 
-	//体力などの値を管理する部品。
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "AttributeSet"))
-	TObjectPtr<UCombatAttributeSet> m_attributeSet;
+    //体が重ならないための余裕。
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Movement", meta = (ClampMin = "0", DisplayName = "Body Margin"))
+    float m_bodyMargin = 30.f;
 
-	//攻撃の当たり判定を行う部品。
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "Combat"))
-	TObjectPtr<UCombat> m_combat;
+    //能力とタグを管理する部品。
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "ASC"))
+    TObjectPtr<UCombatAbilitySystemComponent> m_abilitySystemComponent;
 
-	//段差を越える移動を行う部品。
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Enemy")
-	TObjectPtr<UEnemyTraversal> m_traversal;
+    //体力などの値を管理する部品。
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "AttributeSet"))
+    TObjectPtr<UCombatAttributeSet> m_attributeSet;
 
-	//防御と反撃を判断する部品。
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "Defense"))
-	TObjectPtr<UDefense> m_defense;
+    //攻撃の当たり判定を行う部品。
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "Combat"))
+    TObjectPtr<UCombat> m_combat;
 
-	//狙う相手を選ぶ部品。
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Enemy")
-	TObjectPtr<UEnemyTargeting> m_targeting;
+    //段差を越える移動を行う部品。
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy")
+    TObjectPtr<UEnemyTraversal> m_traversal;
 
-	//BPから設定する敵のデータ。
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "Definition"))
-	TObjectPtr<UEnemyData> m_definition;
+    //防御と反撃を判断する部品。
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "Defense"))
+    TObjectPtr<UDefense> m_defense;
 
-	//行動判断に使うBT。
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "BehaviorTree"))
-	TObjectPtr<UBehaviorTree> m_behaviorTree;
+    //狙う相手を選ぶ部品。
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy")
+    TObjectPtr<UEnemyTargeting> m_targeting;
 
-	//現在の状態。
-	UPROPERTY(BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "State"))
-	EEnemyState m_state = EEnemyState::Alive;
+    //BPから設定する敵のデータ。
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "Definition"))
+    TObjectPtr<UEnemyData> m_definition;
 
-	//戦闘で狙っている相手。
-	UPROPERTY(BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "CombatTarget"))
-	TObjectPtr<AActor> m_combatTarget;
+    //行動判断に使うBT。
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "BehaviorTree"))
+    TObjectPtr<UBehaviorTree> m_behaviorTree;
 
-	//体力が変わった時の通知。
-	UPROPERTY(BlueprintAssignable, Category = "Enemy", meta = (DisplayName = "OnHealthChanged"))
-	FEnemyHealthEvent m_onHealthChanged;
+    //現在の状態。
+    UPROPERTY(BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "State"))
+    EEnemyState m_state = EEnemyState::Alive;
 
-	//敵の状態が変わった時の通知。
-	UPROPERTY(BlueprintAssignable, Category = "Enemy", meta = (DisplayName = "OnStateChanged"))
-	FEnemyStateEvent m_onStateChanged;
+    //戦闘で狙っている相手。
+    UPROPERTY(BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "CombatTarget"))
+    TObjectPtr<AActor> m_combatTarget;
+
+    //体力が変わった時の通知。
+    UPROPERTY(BlueprintAssignable, Category = "Enemy", meta = (DisplayName = "OnHealthChanged"))
+    FEnemyHealthEvent m_onHealthChanged;
+
+    //敵の状態が変わった時の通知。
+    UPROPERTY(BlueprintAssignable, Category = "Enemy", meta = (DisplayName = "OnStateChanged"))
+    FEnemyStateEvent m_onStateChanged;
 
 protected:
     //強攻撃だけで崩せるガードを使うか。
@@ -293,152 +285,138 @@ protected:
     //ガード成功時に減らす体勢を反映する。
     virtual void OnStrongBlock() {}
 
-	//ゲーム開始時に必要な状態を準備する。
-	virtual void BeginPlay() override;
+    //ゲーム開始時に必要な状態を準備する。
+    virtual void BeginPlay() override;
 
-	//経過時間に合わせて敵の状態を更新する。
-	virtual void Tick(float _delta) override;
+    //経過時間に合わせて敵の状態を更新する。
+    virtual void Tick(float _delta) override;
 
-	//終了時にタイマーや登録を解除する。
-	virtual void EndPlay(const EEndPlayReason::Type _reason) override;
+    //終了時にタイマーや登録を解除する。
+    virtual void EndPlay(const EEndPlayReason::Type _reason) override;
 
-	//体力がなくなった時の処理を行う。
-	virtual void HandleHealthDepleted();
+    //体力がなくなった時の処理を行う。
+    virtual void HandleHealthDepleted();
 
-	//現在の状態で選べる攻撃か調べる。
-	virtual bool IsActionAllowed(const FEnemyActionData& _action) const { return true; }
+    //現在の状態で選べる攻撃か調べる。
+    virtual bool IsActionAllowed(const FEnemyActionData& _action) const { return true; }
 
-	//状況に合わせて攻撃の選びやすさを返す。
-	virtual float GetActionWeightMultiplier(const FEnemyActionData& _action) const { return 1.0f; }
+    //状況に合わせて攻撃の選びやすさを返す。
+    virtual float GetActionWeightMultiplier(const FEnemyActionData& _action) const { return 1.0f; }
 
-	//ガードした時も攻撃してきた相手を知らせる。
-	virtual void OnAttackReceived(AActor* _attacker) {}
+    //ガードした時も攻撃してきた相手を知らせる。
+    virtual void OnAttackReceived(AActor* _attacker) {}
 
-	//ダメージを受けた後の反応を行う。
-	virtual void OnAcceptedHit(AActor* _attacker)
-	{
-	}
+    //ダメージを受けた後の反応を行う。
+    virtual void OnAcceptedHit(AActor* _attacker) {}
 
-	//行動終了後の状態を整える。
-	virtual void RecordMoveResult(FName _move, bool _hit) {}
+    //行動終了後の状態を整える。
+    virtual void RecordMoveResult(FName _move, bool _hit) {}
 
-	//行動が終わった時に呼ぶ。
-	virtual void OnActionEnded()
-	{
-	}
+    //行動が終わった時に呼ぶ。
+    virtual void OnActionEnded() {}
 
-	//攻撃終了後の次の行動を準備する。
-	virtual void OnAttackFinished()
-	{
-	}
+    //攻撃終了後の次の行動を準備する。
+    virtual void OnAttackFinished() {}
 
-	//体力の変化を受けて死亡などを確認する。
-	void HealthChanged(const FOnAttributeChangeData& _data);
+    //体力の変化を受けて死亡などを確認する。
+    void HealthChanged(const FOnAttributeChangeData& _data);
 
-	//敵の行動状態を切り替える。
-	void SetState(EEnemyState _newState);
+    //敵の行動状態を切り替える。
+    void SetState(EEnemyState _newState);
 
-	//体力を設定する。
-	void SetHealthPool(float _max);
+    //体力を設定する。
+    void SetHealthPool(float _max);
 
-	//距離と状態に合う攻撃を抽選する。
-	int32 ChooseAction() const;
+    //距離と状態に合う攻撃を抽選する。
+    int32 ChooseAction() const;
 
-	//回避する方向を求める。
-	FVector EvadeDirection(const FEnemyActionData& _action) const;
+    //回避する方向を求める。
+    FVector EvadeDirection(const FEnemyActionData& _action) const;
 
-	//障害物を避けて回避できるか調べる。
-	bool CanEvade(const FEnemyActionData& _action) const;
+    //障害物を避けて回避できるか調べる。
+    bool CanEvade(const FEnemyActionData& _action) const;
 
     //後ろが狭い時は斜め後ろを試す。
     FVector FindEvadePath(const FEnemyActionData& _action) const;
+
+    //指定した方向に体が通れて、足元に床があるか調べる。
     bool HasEvadePath(const FEnemyActionData& _action, FVector _dir) const;
+
+    //退避中に進む方向。
     FVector m_evadeDir = FVector::ZeroVector;
 
     //ボスが退避の向きを選べるようにする。
-    UPROPERTY(EditDefaultsOnly, Category="Enemy|Movement")
+    UPROPERTY(EditDefaultsOnly, Category = "Enemy|Movement")
     bool m_findRetreatAngle = false;
 
-	//攻撃を使う条件がそろっているか調べる。
-	bool CanUseAction(int32 _actionIndex, float _distance = -1.0f) const;
+    //攻撃を使う条件がそろっているか調べる。
+    bool CanUseAction(int32 _actionIndex, float _distance = -1.0f) const;
 
-	//次のコンボの設定を探す。
-	int32 FindComboAction(FName _actionId) const;
+    //次のコンボの設定を探す。
+    int32 FindComboAction(FName _actionId) const;
 
 protected:
-	//変更前の移動速度。
-	float m_savedSpeed = 0.f;
+    //変更前の移動速度。
+    float m_savedSpeed = 0.f;
 
-	//変更前の向きの設定。
-	bool m_savedTurn = false;
+    //変更前の向きの設定。
+    bool m_savedTurn = false;
 
-	//現在の攻撃を始めた時刻。
-	double m_actionStart = 0.;
+    //現在の攻撃を始めた時刻。
+    double m_actionStart = 0.;
 
-	//次につなぐ攻撃名。
-	FName m_nextActionId;
+    //次につなぐ攻撃名。
+    FName m_nextActionId;
 
-	//直前に使った攻撃名。
-	FName m_lastAction;
+    //直前に使った攻撃名。
+    FName m_lastAction;
 
     //連撃を使ってから終えた攻撃の数。
     int32 m_attacksSinceCombo = 0;
 
-	//減速前の再生速度。
-	float m_savedRate = 1.f;
+    //同じ攻撃で成功通知を重ねて送らないための記録。
+    bool m_dodged = false;
 
-	//減速を始めた再生位置。
-	float m_slowStart = 0.f;
+    //現在のコンボの段数。
+    int32 m_comboSteps = 0;
 
-	//減速を終える再生位置。
-	float m_slowEnd = 0.f;
+    //今回の攻撃が命中したか。
+    bool m_bActionHit = false;
 
-	//減速の対象となる区間名。
-	FName m_slowSection;
+    //今回の攻撃が防がれたか。
+    bool m_bActionBlocked = false;
 
-	//現在のコンボの段数。
-	int32 m_comboSteps = 0;
+    //現在使っている攻撃の番号。
+    int32 m_activeIndex = INDEX_NONE;
 
-	//今回の攻撃が命中したか。
-	bool m_bActionHit = false;
+    //次の行動を開始できる時刻。
+    double m_readyTime = 0.0;
 
-	//今回の攻撃が防がれたか。
-	bool m_bActionBlocked = false;
-
-	//現在使っている攻撃の番号。
-	int32 m_activeIndex = INDEX_NONE;
-
-	//次の行動を開始できる時刻。
-	double m_readyTime = 0.0;
-
-	//各攻撃を再使用できる時刻。
-	TMap<FName, double> m_actionCooldowns;
+    //各攻撃を再使用できる時刻。
+    TMap<FName, double> m_actionCooldowns;
 
     //次に打ち上げを使える時刻。
     double m_nextLift = 0.;
 
-	//体力変更の通知を解除するための記録。
-	FDelegateHandle m_healthHandle;
+    //体力変更の通知を解除するための記録。
+    FDelegateHandle m_healthHandle;
 
-	UPROPERTY(VisibleAnywhere, Category="Event")
-	bool m_IsEventEnemy = false;
+    //撃破をステージイベントに知らせる敵か。
+    UPROPERTY(VisibleAnywhere, Category = "Event")
+    bool m_IsEventEnemy = false;
 
 private:
-	//素材の移動を剣の間合いまでに抑える。
-	FTransform AimAttackMove(const FTransform& _move, UCharacterMovementComponent* _movement, float _delta);
+    //素材の移動を剣の間合いまでに抑える。
+    FTransform AimAttackMove(const FTransform& _move, UCharacterMovementComponent* _movement, float _delta);
 
-	//攻撃の移動を相手へ合わせているか。
-	bool m_aimMove = false;
+    //攻撃の移動を相手へ合わせているか。
+    bool m_aimMove = false;
 
-	//攻撃中に相手との間へ残す距離。
-	float m_aimRange = 140.f;
+    //攻撃中に相手との間へ残す距離。
+    float m_aimRange = 140.f;
 
 protected:
-	//減速しているモンタージュ。
-	UPROPERTY(Transient)
-	TObjectPtr<UAnimMontage> m_slowMontage;
-
-	//通常の移動速度。
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy | Movement", meta = (ClampMin = "0"))
-	float m_moveSpeed = 350.0f;
+    //通常の移動速度。
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy | Movement", meta = (ClampMin = "0"))
+    float m_moveSpeed = 350.0f;
 };

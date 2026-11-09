@@ -40,7 +40,9 @@ void UEnemyAudio::Emit_Implementation(EEnemySound _sound, FVector _point, float 
 
     //音の高さを少しだけ変える。
     const float pitch = FMath::Max(KINDA_SMALL_NUMBER, cue->m_pitch + FMath::FRandRange(-m_pitchSpread, m_pitchSpread));
-    UGameplayStatics::PlaySoundAtLocation(this, sound, _point, FRotator::ZeroRotator, cue->m_volume * _gain, pitch, 0.f,
-        m_range, _sound == EEnemySound::Step ? m_stepLimit.Get() : m_limit.Get(), GetOwner());
-    if(m_debug) { UE_LOG(LogTemp, Display, TEXT("EnemyAudio %s event=%d sound=%s"), *GetNameSafe(GetOwner()), int32(_sound), *GetNameSafe(sound)); }
+    const float volume = cue->m_volume * _gain;
+
+    //足音と攻撃音で、同時に鳴らせる音の数を分ける。
+    auto* limit = _sound == EEnemySound::Step ? m_stepLimit.Get() : m_limit.Get();
+    UGameplayStatics::PlaySoundAtLocation(this, sound, _point, FRotator::ZeroRotator, volume, pitch, 0.f, m_range, limit, GetOwner());
 }

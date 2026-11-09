@@ -28,7 +28,7 @@ EBTNodeResult::Type UBTT_RotateEnemy::ExecuteTask(UBehaviorTreeComponent& _owner
 
 	//ターゲットへの方向ベクトルを計算
 	FVector toTarget = (target->GetActorLocation() - enemy->GetActorLocation()).GetSafeNormal();
-	toTarget.Z = 0.f;	//水平方向のみ計算
+	toTarget.Z = 0.f; //水平方向のみ計算
 
 	//正面の方向。
 	FVector forward = enemy->GetActorForwardVector();
@@ -36,25 +36,20 @@ EBTNodeResult::Type UBTT_RotateEnemy::ExecuteTask(UBehaviorTreeComponent& _owner
 
 	//現在の角度差を計算
 	float dot = FVector::DotProduct(forward.GetSafeNormal(), toTarget.GetSafeNormal());
+
 	//度数で表した角度。
 	float angleDeg = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(dot, -1.f, 1.f)));
 
 	//許容角度内なら成功
-	if (angleDeg <= m_allowedAngleDegrees)
-	{
-		return EBTNodeResult::Succeeded;
-	}
+	if (angleDeg <= m_allowedAngleDegrees) { return EBTNodeResult::Succeeded; }
 
 	//許容角度を超えている場合は回転する
 	FRotator targetRot = toTarget.Rotation();
-	targetRot.Pitch = 0.f;	//水平方向のみ回転
+	targetRot.Pitch = 0.f; //水平方向のみ回転
 	targetRot.Roll = 0.f;
 
 	//回転速度が0以下の場合は瞬間的に回転する
-	if(m_rotationSpeed <= 0.f)
-	{
-		enemy->SetActorRotation(targetRot);
-	}
+	if (m_rotationSpeed <= 0.f) { enemy->SetActorRotation(targetRot); }
 	else
 	{
 		//回転速度に応じて徐々に回転する
@@ -62,9 +57,10 @@ EBTNodeResult::Type UBTT_RotateEnemy::ExecuteTask(UBehaviorTreeComponent& _owner
 
 		//現在の回転と目標の回転を線形補間して新しい回転を計算
 		FRotator currentRot = enemy->GetActorRotation();
+
 		//新しい向き。
 		FRotator newRot = FMath::RInterpTo(currentRot, targetRot, deltaTime, m_rotationSpeed / 360.f);
-		
+
 		//新しい回転を敵キャラクターに適用
 		enemy->SetActorRotation(newRot);
 	}

@@ -9,14 +9,14 @@
 //Sets default values
 AWaveManager::AWaveManager()
 {
- 	//Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	//毎フレーム更新するかを決める。
 	PrimaryActorTick.bCanEverTick = false;
-
 }
 
 //Called when the game starts or when spawned
 void AWaveManager::BeginPlay()
 {
+
 	//基底クラスのBeginPlayを呼び出す
 	Super::BeginPlay();
 }
@@ -24,20 +24,21 @@ void AWaveManager::BeginPlay()
 //経過時間に合わせて敵の状態を更新する。
 void AWaveManager::Tick(float _deltaTime)
 {
+
 	//基底クラスのTickを呼び出す
 	Super::Tick(_deltaTime);
-	
+
 	//ウェーブが開始されていない場合は、役割の更新を行わない
 	if (m_bWaveStarted) { return; }
 
 	//役割の更新間隔を加算
 	m_roleUpdateInterval += _deltaTime;
-	
-	if(m_roleUpdateInterval >= m_roleUpdateInterval)
+
+	if (m_roleUpdateInterval >= m_roleUpdateInterval)
 	{
 		//役割の更新
 		UpdateAttackerRoles();
-		
+
 		//役割の更新間隔をリセット
 		m_roleUpdateInterval = 0.f;
 	}
@@ -46,62 +47,59 @@ void AWaveManager::Tick(float _deltaTime)
 //Waveを開始する関数
 void AWaveManager::StartWave()
 {
-	if(!m_pEnemyPool) 	
+	if (!m_pEnemyPool)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("EnemyPool を割り当てていません。"));
 		return;
 	}
 
-	m_aliveEnemies.Empty();			//生存している敵のリストをクリア
-	m_activeAttackers.Empty();		//攻撃役のリストをクリア
-	m_defeatedEnemyCount = 0;		//倒された敵の数をリセット
-	m_bMidBossSpawned = false;		//中間ボススポーンフラグをリセット
-	m_bFinalBossSpawned = false;	//ラストボススポーンフラグをリセット
+	m_aliveEnemies.Empty();      //生存している敵のリストをクリア
+	m_activeAttackers.Empty();   //攻撃役のリストをクリア
+	m_defeatedEnemyCount = 0;    //倒された敵の数をリセット
+	m_bMidBossSpawned = false;   //中間ボススポーンフラグをリセット
+	m_bFinalBossSpawned = false; //ラストボススポーンフラグをリセット
 
 	//エネミープールから敵をスポーン
 	for (int32 i = 0; i < m_enemiesPerWave; ++i)
 	{
+
 		//生成した敵や弾。
 		AEnemyChara* SpawnedEnemy = m_pEnemyPool->SpawnEnemyAtRandomLocation();
-		if (SpawnedEnemy)
-		{
-			m_aliveEnemies.Add(SpawnedEnemy);
-		}
+		if (SpawnedEnemy) { m_aliveEnemies.Add(SpawnedEnemy); }
 	}
 
-	m_initialEnemyCount = m_aliveEnemies.Num();	//ウェーブ開始時の敵の数を保存
-	m_bWaveStarted = true;						//ウェーブ開始フラグを立てる
+	m_initialEnemyCount = m_aliveEnemies.Num(); //ウェーブ開始時の敵の数を保存
+	m_bWaveStarted = true;                      //ウェーブ開始フラグを立てる
 
 	//役割の更新
 	UpdateAttackerRoles();
-
-	UE_LOG(LogTemp, Log, TEXT("AWaveManager: Wave 開始。敵 %d 体をスポーンしました。"), m_initialEnemyCount);
 }
 
 //敵撃破通知
 void AWaveManager::NotifyEnemyDefeated(AEnemyChara* _defeatedEnemy)
 {
+
 	//ウェーブが開始されていない場合は、処理を行わない
-	if (!m_bWaveStarted) { return; }	
+	if (!m_bWaveStarted) { return; }
 
 	//生存している敵のリストから倒された敵を削除
-	m_aliveEnemies.Remove(_defeatedEnemy);	
+	m_aliveEnemies.Remove(_defeatedEnemy);
 
 	//攻撃役のリストから倒された敵を削除
-	m_activeAttackers.Remove(_defeatedEnemy);	
+	m_activeAttackers.Remove(_defeatedEnemy);
 
 	//倒された敵の数をカウント
-	m_defeatedEnemyCount++;					
-	UE_LOG(LogTemp, Log, TEXT("AWaveManager: 敵が倒されました。残りの敵の数: %d"), m_aliveEnemies.Num());
-	
+	m_defeatedEnemyCount++;
+
 	//アタッカーの再割り当て
 	UpdateAttackerRoles();
 
 	//中間ボススポーンの判定
 	if (!m_bMidBossSpawned && m_initialEnemyCount > 0)
 	{
+
 		//倒された敵の割合を計算
-		float defeatedPercent = (float)m_defeatedEnemyCount / (float)m_initialEnemyCount * 100.f;
+		float defeatedPercent =
+			(float)m_defeatedEnemyCount / (float)m_initialEnemyCount * 100.f;
 
 		//倒された敵の割合が中間ボスポーンの割合を超えている場合、中間ボスをスポーン
 		if (defeatedPercent >= m_midBossSpawnPercent) { SpawnMidBoss(); }
@@ -110,6 +108,7 @@ void AWaveManager::NotifyEnemyDefeated(AEnemyChara* _defeatedEnemy)
 	//ラストボススポーンの判定
 	if (m_aliveEnemies.Num() == 0 && !m_bFinalBossSpawned)
 	{
+
 		//中間ボスも倒されてるかを確認
 		bool midBossAlive = (m_midBoss && m_midBoss->GetCurrentState() != FEEnemyState::Dead);
 
@@ -120,33 +119,36 @@ void AWaveManager::NotifyEnemyDefeated(AEnemyChara* _defeatedEnemy)
 //アタッカー役割更新
 void AWaveManager::UpdateAttackerRoles()
 {
+
 	//生存している敵がいない場合は、役割の更新を行わない
-	if (m_aliveEnemies.Num() == 0) { return; }	
-	
+	if (m_aliveEnemies.Num() == 0) { return; }
+
 	//プレイヤーを探す
-	APawn* player = FindPlayer();	
-	if(!player) { return; }
+	APawn* player = FindPlayer();
+	if (!player) { return; }
 
 	//死んでる敵を除外
 	m_aliveEnemies.RemoveAll([](AEnemyChara* enemy) 
-		{ 
-			return !enemy || enemy->GetCurrentState() == FEEnemyState::Dead; 
+		{
+		return !enemy || enemy->GetCurrentState() == FEEnemyState::Dead;
 		});
 	m_activeAttackers.RemoveAll([](AEnemyChara* enemy) 
-		{ 
-			return !enemy || enemy->GetCurrentState() == FEEnemyState::Dead; 
+		{
+		return !enemy || enemy->GetCurrentState() == FEEnemyState::Dead;
 		});
 
 	//アタッカーの数を調整
-	for(AEnemyChara* enemy : m_aliveEnemies)
+	for (AEnemyChara* enemy : m_aliveEnemies)
 	{
+
 		//現在のアタッカーの数が、1ウェーブあたりのアタッカーの数より少ない場合、攻撃役に割り当てる
 		if (m_activeAttackers.Num() < m_attackersPerWave && !m_activeAttackers.Contains(enemy))
 		{
 			m_activeAttackers.Add(enemy);
 			SetAttackerRole(enemy, true);
 		}
-		else if (m_activeAttackers.Num() > m_attackersPerWave && m_activeAttackers.Contains(enemy))
+		else if (m_activeAttackers.Num() > m_attackersPerWave &&
+			m_activeAttackers.Contains(enemy))
 		{
 			m_activeAttackers.Remove(enemy);
 			SetAttackerRole(enemy, false);
@@ -155,14 +157,16 @@ void AWaveManager::UpdateAttackerRoles()
 
 	//残りの敵を包囲役に割り当てる
 	int32 encircleIndex = 0;
+
 	//周囲を囲む敵の数。
 	int32 totalEncirclers = m_aliveEnemies.Num() - m_activeAttackers.Num();
 
 	//アタッカー役でない敵を包囲役に割り当てる
-	for(AEnemyChara* enemy : m_aliveEnemies)
+	for (AEnemyChara* enemy : m_aliveEnemies)
 	{
+
 		//攻撃役でない敵を包囲役に割り当てる
-		if (!m_activeAttackers.Contains(enemy)){ continue; }
+		if (!m_activeAttackers.Contains(enemy)) { continue; }
 
 		//包囲役の位置を割り当てる
 		AssignEncirclePositions(enemy, encircleIndex, totalEncirclers);
@@ -186,7 +190,7 @@ void AWaveManager::AssignEncirclePositions(AEnemyChara* _enemy, int32 _index, in
 
 	//包囲役の位置を計算
 	FVector targetPos = CalculateEncirclePosition(player->GetActorLocation(), _index, _total);
-	
+
 	//ナビゲーションシステムを取得
 	UNavigationSystemV1* navSys = UNavigationSystemV1::GetCurrent(GetWorld());
 	if (!navSys) { return; }
@@ -212,7 +216,7 @@ FVector AWaveManager::CalculateEncirclePosition(FVector _playerPos, int32 _index
 	float rad = FMath::DegreesToRadians(angle);
 
 	//プレイヤーを中心に、指定した半径で円を描くように位置を返す
-	return  _playerPos + FVector(FMath::Cos(rad) * m_encircleRadius, FMath::Sin(rad) * m_encircleRadius, 0.f);
+	return _playerPos + FVector(FMath::Cos(rad) * m_encircleRadius, FMath::Sin(rad) * m_encircleRadius, 0.f);
 }
 
 //中間ボスのスポーン
@@ -226,7 +230,7 @@ void AWaveManager::SpawnMidBoss()
 
 	//スポーン位置と回転を設定
 	FVector spawnLoc = m_midBossSpawnPoint ? m_midBossSpawnPoint->GetActorLocation() : GetActorLocation() + FVector(500.f, 0.f, 0.f);
-	
+
 	//生成時の向き。
 	FRotator spawnRot = m_midBossSpawnPoint ? m_midBossSpawnPoint->GetActorRotation() : FRotator::ZeroRotator;
 
@@ -255,19 +259,17 @@ void AWaveManager::SpawnFinalBoss()
 
 	//スポーン位置と回転を設定
 	FVector spawnLoc = m_finalBossSpawnPoint ? m_finalBossSpawnPoint->GetActorLocation() : GetActorLocation() + FVector(1000.f, 0.f, 0.f);
+
 	//生成時の向き。
 	FRotator spawnRot = m_finalBossSpawnPoint ? m_finalBossSpawnPoint->GetActorRotation() : FRotator::ZeroRotator;
-	
+
 	//スポーンパラメータを設定
 	FActorSpawnParameters spawnParams;
 	spawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-	
+
 	//ラストボスをスポーン
 	AEnemyChara* finalBoss = GetWorld()->SpawnActor<AEnemyChara>(m_finalBossClass, spawnLoc, spawnRot, spawnParams);
-	if (finalBoss)
-	{
-		m_bFinalBossSpawned = true;
-	}
+	if (finalBoss) { m_bFinalBossSpawned = true; }
 }
 
 //現在生存している敵の数を返す関数

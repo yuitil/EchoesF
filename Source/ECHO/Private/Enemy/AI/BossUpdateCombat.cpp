@@ -20,14 +20,14 @@
 //動作を確かめるための幅や待ち時間。
 namespace BossUpdateCombatTuning
 {
-    //状態を更新する間隔。
-    constexpr auto updateDelay = 0.2f;
-    
+	//状態を更新する間隔。
+	constexpr auto updateDelay = 0.2f;
+
 	//距離の判定に持たせる余裕。
-    constexpr auto rangeMargin = 20.f;
-    
+	constexpr auto rangeMargin = 20.f;
+
 	//相手がいない時に使う距離。
-    constexpr auto noTargetRange = 99999.0f;
+	constexpr auto noTargetRange = 99999.0f;
 }
 
 //初期設定と必要な部品を用意する。
@@ -47,68 +47,76 @@ void UBossUpdateCombat::TickNode(UBehaviorTreeComponent& _ownerComp, uint8* _nod
 
 	//敵の行動を操作するAI。
 	AAIController* aiController = _ownerComp.GetAIOwner();
-	
+
 	//処理の対象となる敵。
 	AEnemyCharacterBase* enemy = aiController ? Cast<AEnemyCharacterBase>(aiController->GetPawn()) : nullptr;
-	
+
 	//BTが判断に使う値の保存先。
 	UBlackboardComponent* blackboard = _ownerComp.GetBlackboardComponent();
-	if(!enemy || !blackboard) { return; }
+	if (!enemy || !blackboard) { return; }
 
 	//狙っている相手。
 	AActor* target = enemy->m_targeting->SelectTarget();
 
 	//初めて会う前は待機し、見失った後だけ最後に見た場所から探す。
-	if(!enemy->IsA<ABossShadow>() && enemy->IsCombatActive())
+	if (!enemy->IsA<ABossShadow>() && enemy->IsCombatActive())
 	{
 		const bool visible = IsValid(target) && aiController->LineOfSightTo(target);
-		if(IsValid(target) && !visible && !enemy->IsActing() && enemy->GetDistanceTo(target) > enemy->m_targeting->m_range) { target = nullptr; }
-		if(visible)
+		if (IsValid(target) && !visible && !enemy->IsActing() && enemy->GetDistanceTo(target) > enemy->m_targeting->m_range)
 		{
-			m_lastSeen = target->GetActorLocation();
+			target = nullptr;
 		}
-		if(IsValid(target) && m_searching) { aiController->StopMovement(); m_searching = false; }
-		if(!IsValid(target) && m_lastSeen.IsSet() && !enemy->IsActing() && !enemy->IsRepositioning() && !enemy->m_defense->IsBusy())
+		if (visible) { m_lastSeen = target->GetActorLocation(); }
+		if (IsValid(target) && m_searching)
+		{
+			aiController->StopMovement();
+			m_searching = false;
+		}
+		if (!IsValid(target) && m_lastSeen.IsSet() && !enemy->IsActing() && !enemy->IsRepositioning() && !enemy->m_defense->IsBusy())
 		{
 			const double now = enemy->GetWorld()->GetTimeSeconds();
-			if(now >= m_nextLook && (!m_searching || aiController->GetMoveStatus() == EPathFollowingStatus::Idle))
+			if (now >= m_nextLook && (!m_searching || aiController->GetMoveStatus() == EPathFollowingStatus::Idle))
 			{
 				FNavLocation point;
 				auto* nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(enemy->GetWorld());
-				if(!m_searching) { aiController->MoveToLocation(m_lastSeen.GetValue()); }
-				else if(nav && (nav->GetRandomReachablePointInRadius(m_lastSeen.GetValue(),m_searchRadius,point)
-					|| nav->GetRandomReachablePointInRadius(enemy->GetActorLocation(),m_searchRadius,point))) { aiController->MoveToLocation(point.Location); }
+				if (!m_searching) { aiController->MoveToLocation(m_lastSeen.GetValue()); }
+				else if (nav && (nav->GetRandomReachablePointInRadius(m_lastSeen.GetValue(), m_searchRadius, point) || nav->GetRandomReachablePointInRadius(enemy->GetActorLocation(), m_searchRadius, point)))
+				{
+					aiController->MoveToLocation(point.Location);
+				}
 				m_searching = true;
 				m_nextLook = now + 1.;
 			}
 		}
 	}
 
-    if (!IsValid(target) && enemy->IsActing()) enemy->CancelAction();
+	if (!IsValid(target) && enemy->IsActing()) enemy->CancelAction();
 
 	enemy->m_combatTarget = target;
-    enemy->CheckComboRange();
+	enemy->CheckComboRange();
+
 	//囲まれていて行動できる時は、通常の抽選より先に押し返す。
-	if(auto* boss = Cast<ABossEnemyCharacter>(enemy); boss && boss->m_crowd->TryPush()) { target = boss->m_combatTarget.Get(); }
-	
+	if (auto* boss = Cast<ABossEnemyCharacter>(enemy); boss && boss->m_crowd->TryPush())
+	{
+		target = boss->m_combatTarget.Get();
+	}
+
 	//生きていて戦闘できるか。
 	const bool alive = enemy->IsCombatActive();
 
 	blackboard->SetValueAsObject(TEXT("TargetActor"), target);
-	
+
 	//行動の共通条件は敵本体で一度だけ調べる。
 	const bool canDecide = enemy->CanDecide();
+
 	//相手までの距離を、攻撃と追跡で共有する。
 	const float distance = IsValid(target) ? FVector::Dist2D(enemy->GetActorLocation(), target->GetActorLocation()) : BossUpdateCombatTuning::noTargetRange;
+
 	//コンボ中でなく、剣が届かない時は近づく。
-	const bool canMove = canDecide && !enemy->m_stationary && enemy->GetPendingComboId().IsNone()
-		&& distance > enemy->GetMeleeDistance() + BossUpdateCombatTuning::rangeMargin;
+	const bool canMove = canDecide && !enemy->m_stationary && enemy->GetPendingComboId().IsNone() && distance > enemy->GetMeleeDistance() + BossUpdateCombatTuning::rangeMargin;
 	blackboard->SetValueAsBool(TEXT("CanDecide"), canDecide);
 	blackboard->SetValueAsBool(TEXT("CanMove"), canMove);
 	blackboard->SetValueAsFloat(TEXT("Distance"), distance);
 
-	if (alive && target && aiController->LineOfSightTo(target))
-	{
-		enemy->ObserveTarget(target);
-	}
+	if (alive && target && aiController->LineOfSightTo(target)) { enemy->ObserveTarget(target); }
 }

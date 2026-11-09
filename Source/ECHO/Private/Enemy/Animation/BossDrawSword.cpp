@@ -8,5 +8,8 @@ void UBossDrawSword::Notify(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _a
 {
     Super::Notify(_mesh, _anim, _event);
     if(!_mesh || !_mesh->GetOwner()) { return; }
-    if(auto* approach = _mesh->GetOwner()->FindComponentByClass<UBossApproach>()) { approach->ShowSword(); }
+    if(auto* approach = _mesh->GetOwner()->FindComponentByClass<UBossApproach>())
+    {
+        approach->ShowSword();
+    }
 }

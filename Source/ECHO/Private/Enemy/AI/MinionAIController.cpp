@@ -16,20 +16,19 @@ namespace MinionBBKey
 {
 	//BTが狙う相手を保存する項目名。
 	static const FName TargetActor(TEXT("TargetActor"));
-	
+
 	//BTが巡回先を保存する項目名。
 	static const FName PatrolLocation(TEXT("PatrolLocation"));
-	
+
 	//BTが攻撃可能な距離か保存する項目名。
 	static const FName bIsInAttackRange(TEXT("bIsInAttackRange"));
-	
+
 	//BTが死亡状態を保存する項目名。
 	static const FName bIsDead(TEXT("bIsDead"));
 }
 
 //コンストラクタ
-AMinionAIController::AMinionAIController() : m_sightRadius(2000.f), m_loseSightRadius(2500.f), m_peripheralVisionAngle(80.f)
-, m_sightAge(5.f), m_hearingRange(1500.f), m_attackRangeCheckInterval(0.1f), m_attackRangeTimer(0.f)
+AMinionAIController::AMinionAIController() : m_sightRadius(2000.f), m_loseSightRadius(2500.f), m_peripheralVisionAngle(80.f), m_sightAge(5.f), m_hearingRange(1500.f), m_attackRangeCheckInterval(0.1f), m_attackRangeTimer(0.f)
 {
 	PrimaryActorTick.bCanEverTick = true;
 }
@@ -37,16 +36,18 @@ AMinionAIController::AMinionAIController() : m_sightRadius(2000.f), m_loseSightR
 //ゲーム開発開始時の初期化関数
 void AMinionAIController::BeginPlay()
 {
+
 	//親クラスのBeginPlay関数を呼び出す
 	Super::BeginPlay();
-	
+
 	//知覚コンポーネントの取得
 	if (m_pAIPerceptionComp)
 	{
+
 		//知覚の更新イベントに関数をバインド
 		m_pAIPerceptionComp->OnTargetPerceptionUpdated.AddDynamic(this, &AMinionAIController::OnTargetPerceptionUpdated);
 	}
-	
+
 	//視野の設定
 	SetupminionSight();
 }
@@ -54,6 +55,7 @@ void AMinionAIController::BeginPlay()
 //Pawnをコントロールする際の初期化関数
 void AMinionAIController::OnPossess(APawn* _inPawn)
 {
+
 	//親クラスのOnPossess関数を呼び出す
 	Super::OnPossess(_inPawn);
 
@@ -63,7 +65,6 @@ void AMinionAIController::OnPossess(APawn* _inPawn)
 	//キャラクタがMinionCharaでない場合は警告を出して終了
 	if (!m_minionChara.IsValid())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("AMinionAIController：AMinionChara以外のPawnがポーズされました"));
 		return;
 	}
 
@@ -78,7 +79,7 @@ void AMinionAIController::OnPossess(APawn* _inPawn)
 
 		//攻撃範囲内フラグをfalseに設定
 		blackboardComp->SetValueAsBool(MinionBBKey::bIsInAttackRange, false);
-		
+
 		//死亡フラグをfalseに設定
 		blackboardComp->SetValueAsBool(MinionBBKey::bIsDead, false);
 	}
@@ -99,12 +100,13 @@ void AMinionAIController::Tick(float _deltaTime)
 {
 	//親クラスのTick関数を呼び出す
 	Super::Tick(_deltaTime);
-	
+
 	//攻撃範囲チェックのタイマーを更新
 	m_attackRangeTimer += _deltaTime;
-	
+
 	if (m_attackRangeTimer >= m_attackRangeCheckInterval)
 	{
+
 		//攻撃範囲内にいるか判定してブラックボードを更新
 		UpdateAttackRangeBlackboard();
 		m_attackRangeTimer = 0.f;
@@ -121,12 +123,10 @@ void AMinionAIController::OnMinionPerceptionUpdated(AActor* _actor, FAIStimulus 
 	if (!_actor->ActorHasTag(TEXT("Player"))) { return; }
 
 	//ターゲットが知覚された場合はターゲットをブラックボードに設定
-	if (_stimulus.WasSuccessfullySensed())
-	{
-		SetTargetActor(_actor);
-	}
+	if (_stimulus.WasSuccessfullySensed()) { SetTargetActor(_actor); }
 	else
 	{
+
 		//ターゲットが知覚されなくなった場合はターゲットをクリア
 		ClearTarget();
 	}
@@ -137,23 +137,18 @@ void AMinionAIController::SetTargetActor(AActor* _newTarget)
 {
 	Super::SetTargetActor(_newTarget);
 
-	if (m_minionChara.IsValid())
-	{
-		m_minionChara->SetTargetActor(_newTarget);
-	}
+	if (m_minionChara.IsValid()) { m_minionChara->SetTargetActor(_newTarget); }
 }
 
 //ターゲットをクリアする関数
 void AMinionAIController::ClearTarget()
 {
+
 	//親クラスのClearTarget関数を呼び出す
 	Super::ClearTarget();
 
 	//ポーズしているキャラクタが有効な場合はターゲットをクリア
-	if (m_minionChara.IsValid())
-	{
-		m_minionChara->SetTargetActor(nullptr);
-	}
+	if (m_minionChara.IsValid()) { m_minionChara->SetTargetActor(nullptr); }
 
 	//ブラックボードをクリア
 	if (UBlackboardComponent* blackboardComp = GetBlackboardComponent())
@@ -185,30 +180,30 @@ void AMinionAIController::NotifyDead()
 	{
 		blackboardComp->SetValueAsBool(MinionBBKey::bIsDead, true);
 	}
-
-	UE_LOG(LogTemp, Log, TEXT("AMinionAIController：死亡通知を受け取りました"));
 }
 
 //攻撃が届くかをBTへ伝える。
 void AMinionAIController::UpdateAttackRangeBlackboard()
 {
+
 	//ブラックボードコンポーネントを取得
 	UBlackboardComponent* blackboardComp = GetBlackboardComponent();
 	if (!blackboardComp) { return; }
-	
+
 	//ターゲットアクターをブラックボードから取得
 	AActor* targetActor = Cast<AActor>(blackboardComp->GetValueAsObject(MinionBBKey::TargetActor));
-	
+
 	//ターゲットアクターがnullの場合や、ポーズしているキャラクタが無効な場合は攻撃範囲内フラグをfalseに設定して終了
-	if (!targetActor || !m_minionChara.IsValid()) 
-	{ 
+	if (!targetActor || !m_minionChara.IsValid())
+	{
 		blackboardComp->SetValueAsBool(MinionBBKey::bIsInAttackRange, false);
 		return;
 	}
 
 	//ターゲットアクターとポーズしているキャラクタの距離を計算
-	float dist = FVector::Dist(m_minionChara->GetActorLocation(), targetActor->GetActorLocation());
-	
+	float dist =
+		FVector::Dist(m_minionChara->GetActorLocation(), targetActor->GetActorLocation());
+
 	//距離が攻撃範囲内か判定してブラックボードを更新
 	bool bInRange = (dist <= m_minionChara->GetAttackRange());
 
@@ -219,6 +214,7 @@ void AMinionAIController::UpdateAttackRangeBlackboard()
 //視野パラメータをスクラッパー用設定
 void AMinionAIController::SetupminionSight()
 {
+
 	//視覚の設定がない場合は終了
 	if (!m_pSightConfig) { return; }
 
@@ -233,28 +229,20 @@ void AMinionAIController::SetupminionSight()
 	m_pSightConfig->DetectionByAffiliation.bDetectNeutrals = true;
 	m_pSightConfig->DetectionByAffiliation.bDetectFriendlies = true;
 
-
-	if (m_pHearingConfig)
-	{
-		m_pHearingConfig->HearingRange = m_hearingRange;
-	}
+	if (m_pHearingConfig) { m_pHearingConfig->HearingRange = m_hearingRange; }
 
 	//知覚コンポーネントがない場合は警告を出して終了
 	if (!m_pAIPerceptionComp)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("AMinionAIController：知覚コンポーネントが見つかりませんでした"));
 		return;
 	}
-	
+
 	//視覚の設定を知覚コンポーネントに適用
 	m_pAIPerceptionComp->ConfigureSense(*m_pSightConfig);
 
 	//聴覚の設定を知覚コンポーネントに適用
-	if (m_pHearingConfig) 
-	{
-		m_pAIPerceptionComp->ConfigureSense(*m_pHearingConfig);
-	}
-	
+	if (m_pHearingConfig) { m_pAIPerceptionComp->ConfigureSense(*m_pHearingConfig); }
+
 	//知覚コンポーネントに変更を通知して更新
 	m_pAIPerceptionComp->RequestStimuliListenerUpdate();
 }

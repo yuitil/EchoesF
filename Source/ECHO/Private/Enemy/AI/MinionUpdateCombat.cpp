@@ -25,14 +25,12 @@
 //動作を確かめるための幅や待ち時間。
 namespace MinionUpdateCombatTuning
 {
-    //状態を更新する間隔。
-    constexpr auto updateDelay = 0.2f;
-   
+	//状態を更新する間隔。
+	constexpr auto updateDelay = 0.2f;
 	//距離の判定に持たせる余裕。
-    constexpr auto rangeMargin = 20.f;
-    
+	constexpr auto rangeMargin = 20.f;
 	//相手がいない時に使う距離。
-    constexpr auto noTargetRange = 99999.0f;
+	constexpr auto noTargetRange = 99999.0f;
 }
 
 //初期設定と必要な部品を用意する。
@@ -51,13 +49,13 @@ void UMinionUpdateCombat::TickNode(UBehaviorTreeComponent& _ownerComp, uint8* _n
 
 	//敵の行動を操作するAI。
 	AAIController* aiController = _ownerComp.GetAIOwner();
-	
+
 	//処理の対象となる敵。
 	AEnemyCharacterBase* enemy = aiController ? Cast<AEnemyCharacterBase>(aiController->GetPawn()) : nullptr;
-	
+
 	//BTが判断に使う値の保存先。
 	UBlackboardComponent* blackboard = _ownerComp.GetBlackboardComponent();
-	if(!enemy || !blackboard) { return; }
+	if (!enemy || !blackboard) { return; }
 
 	//狙っている相手。
 	AActor* target = enemy->m_targeting->SelectMinionTarget();
@@ -74,22 +72,31 @@ void UMinionUpdateCombat::TickNode(UBehaviorTreeComponent& _ownerComp, uint8* _n
 	if (!IsValid(target) && enemy->IsActing()) { enemy->CancelAction(); }
 
 	enemy->m_combatTarget = target;
+
 	//生きていて戦闘できるか。
 	bool alive = enemy->IsCombatActive();
 
 	blackboard->SetValueAsObject(TEXT("TargetActor"), target);
-	
-	//集団戦での役割を管理する部品。
-	const auto* formation=enemy->FindComponentByClass<UMinionFormation>();
-	
-	//攻撃に参加できるか。
-	const bool turn=!formation || formation->HasTurn();
-	blackboard->SetValueAsBool(TEXT("CanDecide"), turn && enemy->CanDecide());
-	blackboard->SetValueAsBool(TEXT("CanMove"), turn && !enemy->m_stationary && enemy->CanDecide() && !enemy->m_traversal->IsTraversing() && !enemy->IsActing() && !enemy->m_defense->IsBusy() && enemy->GetPendingComboId().IsNone() && IsValid(target) && FVector::Dist2D(enemy->GetActorLocation(), target->GetActorLocation()) > enemy->GetMeleeDistance() + MinionUpdateCombatTuning::rangeMargin);
-	blackboard->SetValueAsFloat(TEXT("Distance"), target ? FVector::Dist2D(enemy->GetActorLocation(), target->GetActorLocation()) : MinionUpdateCombatTuning::noTargetRange);
 
-	if (alive && target && aiController->LineOfSightTo(target))
-	{
-		enemy->ObserveTarget(target);
-	}
+	//集団戦での役割を管理する部品。
+	const auto* formation = enemy->FindComponentByClass<UMinionFormation>();
+
+	//攻撃に参加できるか。
+	const bool turn = !formation || formation->HasTurn();
+	const bool canDecide = turn && enemy->CanDecide();
+	blackboard->SetValueAsBool(TEXT("CanDecide"), canDecide);
+
+	//相手を見失ったときは、黒板に範囲外の距離を記録する。
+	const bool hasTarget = IsValid(target);
+	const float distance = hasTarget ? FVector::Dist2D(enemy->GetActorLocation(), target->GetActorLocation()) : MinionUpdateCombatTuning::noTargetRange;
+	blackboard->SetValueAsFloat(TEXT("Distance"), distance);
+
+	//攻撃、防御、段差移動が終わり、剣が届かないときに近づく。
+	const bool handsFree = !enemy->IsActing() && !enemy->m_defense->IsBusy() && enemy->GetPendingComboId().IsNone();
+	const bool canWalk = canDecide && !enemy->m_stationary && !enemy->m_traversal->IsTraversing();
+	const float approachRange = enemy->GetMeleeDistance() + MinionUpdateCombatTuning::rangeMargin;
+	const bool shouldMove = canWalk && handsFree && hasTarget && distance > approachRange;
+	blackboard->SetValueAsBool(TEXT("CanMove"), shouldMove);
+
+	if (alive && target && aiController->LineOfSightTo(target)) { enemy->ObserveTarget(target); }
 }

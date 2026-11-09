@@ -5,161 +5,189 @@
 #include "BossSpacing.generated.h"
 
 //相手の様子に合わせて退避や周回を行う。
-UCLASS(ClassGroup=(Enemy), meta=(BlueprintSpawnableComponent))
+UCLASS(ClassGroup = (Enemy), meta = (BlueprintSpawnableComponent))
 class ECHO_API UBossSpacing : public UActorComponent
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	//相手の様子に合わせて退避や周回を行う。
-	UBossSpacing();
+    //相手の様子に合わせて退避や周回を行う。
+    UBossSpacing();
 
-	//攻撃後に間合いを取る行動を予約する。
-	void Queue();
+    //攻撃後に間合いを取る行動を予約する。
+    void Queue();
 
-	//間合い調整を止めて移動設定を戻す。
-	void Stop();
+    //間合い調整を止めて移動設定を戻す。
+    void Stop();
 
-	//次の戦闘に向けて状態を初期化する。
-	void Reset();
-
-public:
-	//相手が倒れて起き上がる途中か調べる。
-	UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category="Boss|Spacing")
-	bool IsTargetDown(AActor* target) const;
-
-	//間合いを取り直しているか返す。
-	UFUNCTION(BlueprintPure, Category="Boss|Spacing")
-	bool IsSpacing() const { return m_active; }
-
-	//様子見を終えて攻撃を優先しているか。
-	UFUNCTION(BlueprintPure, Category="Boss|Spacing")
-	bool IsPressing() const { return m_press; }
+    //次の戦闘に向けて状態を初期化する。
+    void Reset();
 
 public:
-	//相手のダウン中だけ周回するか。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing")
-	bool m_onlyDown = false;
 
-	//相手の様子見中にも周回するか。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing")
-	bool m_watchIdle = false;
+    //相手が倒れて起き上がる途中か調べる。
+    UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "Boss|Spacing")
+    bool IsTargetDown(AActor* target) const;
 
-	//様子見と判断するまでの時間。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing", meta=(ClampMin="0.2"))
-	float m_idleDelay = 1.2f;
+    //間合いを取り直しているか返す。
+    UFUNCTION(BlueprintPure, Category = "Boss|Spacing")
+    bool IsSpacing() const { return m_active; }
 
-	//立ち止まっていると判断する速度。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing", meta=(ClampMin="0"))
-	float m_idleSpeed = 80.f;
+    //様子見を終えて攻撃を優先しているか。
+    UFUNCTION(BlueprintPure, Category = "Boss|Spacing")
+    bool IsPressing() const { return m_press; }
 
-	//様子を見る距離。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing", meta=(ClampMin="100"))
-	float m_watchRange = 900.f;
+public:
 
-	//ダウン中と判断するタグ。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing")
-	FName m_downTag;
+    //相手のダウン中だけ周回するか。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Spacing")
+    bool m_onlyDown = false;
 
-	//ダウン中と判断するモンタージュ。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing")
-	TArray<TObjectPtr<class UAnimMontage>> m_downMontages;
+    //相手の様子見中にも周回するか。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Spacing")
+    bool m_watchIdle = false;
 
-	//この機能を使うか。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing")
-	bool m_enabled = false;
+    //様子見と判断するまでの時間。
+    UPROPERTY(
+        EditAnywhere, BlueprintReadWrite, Category = "Boss|Spacing", meta = (ClampMin = "0.2"))
+    float m_idleDelay = 1.2f;
 
-	//行動を続ける時間。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing", meta=(ClampMin="0.1"))
-	float m_duration = 2.5f;
+    //立ち止まっていると判断する速度。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Spacing", meta = (ClampMin = "0"))
+    float m_idleSpeed = 80.f;
 
-	//再使用までの待ち時間。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing", meta=(ClampMin="0"))
-	float m_cooldown = 6.f;
+    //様子を見る距離。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Spacing", meta = (ClampMin = "100"))
+    float m_watchRange = 900.f;
 
-	//保ちたい間合い。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing", meta=(ClampMin="1"))
-	float m_distance = 400.f;
+    //ダウン中と判断するタグ。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Spacing")
+    FName m_downTag;
 
-	//退避に使う行動名。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing")
-	FName m_retreatAction;
+    //ダウン中と判断するモンタージュ。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Spacing")
+    TArray<TObjectPtr<class UAnimMontage>> m_downMontages;
 
-	//遠ざかった割合。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing", meta=(ClampMin="0.1",ClampMax="1"))
-	float m_retreatRatio = .85f;
+    //この機能を使うか。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Spacing")
+    bool m_enabled = false;
 
-	//移動や再生に使う速さ。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing", meta=(ClampMin="1"))
-	float m_speed = 200.f;
+    //行動を続ける時間。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Spacing", meta = (ClampMin = "0.1"))
+    float m_duration = 2.5f;
 
-	//周回で進む角度。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Spacing", meta=(ClampMin="0", ClampMax="60"))
-	float m_orbitAngle = 25.f;
+    //再使用までの待ち時間。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Spacing", meta = (ClampMin = "0"))
+    float m_cooldown = 6.f;
 
-	//体力を回復する速さ。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Recovery", meta=(ClampMin="0"))
-	float m_healRate = 5.f;
+    //保ちたい間合い。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Spacing", meta = (ClampMin = "1"))
+    float m_distance = 400.f;
 
-	//一度に回復できる割合。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Recovery", meta=(ClampMin="0", ClampMax="1"))
-	float m_healLimit = .1f;
+    //退避に使う行動名。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Spacing")
+    FName m_retreatAction;
 
-	//回復を始めるまでの時間。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Boss|Recovery", meta=(ClampMin="0"))
-	float m_healDelay = 1.f;
+    //遠ざかった割合。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Spacing", meta = (ClampMin = "0.1", ClampMax = "1"))
+    float m_retreatRatio = .85f;
+
+    //移動や再生に使う速さ。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Spacing", meta = (ClampMin = "1"))
+    float m_speed = 200.f;
+
+    //周回中に相手の方へ振り向く速さ。
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Boss|Spacing", meta = (ClampMin = "0.1"))
+    float m_turnSpeed = 5.f;
+
+    //周回を予約してから歩き始めるまでの秒数。
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Boss|Spacing", meta = (ClampMin = "0"))
+    float m_startDelay = .3f;
+
+    //周回で進む角度。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Spacing", meta = (ClampMin = "0", ClampMax = "60"))
+    float m_orbitAngle = 25.f;
+
+    //体力を回復する速さ。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Recovery", meta = (ClampMin = "0"))
+    float m_healRate = 5.f;
+
+    //一度に回復できる割合。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Recovery", meta = (ClampMin = "0", ClampMax = "1"))
+    float m_healLimit = .1f;
+
+    //回復を始めるまでの時間。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Recovery", meta = (ClampMin = "0"))
+    float m_healDelay = 1.f;
 
 protected:
-	//経過時間に合わせて敵の状態を更新する。
-	virtual void TickComponent(float _delta, ELevelTick _type, FActorComponentTickFunction* _tick) override;
 
-	//終了時にタイマーや登録を解除する。
-	virtual void EndPlay(const EEndPlayReason::Type _reason) override;
+    //経過時間に合わせて敵の状態を更新する。
+    virtual void TickComponent(float _delta, ELevelTick _type, FActorComponentTickFunction* _tick) override;
 
-private:
-	//相手が静止している時間と、攻撃へ移る時期を調べる。
-	void UpdateWatch(class AEnemyCharacterBase* _enemy, double _now);
-
-	//周回を始めてもほかの行動を邪魔しないか。
-	bool CanSpace(class AEnemyCharacterBase* _enemy) const;
+    //終了時にタイマーや登録を解除する。
+    virtual void EndPlay(const EEndPlayReason::Type _reason) override;
 
 private:
-	//一度様子を見たら、攻撃するまで周回を繰り返さない。
-	bool m_press = false;
 
-	//相手が変わった時は様子見の時間を数え直す。
-	TWeakObjectPtr<AActor> m_watched;
+    //周回する距離を求める。
+    float OrbitRadius(const class AEnemyCharacterBase& _enemy) const;
 
-	//相手が様子見を始めた時刻。
-	double m_idleSince = -1.;
+    //相手を向いて退避する。
+    bool Retreat(class AEnemyCharacterBase& _enemy, const FVector& _toward);
 
-	//相手の様子を見ているか。
-	bool m_watching = false;
+    //周回できる経路に移動する。
+    bool MoveAround(class AEnemyCharacterBase& _enemy, class AAIController& _ai, const FVector& _targetPos, const FVector& _away, float _distance);
 
-	//行動を実行中か。
-	bool m_active = false;
+    //安全な距離を保った時間に合わせてHPを戻す。
+    void Recover(class AEnemyCharacterBase& _enemy, float _distance, double _now, float _delta);
 
-	//移動を開始したか。
-	bool m_moving = false;
+    //相手が静止している時間と、攻撃へ移る時期を調べる。
+    void UpdateWatch(class AEnemyCharacterBase* _enemy, double _now);
 
-	//変更前の向きの設定。
-	bool m_oldTurn = false;
+    //周回を始めてもほかの行動を邪魔しないか。
+    bool CanSpace(class AEnemyCharacterBase* _enemy) const;
 
-	//変更前の移動速度。
-	float m_oldSpeed = 0.f;
+private:
+    //一度様子を見たら、攻撃するまで周回を繰り返さない。
+    bool m_press = false;
 
-	//周回する左右の向き。
-	float m_side = 1.f;
+    //相手が変わった時は様子見の時間を数え直す。
+    TWeakObjectPtr<AActor> m_watched;
 
-	//今回回復した体力。
-	float m_healed = 0.f;
+    //相手が様子見を始めた時刻。
+    double m_idleSince = -1.;
 
-	//行動を開始した時刻。
-	double m_start = 0.;
+    //相手の様子を見ているか。
+    bool m_watching = false;
 
-	//次に間合い調整を始められる時刻。
-	double m_next = 0.;
+    //行動を実行中か。
+    bool m_active = false;
 
-	//次に経路を更新する時刻。
-	double m_repath = 0.;
+    //周回中に相手が起き上がった瞬間を見つける。
+    bool m_wasDown = false;
+
+    //移動を開始したか。
+    bool m_moving = false;
+
+    //変更前の向きの設定。
+    bool m_oldTurn = false;
+
+    //変更前の移動速度。
+    float m_oldSpeed = 0.f;
+
+    //周回する左右の向き。
+    float m_side = 1.f;
+
+    //今回回復した体力。
+    float m_healed = 0.f;
+
+    //行動を開始した時刻。
+    double m_start = 0.;
+
+    //次に間合い調整を始められる時刻。
+    double m_next = 0.;
+
+    //次に経路を更新する時刻。
+    double m_repath = 0.;
 };

@@ -8,17 +8,18 @@
 #include "BossAnimation.generated.h"
 
 //握り直したフレームで左の剣を出し入れする。
-UCLASS(meta=(DisplayName="Boss Left Sword"))
+UCLASS(meta = (DisplayName = "Boss Left Sword"))
 class ECHO_API UBossLeftSword : public UAnimNotify
 {
-    GENERATED_BODY()
+	GENERATED_BODY()
 public:
-    //抜く時はオン、納める時はオフ。
-    UPROPERTY(EditAnywhere, Category="Sword")
-    bool m_draw = true;
 
-    //本体のメッシュだけに合図する。
-    virtual void Notify(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _anim, const FAnimNotifyEventReference& _ref) override;
+	//抜く時はオン、納める時はオフ。
+	UPROPERTY(EditAnywhere, Category = "Sword")
+	bool m_draw = true;
+
+	//本体のメッシュだけに合図する。
+	virtual void Notify(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _anim, const FAnimNotifyEventReference& _ref) override;
 };
 
 //移動の速さや向きをアニメーションへ渡す。
@@ -28,10 +29,12 @@ class ECHO_API UBossAnimInstance : public UAnimInstance
 	GENERATED_BODY()
 
 public:
+
 	//移動速度と空中の状態をアニメーションへ渡す。
 	virtual void NativeUpdateAnimation(float _deltaSeconds) override;
 
 public:
+
 	//移動や再生に使う速さ。
 	UPROPERTY(BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "Speed"))
 	float m_speed = 0.f;
@@ -45,10 +48,10 @@ public:
 	bool m_bInAir = false;
 
 	//左手の刀が見える間だけ二刀の構えにする。
-    UPROPERTY(BlueprintReadOnly, Category="Enemy|Sword")
-    bool m_dualStance = false;
+	UPROPERTY(BlueprintReadOnly, Category = "Enemy|Sword")
+	bool m_dualStance = false;
 
-    //現在の状態。
+	//現在の状態。
 	UPROPERTY(BlueprintReadOnly, Category = "Enemy", meta = (DisplayName = "State"))
 	EEnemyState m_state = EEnemyState::Alive;
 };
@@ -57,10 +60,13 @@ public:
 UENUM(BlueprintType)
 enum class EBossWindow : uint8
 {
+
 	//ダメージの判定。
 	Damage,
+
 	//回避の無敵時間。
 	DodgeInvulnerability,
+
 	//通常のガード。
 	Guard
 };
@@ -72,6 +78,7 @@ class ECHO_API UBossCombatWindow : public UAnimNotifyState
 	GENERATED_BODY()
 
 public:
+
 	//通知の区間に入った時の処理を行う。
 	virtual void NotifyBegin(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _anim, float _duration, const FAnimNotifyEventReference& _reference) override;
 
@@ -79,6 +86,7 @@ public:
 	virtual void NotifyEnd(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _anim, const FAnimNotifyEventReference& _reference) override;
 
 public:
+
 	//動作の判定に使う時間の幅。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy", meta = (DisplayName = "Window"))
 	EBossWindow m_window = EBossWindow::Damage;
@@ -87,17 +95,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemey", meta = (DisplayAfter = "DamageMultiplier"))
 	float m_damageScale = 1.0f;
 
-    //この一振りに使うボーン。空欄なら攻撃データを使う。
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Hit", meta=(DisplayName="Hit Bone"))
-    FName m_hitBone;
+	//この一振りに使うボーン。空欄なら攻撃データを使う。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Hit", meta = (DisplayName = "Hit Bone"))
+	FName m_hitBone;
 
-    //指定したボーンから剣先までの位置。
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Hit", meta=(DisplayName="Hit Tip Offset"))
-    FVector m_tipOffset = FVector::ZeroVector;
+	//指定したボーンから剣先までの位置。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Hit", meta = (DisplayName = "Hit Tip Offset"))
+	FVector m_tipOffset = FVector::ZeroVector;
 
-    //この一振りの判定と残り線を左の剣に切り替える。
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Enemy|Hit")
-    bool m_leftBlade = false;
+	//この一振りの判定と残り線を左の剣に切り替える。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Hit")
+	bool m_leftBlade = false;
 };
 
 //アニメーションから音や見た目の合図を送る。
@@ -107,10 +115,12 @@ class ECHO_API UBossPresentationCue : public UAnimNotify
 	GENERATED_BODY()
 
 public:
+
 	//アニメーションの指定位置で処理を呼ぶ。
 	virtual void Notify(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _anim, const FAnimNotifyEventReference& _reference) override;
 
 public:
+
 	//BPへ伝える演出の名前。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy", meta = (DisplayName = "Cue"))
 	FName m_cue = TEXT("SwordWhoosh");
@@ -123,10 +133,12 @@ class ECHO_API UBossRecovery : public UAnimNotify
 	GENERATED_BODY()
 
 public:
+
 	//アニメーションの指定位置で処理を呼ぶ。
 	virtual void Notify(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _anim, const FAnimNotifyEventReference& _reference) override;
 
 public:
+
 	//次につなぐ区間名。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recovery", meta = (DisplayName = "Next Section"))
 	FName m_next;
@@ -137,25 +149,27 @@ public:
 };
 
 //空中攻撃で前へ進み、地面へ降りる。
-UCLASS(meta=(DisplayName="BossDive"))
+UCLASS(meta = (DisplayName = "BossDive"))
 class ECHO_API UBossDive : public UAnimNotifyState
 {
 	GENERATED_BODY()
 
 public:
+
 	//通知の区間内で移動を更新する。
-	virtual void NotifyTick(USkeletalMeshComponent* _mesh,UAnimSequenceBase* _anim,float _delta,const FAnimNotifyEventReference& _reference) override;
+	virtual void NotifyTick(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _anim, float _delta, const FAnimNotifyEventReference& _reference) override;
 
 public:
+
 	//移動や再生に使う速さ。
-	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category="Dive",meta=(ClampMin="0",DisplayName="Forward Speed"))
-	float m_speed=350.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dive", meta = (ClampMin = "0", DisplayName = "Forward Speed"))
+	float m_speed = 350.f;
 
 	//落下する速さ。
-	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category="Dive",meta=(ClampMin="0",DisplayName="Fall Speed"))
-	float m_fall=900.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dive", meta = (ClampMin = "0", DisplayName = "Fall Speed"))
+	float m_fall = 900.f;
 
 	//着地で動作を終了するか。
-	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category="Dive",meta=(DisplayName="Land Section"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dive", meta = (DisplayName = "Land Section"))
 	FName m_land;
 };

@@ -10,8 +10,8 @@
 //動作を確かめるための幅や待ち時間。
 namespace ActionAbilityTuning
 {
-    //次の確認までの時間。
-    constexpr auto checkDelay = .05f;
+	//次の確認までの時間。
+	constexpr auto checkDelay = .05f;
 }
 
 //初期設定と必要な部品を用意する。
@@ -24,41 +24,49 @@ UActionAbility::UActionAbility()
 //攻撃の能力を開始する。
 void UActionAbility::ActivateAbility(const FGameplayAbilitySpecHandle _handle, const FGameplayAbilityActorInfo* _actorInfo, const FGameplayAbilityActivationInfo _activationInfo, const FGameplayEventData* _eventData)
 {
-
 	m_finished = false;
 
 	//処理の対象となる敵。
 	AEnemyCharacterBase* enemy = _actorInfo ? Cast<AEnemyCharacterBase>(_actorInfo->AvatarActor) : nullptr;
-	
+
 	//使用する行動の設定。
 	const FEnemyActionData* actionData = enemy ? enemy->GetActiveAction() : nullptr;
-
 	if (!actionData || !actionData->m_montage || !CommitAbility(_handle, _actorInfo, _activationInfo))
 	{
 		EndAbility(_handle, _actorInfo, _activationInfo, true, true);
 		return;
 	}
 
-    GetWorld()->GetTimerManager().SetTimer(m_timerHandle, this, &UActionAbility::Interrupted, enemy->GetActionTimeout(*actionData), false);
-    if(auto* change = actionData->ChangesSwordStance() ? enemy->m_combat->GetBladeChange(actionData->m_dualBlade) : nullptr)
-    {
-        auto* task = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, change);
-        task->OnCompleted.AddDynamic(this, &UActionAbility::StartSwing);
-        task->OnCancelled.AddDynamic(this, &UActionAbility::Interrupted);
-        task->OnInterrupted.AddDynamic(this, &UActionAbility::Interrupted);
-        task->ReadyForActivation();
-        return;
-    }
-    StartSwing();
+	GetWorld()->GetTimerManager().SetTimer(m_timerHandle, this, &UActionAbility::Interrupted, enemy->GetActionTimeout(*actionData), false);
+	if (auto* change = actionData->ChangesSwordStance() ? enemy->m_combat->GetBladeChange(actionData->m_dualBlade) : nullptr)
+	{
+		const float playRate = 1.f;
+
+		//持ち替えが終わったら攻撃を始める。
+		auto* task = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, change, playRate, NAME_None, true, 1.f);
+		task->OnCompleted.AddDynamic(this, &UActionAbility::StartSwing);
+		task->OnCancelled.AddDynamic(this, &UActionAbility::Interrupted);
+		task->OnInterrupted.AddDynamic(this, &UActionAbility::Interrupted);
+		task->ReadyForActivation();
+		return;
+	}
+	StartSwing();
 }
 
 //抜刀や納刀の後に、元のコンボの段を再生する。
 void UActionAbility::StartSwing()
 {
-    auto* enemy = Cast<AEnemyCharacterBase>(GetAvatarActorFromActorInfo());
-    const auto* actionData = enemy ? enemy->GetActiveAction() : nullptr;
-    if(!actionData || !enemy->IsCombatActive()) { Interrupted(); return; }
-    if(actionData->ChangesSwordStance()) { enemy->m_combat->UpdateLeftBlade(actionData->m_dualBlade); }
+	auto* enemy = Cast<AEnemyCharacterBase>(GetAvatarActorFromActorInfo());
+	const auto* actionData = enemy ? enemy->GetActiveAction() : nullptr;
+	if (!actionData || !enemy->IsCombatActive())
+	{
+		Interrupted();
+		return;
+	}
+	if (actionData->ChangesSwordStance())
+	{
+		enemy->m_combat->UpdateLeftBlade(actionData->m_dualBlade);
+	}
 	auto* task = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, enemy->GetMoveMontage(*actionData), enemy->GetAttackRate(*actionData), NAME_None, true, actionData->m_rootScale);
 	task->OnCompleted.AddDynamic(this, &UActionAbility::Completed);
 	task->OnInterrupted.AddDynamic(this, &UActionAbility::Interrupted);
@@ -76,9 +84,12 @@ void UActionAbility::Completed()
 //通知を受けて攻撃を終了する。
 void UActionAbility::FinishFromNotify(float _blend)
 {
-	if(!IsActive() || m_finished) { return; }
+	if (!IsActive() || m_finished) { return; }
 	m_finished = true;
-	if (auto* asc = GetAbilitySystemComponentFromActorInfo()) asc->CurrentMontageStop(FMath::Max(ActionAbilityTuning::checkDelay, _blend));
+	if (auto* asc = GetAbilitySystemComponentFromActorInfo())
+	{
+		asc->CurrentMontageStop(FMath::Max(ActionAbilityTuning::checkDelay, _blend));
+	}
 	if (IsActive()) Completed();
 }
 
@@ -91,7 +102,7 @@ void UActionAbility::Interrupted()
 //攻撃の能力を終えて後片付けする。
 void UActionAbility::EndAbility(const FGameplayAbilitySpecHandle _handle, const FGameplayAbilityActorInfo* _actorInfo, const FGameplayAbilityActivationInfo _activationInfo, bool _replicateEndAbility, bool _wasCancelled)
 {
-	if(!IsActive()) { return; }
+	if (!IsActive()) { return; }
 	GetWorld()->GetTimerManager().ClearTimer(m_timerHandle);
 
 	if (AEnemyCharacterBase* enemy = _actorInfo ? Cast<AEnemyCharacterBase>(_actorInfo->AvatarActor) : nullptr)

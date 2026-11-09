@@ -92,3 +92,6 @@ DerivedDataCache/*
 *.VC.db-wal
 Plugins/**/Saved/
 Plugins/**/DerivedDataCache/
+
+# Local enemy gameplay tests
+/Source/ECHO/Private/Enemy/Tests/

@@ -1,7 +1,6 @@
 //EnemyQuery.h
 //「敵かどうか」の判定をまとめたヘルパー
 //旧敵クラス(AEnemyChara)と新敵クラス(AEnemyCharacterBase)の両方に対応する
-
 #pragma once
 
 #include "CoreMinimal.h"

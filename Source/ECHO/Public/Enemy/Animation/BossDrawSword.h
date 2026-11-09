@@ -5,7 +5,7 @@
 #include "BossDrawSword.generated.h"
 
 //刀が手に来る位置に置き、刀を見えるようにする。
-UCLASS(meta=(DisplayName="BossDrawSword"))
+UCLASS(meta = (DisplayName = "BossDrawSword"))
 class ECHO_API UBossDrawSword : public UAnimNotify
 {
     GENERATED_BODY()
