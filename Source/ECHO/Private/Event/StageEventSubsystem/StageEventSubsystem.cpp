@@ -76,6 +76,9 @@ void UStageEventSubsystem::EventStart(AEventTriggerVolume* _eventTrigger)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Blue, TEXT("Event Start"));
 	}
+
+	//イベント開始を通知
+	OnEventStarted.Broadcast();
 }
 
 void UStageEventSubsystem::EventFinish()
@@ -92,6 +95,9 @@ void UStageEventSubsystem::EventFinish()
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Blue, TEXT("Event Finish"));
 	}
+
+	//イベント終了を通知
+	OnEventEnded.Broadcast();
 }
 
 void UStageEventSubsystem::SetGateOpen(bool _isOpen, FEventData& _eventData)
@@ -130,12 +136,12 @@ void UStageEventSubsystem::OnPlayerRespawn()
 	if (!m_CurrentEvent)return;
 
 	m_CurrentEvent->EventReset();
-	
+
 	SetGateOpen(true, m_CurrentEvent->GetEventData());
-	
+
 	m_CurrentEvent = nullptr;
 	m_CurrentVolume = nullptr;
-	
+
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Blue, TEXT("Event Reset"));
