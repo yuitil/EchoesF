@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "RespawnPoint/RespawnPoint.h"
@@ -87,6 +87,14 @@ void ARespawnPoint::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* 
 	if (m_HealAura)
 	{
 		m_HealAura->SetVisibility(true);
+
+		// 一度完全に停止
+		m_HealAura->DeactivateImmediate();
+
+		// Niagaraを再初期化
+		m_HealAura->ReinitializeSystem();
+
+		// 最初から再生
 		m_HealAura->Activate(true);
 	}
 
@@ -112,7 +120,10 @@ void ARespawnPoint::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* Ot
 	// 回復オーラ停止
 	if (m_HealAura)
 	{
-		m_HealAura->Deactivate();
+		// エフェクトを即座に停止
+		m_HealAura->DeactivateImmediate();
+
+		// 非表示
 		m_HealAura->SetVisibility(false);
 	}
 }
