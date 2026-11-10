@@ -391,6 +391,7 @@ EBTNodeResult::Type UBossPeformAction::ExecuteTask(UBehaviorTreeComponent& _owne
 	auto* enemy = ai ? Cast<AEnemyCharacterBase>(ai->GetPawn()) : nullptr;
 	m_rushing = false;
 	m_fast = false;
+	m_retreating = false;
 	m_serial = INDEX_NONE;
 	m_nextCheck = 0.;
 	if (!enemy || !IsValid(enemy->m_combatTarget) || !enemy->CanDecide())
@@ -436,6 +437,7 @@ EBTNodeResult::Type UBossPeformAction::ExecuteTask(UBehaviorTreeComponent& _owne
 		m_oldSpeed = enemy->GetCharacterMovement()->MaxWalkSpeed;
 		m_oldAccel = enemy->GetCharacterMovement()->MaxAcceleration;
 		m_rushing = true;
+		m_retreating = true;
 		m_deadline = enemy->GetWorld()->GetTimeSeconds() + 2.f;
 		if (ai->MoveToLocation(goal, BossPeformActionTuning::stopMargin, false, true, true, true, nullptr, false) == EPathFollowingRequestResult::Failed)
 		{
@@ -543,6 +545,15 @@ void UBossPeformAction::TickTask(UBehaviorTreeComponent& _ownerComp, uint8* _nod
 		{
 			StopRush(_ownerComp);
 			FinishLatentTask(_ownerComp, EBTNodeResult::Failed);
+			return;
+		}
+		//間合いを作る途中で、近くの相手へまた突進するのを防ぐ。
+		if (m_retreating)
+		{
+			const float reach = enemy->GetMeleeDistance() - BossPeformActionTuning::stopMargin;
+			if (distance < reach && ai->GetMoveStatus() == EPathFollowingStatus::Moving) { return; }
+			StopRush(_ownerComp);
+			FinishLatentTask(_ownerComp, EBTNodeResult::Succeeded);
 			return;
 		}
 		if (distance <= m_rushMin && ai->LineOfSightTo(enemy->m_combatTarget) &&

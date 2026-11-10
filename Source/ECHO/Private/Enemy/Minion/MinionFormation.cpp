@@ -268,12 +268,14 @@ void UMinionFormation::TickComponent(float _delta, ELevelTick _type, FActorCompo
 	//目的地までの移動経路。
 	auto* path = UNavigationSystemV1::FindPathToLocationSynchronously(GetWorld(), enemy->GetActorLocation(), projected.Location, enemy);
 	if (!path || !path->IsValid() || path->IsPartial()) { return; }
+	//相手の近くからでも、外へ離れる経路なら通れる。
+	const float safeRange = enemy->GetMeleeDistance() * MinionFormationTuning::pathMargin;
 	for (int32 i = 1; i < path->PathPoints.Num(); ++i)
 	{
-		if (FMath::PointDistToSegment(m_target->GetActorLocation(), path->PathPoints[i - 1], path->PathPoints[i]) < enemy->GetMeleeDistance() * MinionFormationTuning::pathMargin)
-		{
-			return;
-		}
+		const FVector from = (path->PathPoints[i - 1] - center) * FVector(1, 1, 0);
+		const FVector to = (path->PathPoints[i] - center) * FVector(1, 1, 0);
+		if (from.Size2D() < safeRange && FVector::DotProduct(from, to - from) >= 0.f) { continue; }
+		if (FMath::PointDistToSegment(FVector::ZeroVector, from, to) < safeRange) { return; }
 	}
 	ai->MoveToLocation(projected.Location, MinionFormationTuning::stopRange, false, true, true, true, nullptr, false);
 }

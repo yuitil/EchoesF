@@ -97,6 +97,9 @@ private:
 	//突進の移動中か。
 	bool m_rushing = false;
 
+	//歩いて攻撃の間合いまで離れているか。
+	bool m_retreating = false;
+
 	//突進速度へ切り替えたか。
 	bool m_fast = false;
 
