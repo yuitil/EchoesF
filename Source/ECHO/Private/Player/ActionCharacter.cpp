@@ -140,6 +140,10 @@ void AActionCharacter::BeginPlay()
 
 	DefaultSocketOffset = CameraBoom->SocketOffset;
 
+	//墓や街灯などにカメラが当たらないように、まわりの物を定期的に調べる
+	GetWorldTimerManager().SetTimer(m_CameraIgnoreTimer, this, &AActionCharacter::UpdateCameraIgnore,
+		m_CameraIgnoreScanInterval, true, 0.f);
+
 	if (LockOnComponent)
 	{
 		LockOnComponent->OnLockOnChanged.AddUObject(this, &AActionCharacter::OnLockOnChanged);
@@ -159,11 +163,6 @@ void AActionCharacter::BeginPlay()
 			PC->PlayerCameraManager->ViewPitchMax = 35.f; //見上げの限界（地面に潜りにくくなる）
 		}
 	}
-
-	//GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::White,
-	//    FString::Printf(TEXT("GhostClass:%s  Recorder:%s"),
-	//    GhostCharacterClass ? *GhostCharacterClass->GetName() : TEXT("NULL"),
-	//    GhostRecorder ? TEXT("OK") : TEXT("NULL")));
 }
 
 void AActionCharacter::Tick(float DeltaTime)
@@ -317,12 +316,6 @@ void AActionCharacter::SetHP(float NewHP)
 {
 	m_CurrentHP = FMath::Clamp(NewHP, 0.f, m_MaxHP);
 	OnHPChanged.Broadcast(m_CurrentHP, m_MaxHP);
-
-	if (m_bDebugHP && GEngine)
-	{
-		//キーを固定すると同じ行が上書きされ続ける（画面左上に常に表示）
-		//GEngine->AddOnScreenDebugMessage(1001, 9999.f, FColor::Green,FString::Printf(TEXT("HP: %.0f / %.0f"), m_CurrentHP, m_MaxHP));
-	}
 }
 
 void AActionCharacter::Die()
@@ -500,7 +493,7 @@ void AActionCharacter::LockOn()
 	}
 }
 
-//ロックオンシステム改良中
+//ロックオンの開始・解除に合わせて、キャラクターの向きの制御を切り替える
 void AActionCharacter::OnLockOnChanged(AActor* NewTarget)
 {
 	if (NewTarget)
@@ -508,15 +501,6 @@ void AActionCharacter::OnLockOnChanged(AActor* NewTarget)
 		//ロックON：プレイヤーをコントローラーのYawに従わせる
 		bUseControllerRotationYaw = true;
 		GetActionMovementComponent()->bOrientRotationToMovement = false;
-
-		//カメラを横にずらしてプレイヤーとターゲット両方映す
-		//CameraBoom->SocketOffset = FVector(
-		//	DefaultSocketOffset.X,
-		//	DefaultSocketOffset.Y + LockOnCameraOffsetY,
-		//	DefaultSocketOffset.Z
-		//);
-
-		// GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan, FString::Printf(TEXT("ロックオン： %s"), *NewTarget->GetName()));
 	}
 	else
 	{
@@ -526,8 +510,6 @@ void AActionCharacter::OnLockOnChanged(AActor* NewTarget)
 
 		//ソケットオフセットを元に戻す
 		CameraBoom->SocketOffset = DefaultSocketOffset;
-
-		GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Purple, TEXT("FinithLockOn"));
 	}
 }
 
@@ -783,20 +765,20 @@ void AActionCharacter::SummonGhost()
 	//ストック不足チェック（召喚にはストック1本が必要）
 	if (GetEnergyStock() < 1)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("Not enough energy stock"));
+		if (m_bDebugLog) GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("Not enough energy stock"));
 		return;
 	}
 
 	//最大数チェック
 	if (m_ActiveGhosts.Num() >= m_iMaxGhostCount)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Orange, TEXT("MaxGhostCount!"));
+		if (m_bDebugLog) GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Orange, TEXT("MaxGhostCount!"));
 		return;
 	}
 
 	if (!GhostRecorder || !GhostCharacterClass)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("Recorder or GhostClass is NULL"));
+		UE_LOG(LogTemp, Warning, TEXT("ActionCharacter: Recorder or GhostClass is NULL"));
 		return;
 	}
 
@@ -804,7 +786,7 @@ void AActionCharacter::SummonGhost()
 	const TArray<FGhostActionData> Snapshot = GhostRecorder->GetSnapshot(20.f);
 	if (Snapshot.IsEmpty())
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow, TEXT("NO Data MoveMore"));
+		if (m_bDebugLog) GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow, TEXT("NO Data MoveMore"));
 		return;
 	}
 
@@ -821,7 +803,7 @@ void AActionCharacter::SummonGhost()
 		GhostCharacterClass, SpawnLoc, SpawnRot, Params);
 	if (!Ghost)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("SpawnActor failed"));
+		UE_LOG(LogTemp, Warning, TEXT("ActionCharacter: SpawnActor failed"));
 		return;
 	}
 
@@ -915,7 +897,7 @@ void AActionCharacter::Heal()
 	{
 		Move->SetSpeedMultiplier(m_HealMoveSpeedRate);
 	}
-	//TODO：ここで回復モーション（瓶を飲む）を再生する
+	//回復モーション（瓶を飲む）は今後追加予定
 
 	GetWorldTimerManager().SetTimer(m_HealTimer, this, &AActionCharacter::ApplyHeal, m_HealWindupTime, false);
 
@@ -951,7 +933,7 @@ void AActionCharacter::EndHeal()
 	{
 		Move->SetSpeedMultiplier(1.f);
 	}
-	//TODO：回復モーションを止める（中断時）
+	//回復モーションを追加したら、ここで止める
 }
 
 void AActionCharacter::InterruptHeal()
@@ -1031,7 +1013,7 @@ void AActionCharacter::OnSkill1() { if (CanUseSkill()) SkillComponent->UseDashSl
 //スキル2：未実装（ここに2ゲージ技を入れる）
 void AActionCharacter::OnSkill2()
 {
-	if (CanUseSkill()) GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::White, TEXT("Skill2 : Not implemented"));
+	if (m_bDebugLog && CanUseSkill()) GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::White, TEXT("Skill2 : Not implemented"));
 }
 
 //スキル3：テンペスト
@@ -1040,7 +1022,7 @@ void AActionCharacter::OnSkill3() { if (CanUseSkill()) SkillComponent->UseTempes
 //スキル4：未実装（ここに4ゲージ技を入れる）
 void AActionCharacter::OnSkill4()
 {
-	if (CanUseSkill()) GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::White, TEXT("Skill4 : Not implemented"));
+	if (m_bDebugLog && CanUseSkill()) GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::White, TEXT("Skill4 : Not implemented"));
 }
 
 //スキル5：最終奥義（押してためる → 離して放つ）
@@ -1100,4 +1082,41 @@ void AActionCharacter::PlayHitShake(float Damage)
 	//ダメージが大きいほど強く揺らす
 	const float T = FMath::Clamp(Damage / m_HitShakeFullDamage, 0.f, 1.f);
 	PC->ClientStartCameraShake(m_HitCameraShake, FMath::Lerp(m_HitShakeMin, m_HitShakeMax, T));
+}
+
+void AActionCharacter::UpdateCameraIgnore()
+{
+	if (m_CameraIgnoreProfiles.Num() == 0) return;
+
+	//プレイヤーのまわりにある、動かない物・動く物を集める
+	TArray<FOverlapResult> Overlaps;
+	FCollisionObjectQueryParams ObjectParams;
+	ObjectParams.AddObjectTypesToQuery(ECC_WorldStatic);
+	ObjectParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(CameraIgnore), false, this);
+
+	GetWorld()->OverlapMultiByObjectType(Overlaps, GetActorLocation(), FQuat::Identity, ObjectParams,
+		FCollisionShape::MakeSphere(m_CameraIgnoreScanRadius), Params);
+
+	for (const FOverlapResult& Overlap : Overlaps)
+	{
+		UPrimitiveComponent* Comp = Overlap.GetComponent();
+		if (!Comp) continue;
+
+		//もうカメラを無視している物（処理済み）は飛ばす
+		if (Comp->GetCollisionResponseToChannel(ECC_Camera) == ECR_Ignore) continue;
+
+		//対象のプリセット（BlockAll など）だけ
+		if (!m_CameraIgnoreProfiles.Contains(Comp->GetCollisionProfileName())) continue;
+
+		//大きい物（壁や建物）は対象外にする
+		if (m_CameraIgnoreMaxSize > 0.f)
+		{
+			const FVector Extent = Comp->Bounds.BoxExtent;
+			if (FMath::Max(Extent.X, Extent.Y) * 2.f > m_CameraIgnoreMaxSize) continue;
+		}
+
+		//カメラとの当たりだけ外す（プレイヤーや敵とは今までどおりぶつかる）
+		Comp->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	}
 }

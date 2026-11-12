@@ -179,8 +179,13 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Health", meta = (AllowPrivateAccess = "true"))
 	bool m_bDodgeInvincible = true;
 
+	//HP・回復・エネルギーのデバッグ表示
 	UPROPERTY(EditAnywhere, Category = "Health|Debug", meta = (AllowPrivateAccess = "true"))
-	bool m_bDebugHP = true;
+	bool m_bDebugHP = false;
+
+	//召喚・スキル入力などのデバッグ表示
+	UPROPERTY(EditAnywhere, Category = "Health|Debug", meta = (AllowPrivateAccess = "true"))
+	bool m_bDebugLog = false;
 
 	float m_LastDamageTime = -999.f;
 	bool  m_bIsDead = false;
@@ -350,8 +355,7 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Ghost")
 	float m_GhostEnergyRate = 1.f;
 
-	// private の関数に追加
-		//分身が敵に攻撃を当てたときの通知を受け取る
+	//分身が敵に攻撃を当てたときの通知を受け取る
 	void OnGhostHitEnemy(float EnergyGain);
 
 	// -----------------------------------------------------------------------
@@ -533,4 +537,27 @@ private:
 
 	float m_AbnormalGravityTime = 0.f;
 	void UpdateGravityWatchdog(float DeltaTime);
+
+
+	// -----------------------------------------------------------------------
+	// カメラが当たらないようにする物（墓や街灯など）
+	// -----------------------------------------------------------------------
+	//このコリジョンプリセットの物には、カメラが当たらないようにする
+	UPROPERTY(EditAnywhere, Category = "Camera|Collision", meta = (AllowPrivateAccess = "true"))
+	TArray<FName> m_CameraIgnoreProfiles = { TEXT("BlockAll") };
+
+	//横幅がこれより大きい物は対象外（壁や建物にはカメラが当たったままにする）。0なら大きさは見ない
+	UPROPERTY(EditAnywhere, Category = "Camera|Collision", meta = (AllowPrivateAccess = "true", ClampMin = "0"))
+	float m_CameraIgnoreMaxSize = 300.f;
+
+	//プレイヤーのまわりを調べる範囲
+	UPROPERTY(EditAnywhere, Category = "Camera|Collision", meta = (AllowPrivateAccess = "true", ClampMin = "100"))
+	float m_CameraIgnoreScanRadius = 2500.f;
+
+	//調べる間隔（秒）
+	UPROPERTY(EditAnywhere, Category = "Camera|Collision", meta = (AllowPrivateAccess = "true", ClampMin = "0.1"))
+	float m_CameraIgnoreScanInterval = 0.5f;
+
+	FTimerHandle m_CameraIgnoreTimer;
+	void UpdateCameraIgnore();
 };

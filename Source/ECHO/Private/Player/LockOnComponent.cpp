@@ -1,4 +1,4 @@
-//LockOnComponent.cpp
+﻿//LockOnComponent.cpp
 //ロックオンコンポーネントソース
 
 #include "Player/LockOnComponent.h"

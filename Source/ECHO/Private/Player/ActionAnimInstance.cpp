@@ -1,5 +1,5 @@
-//ActionAnimInstance.cpp
-//ƒAƒNƒVƒ‡ƒ“ƒAƒjƒƒCƒ“ƒXƒ^ƒ“ƒXƒ\[ƒX
+ï»¿//ActionAnimInstance.cpp
+//ã‚¢ã‚¯ã‚·ãƒ§ãƒ³ã‚¢ãƒ‹ãƒ¡ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã‚½ãƒ¼ã‚¹
 
 #include "Player/ActionAnimInstance.h"
 

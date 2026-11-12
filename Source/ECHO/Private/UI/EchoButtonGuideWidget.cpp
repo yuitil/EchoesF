@@ -1,4 +1,4 @@
-//EchoButtonGuideWidget.cpp
+﻿//EchoButtonGuideWidget.cpp
 
 #include "UI/EchoButtonGuideWidget.h"
 #include "Player/ActionCharacter.h"

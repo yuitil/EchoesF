@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
@@ -21,36 +21,36 @@ class ECHO_API UGhostRecorderComponent : public UActorComponent
         ELevelTick TickType,
         FActorComponentTickFunction* ThisTickFunction) override;
 
-    //ƒf[ƒ^æ“¾ API
-    //’¼‹ß DurationSeconds •b•ª‚ÌƒAƒNƒVƒ‡ƒ“‚ğƒRƒs[‚µ‚Ä•Ô‚·
-    //¢Š«‚É RecordedPlayback —pƒXƒiƒbƒvƒVƒ‡ƒbƒg‚ğæ“¾‚·‚é‚½‚ß‚Ég—p
+    //ãƒ‡ãƒ¼ã‚¿å–å¾— API
+    //ç›´è¿‘ DurationSeconds ç§’åˆ†ã®ã‚¢ã‚¯ã‚·ãƒ§ãƒ³ã‚’ã‚³ãƒ”ãƒ¼ã—ã¦è¿”ã™
+    //å¬å–šæ™‚ã« RecordedPlayback ç”¨ã‚¹ãƒŠãƒƒãƒ—ã‚·ãƒ§ãƒƒãƒˆã‚’å–å¾—ã™ã‚‹ãŸã‚ã«ä½¿ç”¨
     TArray<FGhostActionData> GetSnapshot(float DurationSeconds = 10.f) const;
 
-    //SinceTimestamp ‚æ‚èV‚µ‚¢ƒAƒNƒVƒ‡ƒ“‚ğ‚·‚×‚Ä•Ô‚·
-    //DelayedMirror ƒ‚[ƒh‚Å PlaybackComponent ‚ª 2•b’x‚ê‚ÅŒÄ‚Ño‚·
+    //SinceTimestamp ã‚ˆã‚Šæ–°ã—ã„ã‚¢ã‚¯ã‚·ãƒ§ãƒ³ã‚’ã™ã¹ã¦è¿”ã™
+    //DelayedMirror ãƒ¢ãƒ¼ãƒ‰ã§ PlaybackComponent ãŒ 2ç§’é…ã‚Œã§å‘¼ã³å‡ºã™
     TArray<FGhostActionData> GetActionsSince(float SinceTimestamp) const;
 
-    //ƒoƒbƒtƒ@•ÛŠÔB‚±‚ÌŠÔ‚ğ’´‚¦‚½ƒGƒ“ƒgƒŠ‚Ííœ‚³‚ê‚éi•bj
+    //ãƒãƒƒãƒ•ã‚¡ä¿æŒæ™‚é–“ã€‚ã“ã®æ™‚é–“ã‚’è¶…ãˆãŸã‚¨ãƒ³ãƒˆãƒªã¯å‰Šé™¤ã•ã‚Œã‚‹ï¼ˆç§’ï¼‰
     UPROPERTY(EditAnywhere, Category = "Ghost|Recorder",
         meta = (ClampMin = "5.0", ClampMax = "60.0"))
     float m_BufferDuration;
 
-    //Move ‹L˜^ŠÔŠui•bj
+    //Move è¨˜éŒ²é–“éš”ï¼ˆç§’ï¼‰
     UPROPERTY(EditAnywhere, Category = "Ghost|Recorder", meta = (ClampMin = "0.05", ClampMax = "0.5"))
     float m_MoveRecordInterval;
 
 private:
-    //ƒŠƒ“ƒOƒoƒbƒtƒ@
+    //ãƒªãƒ³ã‚°ãƒãƒƒãƒ•ã‚¡
     UPROPERTY()
     TArray<FGhostActionData> Buffer;
 
-    //ŒÃ‚¢ƒGƒ“ƒgƒŠ‚ğ BufferDuration ‚ÉŠî‚Ã‚¢‚Äíœ 
+    //å¤ã„ã‚¨ãƒ³ãƒˆãƒªã‚’ BufferDuration ã«åŸºã¥ã„ã¦å‰Šé™¤ 
     void TrimBuffer();
 
-    //ƒAƒNƒVƒ‡ƒ“‚ğƒoƒbƒtƒ@‚É’Ç‰Á‚·‚é“ˆêƒGƒ“ƒgƒŠƒ|ƒCƒ“ƒg
+    //ã‚¢ã‚¯ã‚·ãƒ§ãƒ³ã‚’ãƒãƒƒãƒ•ã‚¡ã«è¿½åŠ ã™ã‚‹çµ±ä¸€ã‚¨ãƒ³ãƒˆãƒªãƒã‚¤ãƒ³ãƒˆ
     void PushAction(EGhostActionType Type, const FVector& Direction, FName AnimTag = NAME_None);
 
-    //ƒLƒƒƒbƒVƒ…
+    //ã‚­ãƒ£ãƒƒã‚·ãƒ¥
     UPROPERTY()
     TObjectPtr<ACharacter> CachedCharacter;
 
@@ -58,12 +58,12 @@ private:
     TObjectPtr<UCombatComponent> CachedCombat;
 
 
-    //ƒGƒbƒWŒŸo—p‘OƒtƒŒ[ƒ€ó‘Ô
+    //ã‚¨ãƒƒã‚¸æ¤œå‡ºç”¨å‰ãƒ•ãƒ¬ãƒ¼ãƒ çŠ¶æ…‹
     bool m_bPrevAttacking;
     bool m_bPrevDodging;
-    bool m_bPrevFalling;      //ƒWƒƒƒ“ƒvŠJnŒŸo
-    bool m_bPrevOnGround;     //’…’nŒŸo
+    bool m_bPrevFalling;      //ã‚¸ãƒ£ãƒ³ãƒ—é–‹å§‹æ¤œå‡º
+    bool m_bPrevOnGround;     //ç€åœ°æ¤œå‡º
 
-    //Move ‹L˜^—pƒ^ƒCƒ}[
+    //Move è¨˜éŒ²ç”¨ã‚¿ã‚¤ãƒãƒ¼
     float m_MoveRecordTimer;
 };

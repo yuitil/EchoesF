@@ -1,5 +1,5 @@
-//ActionMovementComponent.cpp
-//ƒAƒNƒVƒ‡ƒ“ƒ€[ƒuƒƒ“ƒgƒRƒ“ƒ|[ƒlƒ“ƒgƒ\[ƒX
+ï»¿//ActionMovementComponent.cpp
+//ã‚¢ã‚¯ã‚·ãƒ§ãƒ³ãƒ ãƒ¼ãƒ–ãƒ¡ãƒ³ãƒˆã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆã‚½ãƒ¼ã‚¹
 
 #include "Player/ActionMovementComponent.h"
 
@@ -20,12 +20,12 @@ UActionMovementComponent::UActionMovementComponent() :
 {
     PrimaryComponentTick.bCanEverTick = true;
 
-    //ƒAƒNƒVƒ‡ƒ“ƒQ[ƒ€‚ç‚µ‚¢‚«‚Ñ‚«‚Ñ‚Æ‚µ‚½‹““®‚É‚·‚é‚½‚ß‚Ì‰Šúİ’è
-    MaxAcceleration = 2048.f;             //‰Á‘¬“x‚ğ‚‚­‚µAƒŒƒXƒ|ƒ“ƒX‚ğŒüã
-    GroundFriction = 8.f;                 //’n–Ê–€C‚ğ‚‚ßAŠŠ‚è‚ğ—}‚¦‚é
-    BrakingDecelerationWalking = 2048.f;  //•às‚ÌƒuƒŒ[ƒL—Í‚ğ‹­‚ß‚é
-    GravityScale = 5.5f;                   //d—Í‚ğ‹­‚­‚µA‚à‚Á‚³‚è‚µ‚½‘Ø‹óŠÔ‚ğŒ¸‚ç‚·
-    BrakingDecelerationFalling = 2048.f;  //‹ó’†‚Å‚ÌƒuƒŒ[ƒL—Í
+    //ã‚¢ã‚¯ã‚·ãƒ§ãƒ³ã‚²ãƒ¼ãƒ ã‚‰ã—ã„ãã³ãã³ã¨ã—ãŸæŒ™å‹•ã«ã™ã‚‹ãŸã‚ã®åˆæœŸè¨­å®š
+    MaxAcceleration = 2048.f;             //åŠ é€Ÿåº¦ã‚’é«˜ãã—ã€ãƒ¬ã‚¹ãƒãƒ³ã‚¹ã‚’å‘ä¸Š
+    GroundFriction = 8.f;                 //åœ°é¢æ‘©æ“¦ã‚’é«˜ã‚ã€æ»‘ã‚Šã‚’æŠ‘ãˆã‚‹
+    BrakingDecelerationWalking = 2048.f;  //æ­©è¡Œæ™‚ã®ãƒ–ãƒ¬ãƒ¼ã‚­åŠ›ã‚’å¼·ã‚ã‚‹
+    GravityScale = 5.5f;                   //é‡åŠ›ã‚’å¼·ãã—ã€ã‚‚ã£ã•ã‚Šã—ãŸæ»ç©ºæ™‚é–“ã‚’æ¸›ã‚‰ã™
+    BrakingDecelerationFalling = 2048.f;  //ç©ºä¸­ã§ã®ãƒ–ãƒ¬ãƒ¼ã‚­åŠ›
 
     MaxWalkSpeed = m_BaseWalkSpeed;
 }
@@ -37,29 +37,29 @@ void UActionMovementComponent::TickComponent(
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-    //‹ó’†‚ÌˆÚ“®§Œä
+    //ç©ºä¸­æ™‚ã®ç§»å‹•åˆ¶å¾¡
     if (IsFalling())
     {
-        //‹ó’†‚Å‚Íis•ûŒü‚Ö‹­§“I‚ÉƒLƒƒƒ‰ƒNƒ^[‚ğ‰ñ“]‚³‚¹‚È‚¢
+        //ç©ºä¸­ã§ã¯é€²è¡Œæ–¹å‘ã¸å¼·åˆ¶çš„ã«ã‚­ãƒ£ãƒ©ã‚¯ã‚¿ãƒ¼ã‚’å›è»¢ã•ã›ãªã„
         bOrientRotationToMovement = false;
 
-        //‰ñ”ğ’†‚Å‚È‚¯‚ê‚ÎA‹ó’†‚Å‚à“ü—Í•ûŒü‚É‘Î‚µ‚Ä—Í‚ğ‰Á‚¦‚é
+        //å›é¿ä¸­ã§ãªã‘ã‚Œã°ã€ç©ºä¸­ã§ã‚‚å…¥åŠ›æ–¹å‘ã«å¯¾ã—ã¦åŠ›ã‚’åŠ ãˆã‚‹
         if (!m_bIsDodging)
         {
             FVector InputVector = GetLastInputVector();
             if (!InputVector.IsNearlyZero())
             {
-                //“ü—Í•ûŒü‚É—Í‚ğ³‹K‰»iÎ‚ß‘¬“xƒAƒbƒv‚ğ–h‚®j
+                //å…¥åŠ›æ–¹å‘ã«åŠ›ã‚’æ­£è¦åŒ–ï¼ˆæ–œã‚é€Ÿåº¦ã‚¢ãƒƒãƒ—ã‚’é˜²ãï¼‰
                 FVector InputDir = InputVector.GetSafeNormal2D();
 
-                //“ü—Í•ûŒü‚É—Í‚ğ‰ÁZ
+                //å…¥åŠ›æ–¹å‘ã«åŠ›ã‚’åŠ ç®—
                 Velocity += InputDir * m_AirPushForce * DeltaTime;
 
-                //…•½•ûŒü‚Ì‘¬“x‚ğ’Šo‚µAÅ‘å‘¬“x§ŒÀ‚ğ‚©‚¯‚é
+                //æ°´å¹³æ–¹å‘ã®é€Ÿåº¦ã‚’æŠ½å‡ºã—ã€æœ€å¤§é€Ÿåº¦åˆ¶é™ã‚’ã‹ã‘ã‚‹
                 FVector HorizontalVelocity = FVector(Velocity.X, Velocity.Y, 0.f);
                 if (HorizontalVelocity.Size() > m_AirMaxHorizontalSpeed)
                 {
-                    //§ŒÀ‚ğ’´‚¦‚Ä‚¢‚éê‡‚ÍƒNƒ‰ƒ“ƒv‚·‚é
+                    //åˆ¶é™ã‚’è¶…ãˆã¦ã„ã‚‹å ´åˆã¯ã‚¯ãƒ©ãƒ³ãƒ—ã™ã‚‹
                     HorizontalVelocity = HorizontalVelocity.GetSafeNormal() * m_AirMaxHorizontalSpeed;
                     Velocity.X = HorizontalVelocity.X;
                     Velocity.Y = HorizontalVelocity.Y;
@@ -69,27 +69,27 @@ void UActionMovementComponent::TickComponent(
     }
     else
     {
-        //’n–Ê‚É‚¢‚é‚Íis•ûŒü‚ÖƒLƒƒƒ‰ƒNƒ^[‚ğŒü‚©‚í‚¹‚é
+        //åœ°é¢ã«ã„ã‚‹æ™‚ã¯é€²è¡Œæ–¹å‘ã¸ã‚­ãƒ£ãƒ©ã‚¯ã‚¿ãƒ¼ã‚’å‘ã‹ã‚ã›ã‚‹
         bOrientRotationToMovement = true;
     }
 
-    //‘¬“x‚ği‚Á‚Ä‚¢‚éŠÔ‚Íƒ_ƒbƒVƒ…‚µ‚È‚¢
+    //é€Ÿåº¦ã‚’çµã£ã¦ã„ã‚‹é–“ã¯ãƒ€ãƒƒã‚·ãƒ¥ã—ãªã„
     float DesiredSpeed = (m_bIsSprinting && m_SpeedMultiplier >= 1.f) ? m_SprintSpeed : m_BaseWalkSpeed;
 
-    //’…’nd’¼‚Ì‰ñ•œˆ—
+    //ç€åœ°ç¡¬ç›´ã®å›å¾©å‡¦ç†
     if (m_bIsLandingRecovery)
     {
         m_LandingRecoveryElapsed += DeltaTime;
 
-        //‰ñ•œ‚Ìis“x‚ğ0.0`1.0‚Ì”ÍˆÍ‚ÅZo
+        //å›å¾©ã®é€²è¡Œåº¦ã‚’0.0ï½1.0ã®ç¯„å›²ã§ç®—å‡º
         float Alpha = FMath::Clamp(m_LandingRecoveryElapsed / m_LandingRecoveryTime, 0.f, 1.f);
 
-        //Å‰‚Íd‚­AŒã‚©‚ç‹}‘¬‚ÉŒ³‚Ì‘¬“x‚É–ß‚é‚æ‚¤‚ÈèG‚è‚É‚·‚é
+        //æœ€åˆã¯é‡ãã€å¾Œã‹ã‚‰æ€¥é€Ÿã«å…ƒã®é€Ÿåº¦ã«æˆ»ã‚‹ã‚ˆã†ãªæ‰‹è§¦ã‚Šã«ã™ã‚‹
         float EasedAlpha = FMath::InterpEaseIn(0.f, 1.f, Alpha, 2.f);
 
         DesiredSpeed *= FMath::Lerp(m_LandingSpeedMultiplier, 1.f, EasedAlpha);
 
-        //‰ñ•œŠÔ‚ªI—¹‚µ‚½‚çA‘¬“x‚ğŠ®‘S‚É–ß‚·
+        //å›å¾©æ™‚é–“ãŒçµ‚äº†ã—ãŸã‚‰ã€é€Ÿåº¦ã‚’å®Œå…¨ã«æˆ»ã™
         if (Alpha >= 1.f)
         {
             m_bIsLandingRecovery = false;
@@ -104,7 +104,7 @@ void UActionMovementComponent::BeginPlay()
 {
     Super::BeginPlay();
 
-    //–{—ˆ‚Ìd—Í‚ğŠo‚¦‚Ä‚¨‚­iBP‚Å•Ï‚¦‚Ä‚¢‚ê‚Î‚»‚Ì’lj
+    //æœ¬æ¥ã®é‡åŠ›ã‚’è¦šãˆã¦ãŠãï¼ˆBPã§å¤‰ãˆã¦ã„ã‚Œã°ãã®å€¤ï¼‰
     m_DefaultGravityScale = GravityScale;
 }
 
@@ -135,11 +135,11 @@ void UActionMovementComponent::SetAirHover(bool bEnable)
     {
         m_HoverCachedGravityScale = GravityScale;
         GravityScale = 0.f;
-        Velocity = FVector::ZeroVector;   //ã¸E—‰º‚Ì¨‚¢‚ğ~‚ß‚Ä‚»‚Ìê‚É—¯‚Ü‚é
+        Velocity = FVector::ZeroVector;   //ä¸Šæ˜‡ãƒ»è½ä¸‹ã®å‹¢ã„ã‚’æ­¢ã‚ã¦ãã®å ´ã«ç•™ã¾ã‚‹
     }
     else
     {
-        //Šo‚¦‚Ä‚¢‚½’l‚Å‚Í‚È‚­–{—ˆ‚Ìd—Í‚É–ß‚·i‚Ù‚©‚Ìˆ—‚Æd‚È‚Á‚Ä‚à‰ó‚ê‚È‚¢‚æ‚¤‚Éj
+        //è¦šãˆã¦ã„ãŸå€¤ã§ã¯ãªãæœ¬æ¥ã®é‡åŠ›ã«æˆ»ã™ï¼ˆã»ã‹ã®å‡¦ç†ã¨é‡ãªã£ã¦ã‚‚å£Šã‚Œãªã„ã‚ˆã†ã«ï¼‰
         GravityScale = m_DefaultGravityScale;
     }
 }
@@ -148,16 +148,16 @@ void UActionMovementComponent::StartDodge(const FVector& Direction, float Force)
 {
     m_bIsDodging = true;
 
-    //Œ³‚Ì•¨—ƒpƒ‰ƒ[ƒ^‚ğ‘Ş”ğ
+    //å…ƒã®ç‰©ç†ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ã‚’é€€é¿
     m_CachedGravityScale = GravityScale;
     m_CachedGroundFriction = GroundFriction;
 
-    //‰ñ”ğ’†‚¾‚¯d—Í‚Æ–€C‚ğ–³Œø‰»‚µAŠµ«‚ğØ‚é
+    //å›é¿ä¸­ã ã‘é‡åŠ›ã¨æ‘©æ“¦ã‚’ç„¡åŠ¹åŒ–ã—ã€æ…£æ€§ã‚’åˆ‡ã‚‹
     GravityScale = 0.f;
     GroundFriction = 0.f;
     Velocity = FVector::ZeroVector;
 
-    //…•½•ûŒü‚ÖuŠÔ“I‚È„i—Í‚ğ—^‚¦‚é
+    //æ°´å¹³æ–¹å‘ã¸ç¬é–“çš„ãªæ¨é€²åŠ›ã‚’ä¸ãˆã‚‹
     FVector Dir = Direction;
     Dir.Z = 0.f;
     Launch(Dir.GetSafeNormal() * Force);
@@ -165,9 +165,9 @@ void UActionMovementComponent::StartDodge(const FVector& Direction, float Force)
 
 void UActionMovementComponent::EndDodge()
 {
-    if (!m_bIsDodging) return;   //“ñdŒÄ‚Ño‚µƒK[ƒh
+    if (!m_bIsDodging) return;   //äºŒé‡å‘¼ã³å‡ºã—ã‚¬ãƒ¼ãƒ‰
 
-    //Šo‚¦‚Ä‚¢‚½’l‚Å‚Í‚È‚­–{—ˆ‚Ìd—Í‚É–ß‚·i‘Å‚¿ã‚°’†‚É‰ñ”ğ‚µ‚Ä‚àã‚¢d—Í‚ªc‚ç‚È‚¢‚æ‚¤‚Éj
+    //è¦šãˆã¦ã„ãŸå€¤ã§ã¯ãªãæœ¬æ¥ã®é‡åŠ›ã«æˆ»ã™ï¼ˆæ‰“ã¡ä¸Šã’ä¸­ã«å›é¿ã—ã¦ã‚‚å¼±ã„é‡åŠ›ãŒæ®‹ã‚‰ãªã„ã‚ˆã†ã«ï¼‰
     GravityScale = m_DefaultGravityScale;
 
     GroundFriction = m_CachedGroundFriction;

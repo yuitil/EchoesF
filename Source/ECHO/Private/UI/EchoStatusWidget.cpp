@@ -1,4 +1,4 @@
-//EchoStatusWidget.cpp
+﻿//EchoStatusWidget.cpp
 
 #include "UI/EchoStatusWidget.h"
 #include "Player/ActionCharacter.h"

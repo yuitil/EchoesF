@@ -1,4 +1,4 @@
-//EchoStatusWidget.h
+﻿//EchoStatusWidget.h
 
 #pragma once
 

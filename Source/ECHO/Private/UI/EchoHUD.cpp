@@ -1,4 +1,4 @@
-//EchoHUD.cpp
+﻿//EchoHUD.cpp
 
 #include "UI/EchoHUD.h"
 #include "UI/EchoStatusWidget.h"
@@ -33,7 +33,7 @@ void AEchoHUD::DrawHUD()
 	if (!LockOn || !LockOn->IsLockedOn()) return;
 
 	AActor* Target = LockOn->GetTarget();
-	if (!Target) return;;
+	if (!Target) return;
 
 	//ターゲットの3D位置をスクリーン座標に変換
 	FVector TargetWorldPos = Target->GetActorLocation();

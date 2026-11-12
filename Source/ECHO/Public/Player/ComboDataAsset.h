@@ -1,4 +1,4 @@
-//ComboDataAsset.h
+﻿//ComboDataAsset.h
 //コンボの設定データ。BPから切り離して保存することで、BPが壊れても設定が残る
 
 #pragma once

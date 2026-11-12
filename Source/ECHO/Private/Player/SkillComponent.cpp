@@ -56,7 +56,7 @@ bool USkillComponent::CanStart() const
 {
 	if (!SkillData)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("SkillData is NULL"));
+		UE_LOG(LogTemp, Warning, TEXT("SkillComponent: SkillData is NULL"));
 		return false;
 	}
 	return !IsBusy() && GetOwnerCharacter() != nullptr;
@@ -67,7 +67,7 @@ bool USkillComponent::TryConsume(int32 Cost)
 	AActionCharacter* Owner = GetOwnerCharacter();
 	if (!Owner || !Owner->TryConsumeEnergyStock(Cost))
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Orange,
+		if (m_bDebugDraw) GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Orange,
 			FString::Printf(TEXT("Not enough stock (need %d)"), Cost));
 		return false;
 	}
@@ -655,7 +655,7 @@ bool USkillComponent::StartCharge()
 	AActionCharacter* Owner = GetOwnerCharacter();
 	if (Owner->GetEnergyStock() < 1)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Orange, TEXT("Not enough stock (need 1)"));
+		if (m_bDebugDraw) GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Orange, TEXT("Not enough stock (need 1)"));
 		return false;
 	}
 
@@ -694,7 +694,7 @@ void USkillComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 		m_ChargeLevel = NewLevel;
 		UpdateChargeEffect();
 		OnChargeLevelChanged.Broadcast(m_ChargeLevel);
-		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Cyan,
+		if (m_bDebugDraw) GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Cyan,
 			FString::Printf(TEXT("Charge Lv %d"), m_ChargeLevel));
 	}
 }
@@ -774,7 +774,7 @@ void USkillComponent::ReleaseCharge()
 		Owner->StopAnimMontage(U.ChargeMontage);
 	}
 
-	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Magenta,
+	if (m_bDebugDraw) GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Magenta,
 		FString::Printf(TEXT("ULTIMATE Lv %d"), m_UltLevel));
 
 	//振り下ろしの瞬間に合わせて斬撃を出す
@@ -890,7 +890,7 @@ void USkillComponent::Interrupt()
 	{
 		GetOwnerCharacter()->StopAnimMontage(SkillData->Ultimate.ChargeMontage);
 	}
-	GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Red, TEXT("Charge Interrupted"));
+	if (m_bDebugDraw) GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Red, TEXT("Charge Interrupted"));
 	EndSkill();
 }
 

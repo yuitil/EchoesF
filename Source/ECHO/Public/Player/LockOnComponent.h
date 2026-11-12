@@ -1,4 +1,4 @@
-//LockOnComponent.h
+﻿//LockOnComponent.h
 //ロックオンコンポーネントヘッダー
 //
 //ターゲット管理・トグル処理・自動解除

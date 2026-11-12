@@ -1,4 +1,4 @@
-#include "Player/GhostRecorderComponent.h"
+ï»¿#include "Player/GhostRecorderComponent.h"
 #include "GameFramework/Actor.h"
 #include "Components/ActorComponent.h"
 #include "Ghost/Data/GhostTypes.h"
@@ -51,7 +51,7 @@ void UGhostRecorderComponent::TickComponent(
     const bool bNowDodging = CachedCombat ? CachedCombat->IsDodging() : false;
 
     // ------------------------------------------------------------------
-    // MoveF“ü—Í•ûŒü‚ª‚ ‚é‚Æ‚«‚¾‚¯ŠÔˆø‚«‹L˜^
+    // Moveï¼šå…¥åŠ›æ–¹å‘ãŒã‚ã‚‹ã¨ãã ã‘é–“å¼•ãè¨˜éŒ²
     // ------------------------------------------------------------------
     if (MoveDir.SizeSquared() > 0.01f)
     {
@@ -68,7 +68,7 @@ void UGhostRecorderComponent::TickComponent(
     }
 
     // ------------------------------------------------------------------
-    // AttackF—§‚¿ã‚ª‚èƒGƒbƒWŒŸo
+    // Attackï¼šç«‹ã¡ä¸ŠãŒã‚Šã‚¨ãƒƒã‚¸æ¤œå‡º
     // ------------------------------------------------------------------
     if (!m_bPrevAttacking && bNowAttacking)
     {
@@ -77,7 +77,7 @@ void UGhostRecorderComponent::TickComponent(
     }
 
     // ------------------------------------------------------------------
-    // DodgeF—§‚¿ã‚ª‚èƒGƒbƒWŒŸo
+    // Dodgeï¼šç«‹ã¡ä¸ŠãŒã‚Šã‚¨ãƒƒã‚¸æ¤œå‡º
     // ------------------------------------------------------------------
     if (!m_bPrevDodging && bNowDodging)
     {
@@ -87,7 +87,7 @@ void UGhostRecorderComponent::TickComponent(
     }
 
     // ------------------------------------------------------------------
-    // JumpF’nã¨‹ó’† ‚Ì‘JˆÚ
+    // Jumpï¼šåœ°ä¸Šâ†’ç©ºä¸­ ã®é·ç§»
     // ------------------------------------------------------------------
     if (!m_bPrevFalling && bFalling && Velocity.Z > 0.f)
     {
@@ -95,21 +95,21 @@ void UGhostRecorderComponent::TickComponent(
     }
 
     // ------------------------------------------------------------------
-    // LandF‹ó’†¨’nã ‚Ì‘JˆÚ
+    // Landï¼šç©ºä¸­â†’åœ°ä¸Š ã®é·ç§»
     // ------------------------------------------------------------------
     if (!m_bPrevOnGround && bOnGround)
     {
         PushAction(EGhostActionType::Land, FVector::DownVector);
     }
 
-    //‘OƒtƒŒ[ƒ€ó‘Ô‚ğ•Û‘¶
+    //å‰ãƒ•ãƒ¬ãƒ¼ãƒ çŠ¶æ…‹ã‚’ä¿å­˜
     m_bPrevAttacking = bNowAttacking;
     m_bPrevDodging = bNowDodging;
     m_bPrevFalling = bFalling;
     m_bPrevOnGround = bOnGround;
 
-    //ŒÃ‚¢ƒoƒbƒtƒ@‚ğ’èŠúíœi–ˆƒtƒŒ[ƒ€‚¾‚Æd‚¢‚Ì‚Å Trim ‚Í 1•b‚¨‚«‚Éj
-    //ƒVƒ“ƒvƒ‹‚É–ˆƒtƒŒ[ƒ€ŒÄ‚ñ‚Å‚à TrimBuffer “à‚ÌğŒ‚Å–³‘Êˆ—‚ÍÅ¬
+    //å¤ã„ãƒãƒƒãƒ•ã‚¡ã‚’å®šæœŸå‰Šé™¤ï¼ˆæ¯ãƒ•ãƒ¬ãƒ¼ãƒ ã ã¨é‡ã„ã®ã§ Trim ã¯ 1ç§’ãŠãã«ï¼‰
+    //ã‚·ãƒ³ãƒ—ãƒ«ã«æ¯ãƒ•ãƒ¬ãƒ¼ãƒ å‘¼ã‚“ã§ã‚‚ TrimBuffer å†…ã®æ¡ä»¶ã§ç„¡é§„å‡¦ç†ã¯æœ€å°
     TrimBuffer();
 }
 
@@ -141,7 +141,7 @@ void UGhostRecorderComponent::TrimBuffer()
 
     const float Cutoff = GetWorld()->GetTimeSeconds() - m_BufferDuration;
 
-    //æ“ª‚©‚çŒÃ‚¢ƒGƒ“ƒgƒŠ‚ğíœ
+    //å…ˆé ­ã‹ã‚‰å¤ã„ã‚¨ãƒ³ãƒˆãƒªã‚’å‰Šé™¤
     int32 RemoveCount = 0;
     for (const FGhostActionData& Entry : Buffer)
     {

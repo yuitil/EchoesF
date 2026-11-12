@@ -1,6 +1,6 @@
-//ActionMovementComponent.h
-//ˆÚ“®E•¨—‚ÌŠg’£ƒRƒ“ƒ|[ƒlƒ“ƒg
-//ƒ_ƒbƒVƒ…A2’iƒWƒƒƒ“ƒv‚Ì‹ó’†§ŒäA’…’n‚Ìd’¼‚È‚Ç
+ï»¿//ActionMovementComponent.h
+//ç§»å‹•ãƒ»ç‰©ç†ã®æ‹¡å¼µã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆ
+//ãƒ€ãƒƒã‚·ãƒ¥ã€2æ®µã‚¸ãƒ£ãƒ³ãƒ—æ™‚ã®ç©ºä¸­åˆ¶å¾¡ã€ç€åœ°æ™‚ã®ç¡¬ç›´ãªã©
 
 #pragma once
 
@@ -16,19 +16,19 @@ class ECHO_API UActionMovementComponent : public UCharacterMovementComponent
 public:
     UActionMovementComponent();
 
-    //ƒLƒƒƒ‰ƒNƒ^[‚ÌˆÚ“®‚É‚¨‚¯‚é‰Á‘¬“x‚Æ–€C‚ğİ’è‚·‚éŠÖ”
+    //ã‚­ãƒ£ãƒ©ã‚¯ã‚¿ãƒ¼ã®ç§»å‹•ã«ãŠã‘ã‚‹åŠ é€Ÿåº¦ã¨æ‘©æ“¦ã‚’è¨­å®šã™ã‚‹é–¢æ•°
     void SetMovementWeight(float NewAcceleration, float NewFriction);
 
-    //ƒ_ƒbƒVƒ…ó‘Ô‚Ö‚ÌØ‚è‘Ö‚¦AÅ‘å•às‘¬“x‚ğØ‚è‘Ö‚¦‚éŠÖ”
+    //ãƒ€ãƒƒã‚·ãƒ¥çŠ¶æ…‹ã¸ã®åˆ‡ã‚Šæ›¿ãˆã€æœ€å¤§æ­©è¡Œé€Ÿåº¦ã‚’åˆ‡ã‚Šæ›¿ãˆã‚‹é–¢æ•°
     void SetSprinting(bool _bIsSprinting);
 
-    //Œ»İƒ_ƒbƒVƒ…’†‚©‚Ç‚¤‚©æ“¾‚·‚éŠÖ”
+    //ç¾åœ¨ãƒ€ãƒƒã‚·ãƒ¥ä¸­ã‹ã©ã†ã‹å–å¾—ã™ã‚‹é–¢æ•°
     bool IsSprinting() const { return m_bIsSprinting; }
 
-    //’…’nŒã‚Ìd’¼ˆ—‚ğŠJn‚·‚éŠÖ”
+    //ç€åœ°å¾Œã®ç¡¬ç›´å‡¦ç†ã‚’é–‹å§‹ã™ã‚‹é–¢æ•°
     void StartLandingRecovery();
 
-    //ŠO•”‚©‚çˆÚ“®‘¬“x‚ği‚éi‰ñ•œ’†‚È‚ÇjB1.0‚Å’Êí
+    //å¤–éƒ¨ã‹ã‚‰ç§»å‹•é€Ÿåº¦ã‚’çµã‚‹ï¼ˆå›å¾©ä¸­ãªã©ï¼‰ã€‚1.0ã§é€šå¸¸
     void SetSpeedMultiplier(float Multiplier) { m_SpeedMultiplier = Multiplier; }
 
 protected:
@@ -36,7 +36,7 @@ protected:
 
     virtual void BeginPlay() override;
 
-    // --- •àsEƒ_ƒbƒVƒ…‘¬“xİ’è ---
+    // --- æ­©è¡Œãƒ»ãƒ€ãƒƒã‚·ãƒ¥é€Ÿåº¦è¨­å®š ---
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ActionMovement")
     float m_BaseWalkSpeed;
@@ -44,38 +44,38 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ActionMovement")
     float m_SprintSpeed;
 
-    //Œ»İƒ_ƒbƒVƒ…’†‚©‚Ç‚¤‚©‚Ìƒtƒ‰ƒO
+    //ç¾åœ¨ãƒ€ãƒƒã‚·ãƒ¥ä¸­ã‹ã©ã†ã‹ã®ãƒ•ãƒ©ã‚°
     bool m_bIsSprinting;
 
 public:
-    // --- ƒWƒƒƒ“ƒvE‹ó’†§ŒäŠÖ˜Aƒpƒ‰ƒ[ƒ^ ---
+    // --- ã‚¸ãƒ£ãƒ³ãƒ—ãƒ»ç©ºä¸­åˆ¶å¾¡é–¢é€£ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ ---
 
-    //‚P’i–ÚƒWƒƒƒ“ƒv‚Ì‹ó’†‰¡ˆÚ“®‚ÌŒø‚«‹ï‡
+    //ï¼‘æ®µç›®ã‚¸ãƒ£ãƒ³ãƒ—æ™‚ã®ç©ºä¸­æ¨ªç§»å‹•ã®åŠ¹ãå…·åˆ
     UPROPERTY(EditAnywhere, Category = "Jump")
     float m_AirControlFirstJump;
 
-    //‚Q’i–ÚƒWƒƒƒ“ƒv‚Ì‹ó’†‰¡ˆÚ“®‚ÌŒø‚«‹ï‡
+    //ï¼’æ®µç›®ã‚¸ãƒ£ãƒ³ãƒ—æ™‚ã®ç©ºä¸­æ¨ªç§»å‹•ã®åŠ¹ãå…·åˆ
     UPROPERTY(EditAnywhere, Category = "Jump")
     float m_AirControlSecondJump;
 
-    //‚Q’i–ÚƒWƒƒƒ“ƒv”­“®‚É—^‚¦‚ç‚ê‚éã•ûŒüiZj‚Ì‰‘¬
+    //ï¼’æ®µç›®ã‚¸ãƒ£ãƒ³ãƒ—ç™ºå‹•æ™‚ã«ä¸ãˆã‚‰ã‚Œã‚‹ä¸Šæ–¹å‘ï¼ˆZï¼‰ã®åˆé€Ÿ
     UPROPERTY(EditAnywhere, Category = "Jump")
     float m_SecondJumpZVelocity;
 
-    //‹ó’†‚Å“ü—Í•ûŒü‚É‰Á‚¦‚éŒÅ’è‚Ì—Í
+    //ç©ºä¸­ã§å…¥åŠ›æ–¹å‘ã«åŠ ãˆã‚‹å›ºå®šã®åŠ›
     UPROPERTY(EditAnywhere, Category = "Jump")
     float m_AirPushForce;
 
-    //‹ó’†‚Ì‰¡•ûŒüÅ‘å‘¬“x
+    //ç©ºä¸­ã®æ¨ªæ–¹å‘æœ€å¤§é€Ÿåº¦
     UPROPERTY(EditAnywhere, Category = "Jump")
     float m_AirMaxHorizontalSpeed;
 
 
-    //‹ó’†UŒ‚’†‚Ì‘Ø‹óid—Í‚ğ~‚ß‚Ä‚»‚Ìê‚É—¯‚Ü‚éj
+    //ç©ºä¸­æ”»æ’ƒä¸­ã®æ»ç©ºï¼ˆé‡åŠ›ã‚’æ­¢ã‚ã¦ãã®å ´ã«ç•™ã¾ã‚‹ï¼‰
     void SetAirHover(bool bEnable);
     bool IsAirHovering() const { return m_bAirHover; }
 
-    //–{—ˆ‚Ìd—ÍiBeginPlay‚Ì’lj
+    //æœ¬æ¥ã®é‡åŠ›ï¼ˆBeginPlayæ™‚ã®å€¤ï¼‰
     float GetDefaultGravityScale() const { return m_DefaultGravityScale; }
 
 private:
@@ -84,33 +84,33 @@ private:
     float m_DefaultGravityScale = 1.f;
 
 public:
-    // --- ’…’nd’¼ŠÖ˜Aƒpƒ‰ƒ[ƒ^ ---
+    // --- ç€åœ°ç¡¬ç›´é–¢é€£ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ ---
 
-    //’…’nŒã‚Ì‘¬“x‰ñ•œŠÔ
+    //ç€åœ°å¾Œã®é€Ÿåº¦å›å¾©æ™‚é–“
     UPROPERTY(EditAnywhere, Category = "Landing")
     float m_LandingRecoveryTime;
 
-    //’…’nd’¼’†‚Ì‘¬“x”{—¦
+    //ç€åœ°ç¡¬ç›´ä¸­ã®é€Ÿåº¦å€ç‡
     UPROPERTY(EditAnywhere, Category = "Landing")
     float m_LandingSpeedMultiplier;
 
-    //‰ñ”ğ‚ÌŠJn‚ÆI—¹
+    //å›é¿ã®é–‹å§‹ã¨çµ‚äº†
     void StartDodge(const FVector& Direction, float Force);
     void EndDodge();
 
     bool IsDodging() const { return m_bIsDodging; }
 
 private:
-    //Œ»İ‰ñ”ğ’†‚©‚Ç‚¤‚©
+    //ç¾åœ¨å›é¿ä¸­ã‹ã©ã†ã‹
     bool m_bIsDodging;
     float m_CachedGravityScale;
     float m_CachedGroundFriction;
 
-    //Œ»İ’…’nd’¼‚Ì‰ñ•œˆ—’†‚©
+    //ç¾åœ¨ç€åœ°ç¡¬ç›´ã®å›å¾©å‡¦ç†ä¸­ã‹
     bool m_bIsLandingRecovery;
-    //’…’nd’¼ŠJn‚©‚ç‚ÌŒo‰ßŠÔ
+    //ç€åœ°ç¡¬ç›´é–‹å§‹ã‹ã‚‰ã®çµŒéæ™‚é–“
     float m_LandingRecoveryElapsed;
 
-    //‘¬“x§ŒÀ
+    //é€Ÿåº¦åˆ¶é™
     float m_SpeedMultiplier = 1.f;
 };
