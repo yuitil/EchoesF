@@ -1,6 +1,8 @@
 #include "Event/Events/BossBattleEvent/BossBattleEvent.h"
 
 #include "Enemy/Core/EnemyCharacterBase.h"
+#include "Enemy/Boss/BossEnemyCharacter.h"
+#include "Enemy/Boss/BossApproach.h"
 #include "Enemy/EnemyManager/EnemyManager.h"
 #include "Event/EventPoint/EventPoint.h"
 
@@ -158,6 +160,9 @@ void UBossBattleEvent::SpawnBoss()
 
 	m_SpawnedBoss = Boss;
 
+	//カメラ演出中にボスが歩き出さないようにする。
+	if (auto* boss = Cast<ABossEnemyCharacter>(Boss)) { boss->BeginIntro(); }
+
 	// ボス登場シーケンスを再生
 	PlayBossIntroSequence();
 }
@@ -286,8 +291,13 @@ void UBossBattleEvent::PlayBossIntroSequence()
 	);
 
 	// ボス登場シーケンスを再生
+	if (m_introBinding.IsValid())
+	{
+		const TArray<AActor*> actors = { m_SpawnedBoss.Get() };
+		m_EventData.m_EventIntroSequence->SetBinding(m_introBinding, actors);
+	}
 	if (!SequenceSystem->PlaySequence(
-		m_EventData.m_EventIntroSequence), false)
+		m_EventData.m_EventIntroSequence, false))
 	{
 		SequenceSystem->OnSequenceFinished.RemoveDynamic(
 			this,
@@ -304,6 +314,13 @@ void UBossBattleEvent::OnBossIntroSequenceFinished()
 	if (m_IsBossIntroFinished) return;
 
 	m_IsBossIntroFinished = true;
+
+	//演出終了とスキップのどちらでも、ボスの戦闘を再開する。
+	if (auto* boss = Cast<ABossEnemyCharacter>(m_SpawnedBoss))
+	{
+		if (m_introBinding.IsValid() && IsValid(m_EventData.m_EventIntroSequence)) { boss->m_approach->FinishDraw(); }
+		boss->EndIntro();
+	}
 
 	UWorld* World = GetWorld();
 	if (!World) return;

@@ -1,4 +1,4 @@
-#include "Enemy/Boss/BossShadowSummon.h"
+﻿#include "Enemy/Boss/BossShadowSummon.h"
 #include "Enemy/Boss/BossShadow.h"
 #include "Enemy/Boss/BossPosture.h"
 #include "Enemy/Boss/BossSpacing.h"
@@ -176,7 +176,7 @@ void UBossShadowSummon::PlanAfterAttack()
 	//影がいる時だけ連携を予約し、体勢を戻す判断は影がいなくても行う。
 	if (m_shadow.IsValid() && !boss->GetPendingComboId().IsNone())
 	{
-		m_relayEnd = now + PrimaryComponentTick.TickInterval;
+		m_relayEnd = now + FMath::Max(PrimaryComponentTick.TickInterval, m_relayWindow);
 	}
 	TryStep(*boss, now);
 }
@@ -224,6 +224,8 @@ bool UBossShadowSummon::TryStep(ABossEnemyCharacter& _boss, double _now)
 	{
 		if (!IsValid(shadow) || !shadow->IsCombatActive() || shadow->IsActing()) { continue; }
 		if (!shadow->GetCharacterMovement()->IsMovingOnGround()) { continue; }
+        //退避用の影も、姿が現れる前には交換しない。
+        if (IsWaitingForSwap(shadow) && !shadow->CanRelay()) { continue; }
 		if (!IsWaitingForSwap(shadow))
 		{
 			if (relay && !shadow->CanRelay()) { continue; }
@@ -313,7 +315,7 @@ bool UBossShadowSummon::SpawnEscapeShadow(ABossEnemyCharacter& _boss, AActor& _t
 		StopWalk(_boss);
 		m_reserveShade = shade;
 		m_rescuePanic = _panic && !_stuck;
-		m_rescueEnd = _now + shade->m_riseTime + 2.;
+		m_rescueEnd = _now + shade->m_showDelay + shade->m_riseTime + 2.;
 		m_nextTime = _now + m_cooldown;
 		return true;
 	}

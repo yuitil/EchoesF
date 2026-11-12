@@ -13,6 +13,8 @@
 #include "AIController.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "NavigationSystem.h"
+#include "Kismet/GameplayStatics.h"
+#include "NavigationPath.h"
 #include "Enemy/Boss/BossShadow.h"
 
 #include "Enemy/AI/EnemyTargeting.h"
@@ -28,6 +30,28 @@ namespace BossUpdateCombatTuning
 
 	//相手がいない時に使う距離。
 	constexpr auto noTargetRange = 99999.0f;
+
+	//入口まで道が続かない時も、その方向で一番先まで歩ける床を探す。
+	bool ApproachClue(AAIController& ai, AEnemyCharacterBase& enemy, const FVector& clue)
+	{
+		const FVector start = enemy.GetNavAgentLocation();
+		const auto& agent = enemy.GetCharacterMovement()->GetNavAgentPropertiesRef();
+		auto* world = enemy.GetWorld();
+		auto* nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(world);
+		if (!nav || FVector::Dist2D(start, clue) <= enemy.GetMeleeDistance()) { return false; }
+
+		const FVector extent(agent.AgentRadius * 2.f, agent.AgentRadius * 2.f, agent.AgentHeight);
+		for (float part : { 1.f, .75f, .5f, .25f })
+		{
+			FNavLocation floor;
+			if (!nav->ProjectPointToNavigation(FMath::Lerp(start, clue, part), floor, extent, &agent)) { continue; }
+			if (FVector::Dist2D(start, floor.Location) <= agent.AgentRadius) { continue; }
+			const auto* path = nav->FindPathToLocationSynchronously(world, start, floor.Location, &enemy);
+			if (!path || !path->IsValid() || path->IsPartial()) { continue; }
+			return ai.MoveToLocation(floor.Location, agent.AgentRadius, false) != EPathFollowingRequestResult::Failed;
+		}
+		return false;
+	}
 }
 
 //初期設定と必要な部品を用意する。
@@ -61,8 +85,16 @@ void UBossUpdateCombat::TickNode(UBehaviorTreeComponent& _ownerComp, uint8* _nod
 	//初めて会う前は待機し、見失った後だけ最後に見た場所から探す。
 	if (!enemy->IsA<ABossShadow>() && enemy->IsCombatActive())
 	{
+		//イベントで呼ばれたボスは、最初に入口の物音を調べる。
+		if (!m_lastSeen.IsSet() && enemy->IsEventEnemy())
+		{
+			if (auto* player = UGameplayStatics::GetPlayerCharacter(enemy, 0))
+			{
+				m_lastSeen = player->GetNavAgentLocation();
+			}
+		}
 		const bool visible = IsValid(target) && aiController->LineOfSightTo(target);
-		if (IsValid(target) && !visible && !enemy->IsActing() && enemy->GetDistanceTo(target) > enemy->m_targeting->m_range)
+		if (!enemy->m_targeting->m_trackPlayer && IsValid(target) && !visible && !enemy->IsActing() && enemy->GetDistanceTo(target) > enemy->m_targeting->m_range)
 		{
 			target = nullptr;
 		}
@@ -79,8 +111,8 @@ void UBossUpdateCombat::TickNode(UBehaviorTreeComponent& _ownerComp, uint8* _nod
 			{
 				FNavLocation point;
 				auto* nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(enemy->GetWorld());
-				if (!m_searching) { aiController->MoveToLocation(m_lastSeen.GetValue()); }
-				else if (nav && (nav->GetRandomReachablePointInRadius(m_lastSeen.GetValue(), m_searchRadius, point) || nav->GetRandomReachablePointInRadius(enemy->GetActorLocation(), m_searchRadius, point)))
+				const bool approaching = BossUpdateCombatTuning::ApproachClue(*aiController, *enemy, m_lastSeen.GetValue());
+				if (!approaching && nav && (nav->GetRandomReachablePointInRadius(m_lastSeen.GetValue(), m_searchRadius, point) || nav->GetRandomReachablePointInRadius(enemy->GetActorLocation(), m_searchRadius, point)))
 				{
 					aiController->MoveToLocation(point.Location);
 				}
@@ -113,7 +145,17 @@ void UBossUpdateCombat::TickNode(UBehaviorTreeComponent& _ownerComp, uint8* _nod
 	const float distance = IsValid(target) ? FVector::Dist2D(enemy->GetActorLocation(), target->GetActorLocation()) : BossUpdateCombatTuning::noTargetRange;
 
 	//コンボ中でなく、剣が届かない時は近づく。
-	const bool canMove = canDecide && !enemy->m_stationary && enemy->GetPendingComboId().IsNone() && distance > enemy->GetMeleeDistance() + BossUpdateCombatTuning::rangeMargin;
+	bool canMove = canDecide && !enemy->m_stationary && enemy->GetPendingComboId().IsNone() && distance > enemy->GetMeleeDistance() + BossUpdateCombatTuning::rangeMargin;
+
+	//道がない間はBTの移動を繰り返さず、足元を確かめる移動に任せる。
+	if (canMove && enemy->m_targeting->m_trackPlayer && IsValid(target))
+	{
+		const FVector start = enemy->GetNavAgentLocation();
+		const FVector goal = target->GetActorLocation();
+		auto* path = UNavigationSystemV1::FindPathToLocationSynchronously(
+			enemy->GetWorld(), start, goal, enemy);
+		canMove = path && path->IsValid();
+	}
 	blackboard->SetValueAsBool(TEXT("CanDecide"), canDecide);
 	blackboard->SetValueAsBool(TEXT("CanMove"), canMove);
 	blackboard->SetValueAsFloat(TEXT("Distance"), distance);

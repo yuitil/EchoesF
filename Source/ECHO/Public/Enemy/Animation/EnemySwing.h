@@ -4,7 +4,6 @@
 #include "Components/ActorComponent.h"
 #include "EnemySwing.generated.h"
 
-class UAnimMontage;
 class UNiagaraSystem;
 class UNiagaraComponent;
 
@@ -21,17 +20,11 @@ public:
     //敵のメッシュより後に更新する。
     virtual void BeginPlay() override;
 
-    //一振りの開始位置を記録する。
-    void Start();
+    //攻撃判定が開いた手だけ斬撃を描く。
+    void StartHand(bool left);
 
-    //見た目専用の通知が付いたモンタージュか調べる。
-    bool UsesTrailNotify() const;
-
-    //左右の刃と、光を出す区間を受け取る。
-    void StartBlade(UAnimMontage* _move, bool _left, float _start, float _end);
-
-    //モンタージュで斬撃を消す時刻を受け取る。
-    void SetSwingEnd(UAnimMontage* _move, float _end);
+    //攻撃判定が閉じた手だけ斬撃を消す。
+    void EndHand(bool left);
 
     //一振りの表示を終える。
     void Stop();
@@ -47,7 +40,7 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Swing")
     TObjectPtr<UNiagaraSystem> m_trail;
 
-    //予備動作では出さないための剣先速度。単位はcm/秒。
+    //風切り音を鳴らす剣先速度。単位はcm/秒。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Swing", meta = (ClampMin = "0"))
     float m_minSpeed = 180.f;
 
@@ -63,10 +56,6 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Swing")
     bool m_bladeArc = false;
 
-    //斬撃を出す手と時間をモンタージュの通知で決める。
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Swing")
-    bool m_useBladeNotify = false;
-
     //一振りの開始位置を通知の終わりまで残す。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Swing")
     bool m_fullSwing = false;
@@ -80,8 +69,10 @@ public:
     float m_sweepTime = .07f;
 
 private:
+    struct FTrail;
+
     //表示中の線を消す。
-    void ClearTrail();
+    void ClearTrail(FTrail& hand);
 
     //通知中に実際に通った刃の根元と先端を記録する。
     struct FBladePose
@@ -91,42 +82,40 @@ private:
         double time;
     };
 
-    //斬撃の表示に使う、直近の刃の位置。
-    TArray<FBladePose> m_poses;
+    //一振りの時間と軌道を、左右の手で別々に持つ。
+    struct FTrail
+    {
+        //斬撃の表示に使う、直近の刃の位置。
+        TArray<FBladePose> m_poses;
 
-    //前回から今までに刃が通った範囲を描く。
-    void UpdateSweep(FVector _base, FVector _tip);
+        //左手の刀を使うか。
+        bool m_left = false;
 
-private:
-    //現在の斬撃を出すモンタージュと終了時刻。
-    TWeakObjectPtr<UAnimMontage> m_swingMove;
+        //前回の剣先。敵の移動量を含めない位置。
+        FVector m_lastTip = FVector::ZeroVector;
 
-    //斬撃の表示を終える再生位置。
-    float m_swingEnd = 0.f;
+        //位置を一回以上記録したか。
+        bool m_hasTip = false;
 
-    //斬撃通知の開始時刻と振る手。
-    float m_swingStart = 0.f;
+        //今回の一振りで音を鳴らしたか。
+        bool m_played = false;
 
-    //モンタージュの通知から斬撃を開始したか。
-    bool m_notifyBlade = false;
+        //通知の区間内か。
+        bool m_open = false;
 
-    //左手の刀を使うか。
-    bool m_left = false;
+        //この敵だけが使う表示中のNiagara。
+        TWeakObjectPtr<UNiagaraComponent> m_fx;
+    };
 
-    //前回の剣先。敵の移動量を含めない位置。
-    FVector m_lastTip = FVector::ZeroVector;
+    //右手と左手の表示状態。
+    FTrail m_hands[2];
 
-    //位置を一回以上記録したか。
-    bool m_hasTip = false;
+    //通知中の刃の位置を追う。
+    void UpdateHand(FTrail& hand, float _delta);
 
-    //今回の一振りで音を鳴らしたか。
-    bool m_played = false;
+    //刃が通った範囲を描く。
+    void UpdateSweep(FTrail& hand, FVector _base, FVector _tip);
 
-    //通知の区間内か。
-    bool m_open = false;
-
-private:
-    //この敵だけが使う表示中のNiagara。
-    UPROPERTY(Transient)
-    TObjectPtr<UNiagaraComponent> m_fx;
+    //片方の斬撃を片付ける。
+    void CloseHand(FTrail& hand);
 };

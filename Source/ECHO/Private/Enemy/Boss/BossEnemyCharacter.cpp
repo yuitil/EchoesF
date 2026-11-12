@@ -43,6 +43,37 @@ ABossEnemyCharacter::ABossEnemyCharacter()
 	m_spacing = CreateDefaultSubobject<UBossSpacing>(TEXT("Spacing"));
 }
 
+//登場演出では、アニメーションを残して移動と戦闘だけ止める。
+void ABossEnemyCharacter::BeginIntro()
+{
+	if (!IsCombatActive()) { return; }
+	m_intro = true;
+	CancelAction();
+	m_spacing->Stop();
+	SetState(EEnemyState::Suspended);
+	if (auto* ai = Cast<AAIController>(GetController()))
+	{
+		ai->StopMovement();
+		if (auto* brain = ai->GetBrainComponent()) { brain->PauseLogic(TEXT("BossIntro")); }
+	}
+	GetCharacterMovement()->StopMovementImmediately();
+	GetCharacterMovement()->DisableMovement();
+}
+
+//演出が終わったら、歩行と戦闘の判断を戻す。
+void ABossEnemyCharacter::EndIntro()
+{
+	if (!m_intro) { return; }
+	m_intro = false;
+	if (m_state != EEnemyState::Suspended) { return; }
+	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	SetState(EEnemyState::Alive);
+	if (auto* ai = Cast<AAIController>(GetController()))
+	{
+		if (auto* brain = ai->GetBrainComponent()) { brain->ResumeLogic(TEXT("BossIntroEnd")); }
+	}
+}
+
 //ボス専用の設定を返す。
 UBossData* ABossEnemyCharacter::GetBossData() const
 {

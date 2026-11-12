@@ -24,9 +24,18 @@ void AEnemyAfterimage::Capture(USkeletalMeshComponent* _source)
 		return;
 	}
 
+	//鎧が別のメッシュの骨を使っている時は、その骨の姿勢を写す。
+	auto* bones = Cast<USkeletalMeshComponent>(_source->LeaderPoseComponent.Get());
+	if (!bones) { bones = _source; }
+	if (!bones->GetSkeletalMeshAsset() || bones->GetBoneSpaceTransformsView().Num() != bones->GetNumBones())
+	{
+		Destroy();
+		return;
+	}
+
 	m_pose->SetSkinnedAssetAndUpdate(_source->GetSkeletalMeshAsset());
 	m_pose->SetWorldTransform(_source->GetComponentTransform());
-	m_pose->CopyPoseFromSkeletalComponent(_source);
+	m_pose->CopyPoseFromSkeletalComponent(bones);
 	m_fade = UMaterialInstanceDynamic::Create(m_material, this);
 	m_fade->SetScalarParameterValue(m_fadeName, m_opacity);
 	for (int32 i = 0; i < m_pose->GetNumMaterials(); ++i)

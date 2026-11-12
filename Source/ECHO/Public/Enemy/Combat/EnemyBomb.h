@@ -133,6 +133,9 @@ private:
     //与えるダメージ。
     float m_damage = 0.f;
 
+    //発射した攻撃のジャスト回避受付時間。
+    float m_dodgeWindow = 0.f;
+
     //ガードできない攻撃か。
     bool m_unblockable = false;
 };

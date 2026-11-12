@@ -1,5 +1,6 @@
 #include "Enemy/Combat/EnemyBomb.h"
 #include "Enemy/Audio/EnemyAudio.h"
+#include "Enemy/Combat/Combat.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -64,6 +65,7 @@ void AEnemyBomb::Launch(AEnemyCharacterBase* _source, AActor* _target, FVector _
 	float _damage, bool _unblockable)
 {
 	m_source = _source;
+	m_dodgeWindow = _source ? _source->GetDefenseWindow(EDefenseResult::PerfectDodge) : 0.f;
 	m_target = _target;
 	m_damage = FMath::Max(0.f, _damage);
 	m_unblockable = _unblockable;
@@ -118,7 +120,13 @@ void AEnemyBomb::Explode()
 	//狙っている相手。
 	auto* target = m_target.Get();
 	auto* source = m_source.Get();
-	if (IsValid(target) && target->CanBeDamaged() && FVector::DistSquared(point, target->GetActorLocation()) <= FMath::Square(FMath::Max(1.f, m_radius)))
+	const bool perfect = IsValid(target) && source && source->m_combat &&
+		source->m_combat->DodgedBlast(target, point, m_radius, m_dodgeWindow);
+	if (perfect && target->GetClass()->ImplementsInterface(UEBDefenseFeedback::StaticClass()))
+	{
+		IEBDefenseFeedback::Execute_AttackDefended(target, source, EDefenseResult::PerfectDodge);
+	}
+	if (!perfect && IsValid(target) && target->CanBeDamaged() && FVector::DistSquared(point, target->GetActorLocation()) <= FMath::Square(FMath::Max(1.f, m_radius)))
 	{
 
 		//進行方向の障害物の情報。

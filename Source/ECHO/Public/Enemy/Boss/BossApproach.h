@@ -14,6 +14,10 @@ class ECHO_API UBossApproach : public UActorComponent
 
 public:
 
+    //登場演出で抜刀した後は、もう一度抜き直さない。
+    UFUNCTION(BlueprintCallable, Category = "Boss|Intro")
+    void FinishDraw();
+
     //近づいた相手への抜刀と、追いかける速さを管理する。
     UBossApproach();
 

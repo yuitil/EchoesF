@@ -34,6 +34,12 @@ public:
     //剣の攻撃判定を終了する。
     void EndHitWindow();
 
+    //終了通知を出した手の判定だけを閉じる。
+    void EndHand(bool left);
+
+    //爆発が回避開始位置まで届いたか調べる。
+    bool DodgedBlast(AActor* target, FVector point, float radius, float window) const;
+
     //抜刀・納刀の通知で左の剣を出し入れする。
     void UpdateLeftBlade(bool _show);
 
@@ -52,10 +58,14 @@ public:
     bool GetBladePoints(bool _left, FVector& _base, FVector& _tip) const;
 
     //当たり判定の位置を返す。
-    bool GetWeaponPoints(FVector& _base, FVector& _tip) const;
+    bool ReadPoints(bool left, FVector& base, FVector& tip) const;
+
+    //指定した手が今ダメージを与えられるか。
+    UFUNCTION(BlueprintPure, Category = "Enemy|Combat")
+    bool IsHandOpen(bool left) const { return m_hands[left].m_bHitWindow; }
 
     //攻撃判定が有効か返す。
-    bool IsHitWindowOpen() const { return m_bHitWindow; }
+    bool IsHitWindowOpen() const { return m_hands[0].m_bHitWindow || m_hands[1].m_bHitWindow; }
 
     //攻撃と防御の判定を初期化する。
     void ResetWindows();
@@ -122,8 +132,38 @@ private:
     UPROPERTY(Transient)
     TObjectPtr<UMeshComponent> m_leftWeapon;
 
-    //現在の判定に使う手。
-    bool m_useLeft = false;
+    //同時に振った刀も、一振りずつ命中を記録する。
+    struct FHitWindow
+    {
+        //今の通知で指定された武器のボーン。
+        FName m_hitBone;
+
+        //今の通知で指定された剣先の位置。
+        FVector m_tipOffset = FVector::ZeroVector;
+
+        //現在の攻撃判定のダメージ倍率。
+        float m_hitScale = 1.0f;
+
+        //攻撃判定の区間内か。
+        bool m_bHitWindow = false;
+
+        //前回の剣の位置があるか。
+        bool m_hasPreviousHit = false;
+
+        //前回の剣先の位置。
+        FVector m_previousTip = FVector::ZeroVector;
+
+        //前回の剣の根元の位置。
+        FVector m_previousBase = FVector::ZeroVector;
+
+        //今回の攻撃で既に当たった相手。
+        TSet<TWeakObjectPtr<AActor>> m_hitActors;
+    };
+    //右手と左手の命中記録。
+    FHitWindow m_hands[2];
+
+    //この手が通った場所を調べる。
+    void TraceHand(bool left, FHitWindow& hand);
 
     //命中した相手を打ち上げる。
     void BeginLift(class ACharacter* _target, const struct FEnemyActionData& _action);
@@ -131,12 +171,6 @@ private:
 private:
     //多段技では最初にダメージを与えた一撃だけ揺らす。
     int32 m_shakeAction = INDEX_NONE;
-
-    //今の通知で指定された武器のボーン。
-    FName m_hitBone;
-
-    //今の通知で指定された剣先の位置。
-    FVector m_tipOffset = FVector::ZeroVector;
 
     //打ち上げ中の相手。
     TWeakObjectPtr<class ACharacter> m_liftTarget;
@@ -155,21 +189,6 @@ private:
 
     //武器のソケットで判定するか。
     bool m_useWeapon = false;
-
-    //現在の攻撃判定のダメージ倍率。
-    float m_hitScale = 1.0f;
-
-    //攻撃判定の区間内か。
-    bool m_bHitWindow = false;
-
-    //前回の剣の位置があるか。
-    bool m_hasPreviousHit = false;
-
-    //前回の剣先の位置。
-    FVector m_previousTip = FVector::ZeroVector;
-
-    //前回の剣の根元の位置。
-    FVector m_previousBase = FVector::ZeroVector;
 
     //回避を確認している相手。
     TWeakObjectPtr<AActor> m_dodgeTarget;
@@ -191,9 +210,6 @@ private:
 
     //相手の当たり判定の半分の高さ。
     float m_dodgeHalf = 0.f;
-
-    //今回の攻撃で既に当たった相手。
-    TSet<TWeakObjectPtr<AActor>> m_hitActors;
 
 private:
     //攻撃判定に使う武器のモデル。

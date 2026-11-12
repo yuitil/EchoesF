@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Event/Events/EventBase.h"
+#include "MovieSceneObjectBindingID.h"
 #include "BossBattleEvent.generated.h"
 
 /**
@@ -61,6 +62,10 @@ private:
 	// ボス撃破シーケンスが終了したか
 	bool m_IsBossFinishFinished = false;
 protected:
+	//シーケンサーで登場するボスの割り当て先。
+	UPROPERTY(EditAnywhere, Category = "Param|Intro")
+	FMovieSceneObjectBindingID m_introBinding;
+
 	// 生成するボスクラス
 	UPROPERTY(EditAnywhere, Category = "Param")
 	TSubclassOf<AEnemyCharacterBase> m_BossClass;

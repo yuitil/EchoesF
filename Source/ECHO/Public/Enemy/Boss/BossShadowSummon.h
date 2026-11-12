@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
@@ -15,6 +15,10 @@ class ECHO_API UBossShadowSummon : public UActorComponent
     GENERATED_BODY()
 
 public:
+    //Play中に召喚を待っている理由を表示する。
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shadow|Debug")
+    FName m_spawnState;
+
     //一定間隔で分身を確認する。
     UBossShadowSummon();
 
@@ -65,6 +69,10 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Stance", meta = (ClampMin = "0"))
     float m_drawRange = 500.f;
 
+    //攻撃の後、影との連携を待つ秒数。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shadow|Swap", meta = (ClampMin = "0.1"))
+    float m_relayWindow = 1.5f;
+
     //交代後に影が狙う地上攻撃。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shadow|Swap")
     FName m_relayAction;
@@ -80,6 +88,10 @@ public:
     //対象の攻撃一回につき、連携を使う確率。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shadow|Join", meta = (ClampMin = "0", ClampMax = "1"))
     float m_joinChance = .25f;
+
+    //連携できる攻撃がこの回数続いたら召喚する。0なら抽選だけにする。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shadow|Join", meta = (ClampMin = "0"))
+    int32 m_joinLimit = 0;
 
     //フェーズ1で影を呼ぶ、近くの分身の数。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shadow", meta = (ClampMin = "1"))
@@ -163,6 +175,12 @@ protected:
 
 private:
 
+    //連携の抽選が外れた回数。
+    int32 m_joinMisses = 0;
+
+    //抽選に通った攻撃中は、安全な床が見つかるまで待つ。
+    bool m_joinReady = false;
+
     //同じ攻撃で何度も連携を抽選しないための番号。
     int32 m_lastJoin = INDEX_NONE;
 
@@ -204,4 +222,7 @@ private:
 
     //次に影を呼べる時刻。
     double m_nextTime = 0.;
+
+    //連携の待ち時間で、分身への対抗召喚を止めない。
+    double m_nextJoinTime = 0.;
 };

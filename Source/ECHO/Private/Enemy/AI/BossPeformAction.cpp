@@ -20,6 +20,7 @@
 #include "Components/SkeletalMeshComponent.h"
 
 #include "Enemy/Minion/MinionFormation.h"
+#include "Enemy/Boss/BossEnemyCharacter.h"
 
 //判定に使う幅や待ち時間。
 namespace BossPeformActionTuning
@@ -138,7 +139,38 @@ namespace
 		request.SetReachTestIncludesAgentRadius(false);
 		request.SetReachTestIncludesGoalRadius(false);
 		request.SetUsePathfinding(true);
-		request.SetAllowPartialPath(false);
+		request.SetAllowPartialPath(true);
+
+		//長椅子などで相手の足元に道がない場合は、剣が届く近くの床を目指す。
+		auto* target = Cast<ACharacter>(enemy->m_combatTarget.Get());
+		auto* nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(enemy->GetWorld());
+		if (nav && target)
+		{
+			const FVector feet = target->GetNavAgentLocation();
+			const FVector extent(distance, distance, enemy->GetCharacterMovement()->MaxStepHeight);
+			FNavLocation floor;
+			const auto& agent = enemy->GetCharacterMovement()->GetNavAgentPropertiesRef();
+			if (nav->ProjectPointToNavigation(feet, floor, extent, &agent))
+			{
+				const float offset = FVector::Dist2D(feet, floor.Location);
+				if (offset > KINDA_SMALL_NUMBER)
+				{
+					request.SetGoalLocation(floor.Location);
+					request.SetAcceptanceRadius(FMath::Max(1.f, distance - offset));
+				}
+			}
+		}
+
+		//道がない時は、床を伝って歩くボスの速度をリセットしない。
+		if (enemy->IsA<ABossEnemyCharacter>() && ai->GetMoveStatus() == EPathFollowingStatus::Idle)
+		{
+			const FVector start = enemy->GetNavAgentLocation();
+			const FVector goal = request.IsMoveToActorRequest()
+				? enemy->m_combatTarget->GetActorLocation() : request.GetGoalLocation();
+			auto* path = UNavigationSystemV1::FindPathToLocationSynchronously(
+				enemy->GetWorld(), start, goal, enemy);
+			if (!path || !path->IsValid()) { return EPathFollowingRequestResult::Failed; }
+		}
 		return ai->MoveTo(request).Code;
 	}
 }
@@ -459,6 +491,12 @@ EBTNodeResult::Type UBossPeformAction::ExecuteTask(UBehaviorTreeComponent& _owne
 		if (TryDash(_ownerComp)) { return EBTNodeResult::InProgress; }
 		if (MoveToRange(ai, enemy, FMath::Max(m_attackDist, enemy->GetMeleeDistance())) == EPathFollowingRequestResult::Failed)
 		{
+
+			//経路のないボスは、安全な床を確かめながら歩く処理に任せる。
+			if (enemy->IsA<ABossEnemyCharacter>() && ai->GetMoveStatus() == EPathFollowingStatus::Idle)
+			{
+				m_rushing = false;
+			}
 			StopRush(_ownerComp);
 			return EBTNodeResult::Failed;
 		}

@@ -97,6 +97,9 @@ public:
     //イベントフラグのセッター
     void SetIsEventEnemy(const bool _isEventEnemy) { m_IsEventEnemy = _isEventEnemy; }
 
+    //イベントから呼ばれた敵か返す。
+    bool IsEventEnemy() const { return m_IsEventEnemy; }
+
 public:
     //敵ごとの音をBPで調整する部品。
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy|Audio")

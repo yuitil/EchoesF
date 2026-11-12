@@ -1,11 +1,8 @@
 #include "Enemy/Animation/EnemySwing.h"
-#include "Enemy/Animation/BossBladeTrail.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
 #include "Enemy/Combat/Combat.h"
 #include "Enemy/Audio/EnemyAudio.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "Animation/AnimInstance.h"
-#include "Animation/AnimMontage.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 
@@ -26,176 +23,153 @@ void UEnemySwing::BeginPlay()
 	if (enemy && enemy->GetMesh()) { AddTickPrerequisiteComponent(enemy->GetMesh()); }
 }
 
-//一振りごとに音と位置を初期化する。
-void UEnemySwing::Start()
+//命中判定が開いた手の軌道を、今の刃の位置から描く。
+void UEnemySwing::StartHand(bool left)
 {
-	Stop();
-	m_open = true;
+	auto& hand = m_hands[left];
+	CloseHand(hand);
+	hand.m_left = left;
+	hand.m_open = true;
 	SetComponentTickEnabled(true);
 	auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
 	FVector base, tip;
-	if (!enemy || !enemy->m_combat || !enemy->m_combat->GetWeaponPoints(base, tip)) { return; }
-	m_lastTip = enemy->GetActorTransform().InverseTransformPosition(tip);
-	m_hasTip = true;
-	if (m_bladeArc) { m_poses.Add({ base, tip, GetWorld()->GetTimeSeconds() }); }
+	if (!enemy || !enemy->m_combat || !enemy->m_combat->ReadPoints(left, base, tip)) { return; }
+	hand.m_lastTip = enemy->GetActorTransform().InverseTransformPosition(tip);
+	hand.m_hasTip = true;
+	if (m_bladeArc) { hand.m_poses.Add({ base, tip, GetWorld()->GetTimeSeconds() }); }
 }
 
-//見た目専用の通知が付いたモンタージュか調べる。
-bool UEnemySwing::UsesTrailNotify() const
+//判定が閉じたフレームで、この手の表示を消す。
+void UEnemySwing::EndHand(bool left)
 {
-	if (!m_useBladeNotify && !m_fullSwing) { return false; }
-	const auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
-	const auto* action = enemy ? enemy->GetActiveAction() : nullptr;
-	if (!action || !action->m_montage) { return false; }
-	return action->m_montage->Notifies.ContainsByPredicate([](const FAnimNotifyEvent& event)
-		{
-			return event.NotifyStateClass && event.NotifyStateClass->IsA<UBossBladeTrail>();
-		});
-}
-
-//左右の刃と、光を出す区間を受け取る。
-void UEnemySwing::StartBlade(UAnimMontage* _move, bool _left, float _start, float _end)
-{
-	Stop();
-	m_notifyBlade = m_open = true;
-	m_left = _left;
-	m_swingStart = _start;
-	SetSwingEnd(_move, _end);
-	SetComponentTickEnabled(true);
+	CloseHand(m_hands[left]);
+	SetComponentTickEnabled(m_hands[0].m_open || m_hands[1].m_open);
 }
 
 //中断した線を次の攻撃へつながない。
-void UEnemySwing::ClearTrail()
+void UEnemySwing::ClearTrail(FTrail& hand)
 {
-	if (IsValid(m_fx)) { m_fx->DestroyComponent(); }
-	m_fx = nullptr;
-}
-
-//通知に設定した終了時刻を保存する。
-void UEnemySwing::SetSwingEnd(UAnimMontage* _move, float _end)
-{
-	m_swingMove = _move;
-	m_swingEnd = _end;
+	if (hand.m_fx.IsValid()) { hand.m_fx->DestroyComponent(); }
+	hand.m_fx = nullptr;
 }
 
 //通知終了や攻撃中断で必ず止める。
 void UEnemySwing::Stop()
 {
-	ClearTrail();
-	m_poses.Reset();
-	m_notifyBlade = false;
-	m_swingStart = 0.f;
-	m_swingMove.Reset();
-	m_open = false;
-	m_hasTip = false;
-	m_played = false;
+	for (auto& hand : m_hands) { CloseHand(hand); }
 	SetComponentTickEnabled(false);
+}
+
+//もう一方の斬撃はそのまま続ける。
+void UEnemySwing::CloseHand(FTrail& hand)
+{
+	ClearTrail(hand);
+	hand = FTrail();
 }
 
 //移動そのものを剣の振りと間違えないようにする。
 void UEnemySwing::TickComponent(float _delta, ELevelTick _type, FActorComponentTickFunction* _tick)
 {
 	Super::TickComponent(_delta, _type, _tick);
-	auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
-	if (!m_open || !enemy || !enemy->IsActing() || !enemy->m_combat ||
-		(!m_notifyBlade && !enemy->m_combat->IsHitWindowOpen()))
+	for (auto& hand : m_hands)
 	{
-		Stop();
-		return;
+		if (hand.m_open) { UpdateHand(hand, _delta); }
 	}
+	SetComponentTickEnabled(m_hands[0].m_open || m_hands[1].m_open);
+}
 
-	//通知の終了が次の更新に回っても、斬撃は振り終わりで消す。
-	if (auto* move = m_swingMove.Get())
+//通知中の手の動きに斬撃を合わせる。
+void UEnemySwing::UpdateHand(FTrail& hand, float _delta)
+{
+	auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
+	if (!hand.m_open || !enemy || !enemy->IsActing() || !enemy->m_combat ||
+		!enemy->m_combat->IsHandOpen(hand.m_left))
 	{
-		auto* anim = enemy->GetMesh()->GetAnimInstance();
-		if (!anim || !anim->Montage_IsPlaying(move) || anim->GetCurrentActiveMontage() != move)
-		{
-			Stop();
-			return;
-		}
-
-		//剣が振られている区間を外れたら、軌跡を閉じる。
-		const float position = anim->Montage_GetPosition(move);
-		if (position < m_swingStart - KINDA_SMALL_NUMBER || position >= m_swingEnd)
-		{
-			Stop();
-			return;
-		}
+		CloseHand(hand);
+		return;
 	}
 	if (_delta <= SMALL_NUMBER) { return; }
 
 	//攻撃判定と同じ剣の位置を使う。
 	FVector base, tip;
-	const bool found = m_notifyBlade ? enemy->m_combat->GetBladePoints(m_left, base, tip) : enemy->m_combat->GetWeaponPoints(base, tip);
+	const bool found = enemy->m_combat->ReadPoints(hand.m_left, base, tip);
 	if (!found)
 	{
-		ClearTrail();
-		m_poses.Reset();
-		m_hasTip = false;
+		ClearTrail(hand);
+		hand.m_poses.Reset();
+		hand.m_hasTip = false;
 		return;
 	}
-	if (m_notifyBlade && !m_hasTip)
+	if (!hand.m_hasTip)
 	{
-		m_lastTip = enemy->GetActorTransform().InverseTransformPosition(tip);
-		m_hasTip = true;
-		m_poses.Add({ base, tip, GetWorld()->GetTimeSeconds() });
+		hand.m_lastTip = enemy->GetActorTransform().InverseTransformPosition(tip);
+		hand.m_hasTip = true;
+		hand.m_poses.Add({ base, tip, GetWorld()->GetTimeSeconds() });
 		return;
 	}
 	const FVector localTip = enemy->GetActorTransform().InverseTransformPosition(tip);
-	const FVector travel = m_hasTip ? localTip - m_lastTip : FVector::ZeroVector;
+	const FVector travel = hand.m_hasTip ? localTip - hand.m_lastTip : FVector::ZeroVector;
 	const float step = travel.Size();
-	m_lastTip = localTip;
-	m_hasTip = true;
-	if (step > m_maxStep || (!m_notifyBlade && (!m_fullSwing || !m_bladeArc || !m_played) && step / _delta < m_minSpeed))
+	hand.m_lastTip = localTip;
+	hand.m_hasTip = true;
+	//位置交換で刀が飛んだ時は、前の場所から斬撃を引かない。
+	bool jumped = false;
+	if (m_bladeArc && !hand.m_poses.IsEmpty())
 	{
-		ClearTrail();
-		m_poses.Reset();
-		if (m_bladeArc) { m_poses.Add({ base, tip, GetWorld()->GetTimeSeconds() }); }
+		const auto& last = hand.m_poses.Last();
+		const float limit = FMath::Square(m_maxStep * enemy->GetActorScale3D().GetAbsMax());
+		jumped = FVector::DistSquared(last.base, base) > limit || FVector::DistSquared(last.tip, tip) > limit;
+	}
+	if (jumped || step > m_maxStep)
+	{
+		ClearTrail(hand);
+		hand.m_poses.Reset();
+		if (m_bladeArc) { hand.m_poses.Add({ base, tip, GetWorld()->GetTimeSeconds() }); }
 		return;
 	}
 
 	//剣が動き出した一回だけ音を出す。
 	const FVector point = FMath::Lerp(base, tip, m_tipPart);
 
-	if (!m_played)
+	if (!hand.m_played && step / _delta >= m_minSpeed)
 	{
 		if (enemy->m_audio) { enemy->m_audio->Play(EEnemySound::Swing, point, m_gain); }
-		m_played = true;
+		hand.m_played = true;
 	}
 
 	//素材は敵BPに設定されたものを使う。
 	if (!m_trail || GetNetMode() == NM_DedicatedServer) { return; }
 	if (m_bladeArc)
 	{
-		UpdateSweep(base, tip);
+		UpdateSweep(hand, base, tip);
 		return;
 	}
-	if (!IsValid(m_fx))
+	if (!hand.m_fx.IsValid())
 	{
-		m_fx = UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, m_trail, point, FRotator::ZeroRotator, FVector::OneVector, true, true, ENCPoolMethod::None, false);
+		hand.m_fx = UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, m_trail, point, FRotator::ZeroRotator, FVector::OneVector, true, true, ENCPoolMethod::None, false);
 	}
-	if (m_fx) { m_fx->SetWorldLocation(point); }
+	if (hand.m_fx.IsValid()) { hand.m_fx->SetWorldLocation(point); }
 }
 
 //直近の軌道を四つの断面に分けてNiagaraのマテリアルへ渡す。
-void UEnemySwing::UpdateSweep(FVector _base, FVector _tip)
+void UEnemySwing::UpdateSweep(FTrail& hand, FVector _base, FVector _tip)
 {
 	const double now = GetWorld()->GetTimeSeconds();
-	m_poses.Add({ _base, _tip, now });
-	const double oldest = m_fullSwing ? m_poses[0].time : now - FMath::Clamp(m_sweepTime, .01f, .15f);
-	while (m_poses.Num() > 2 && m_poses[1].time <= oldest)
+	hand.m_poses.Add({ _base, _tip, now });
+	const double oldest = m_fullSwing ? hand.m_poses[0].time : now - FMath::Clamp(m_sweepTime, .01f, .15f);
+	while (hand.m_poses.Num() > 2 && hand.m_poses[1].time <= oldest)
 	{
-		m_poses.RemoveAt(0, 1, EAllowShrinking::No);
+		hand.m_poses.RemoveAt(0, 1, EAllowShrinking::No);
 	}
-	if (m_poses.Num() < 2) { return; }
+	if (hand.m_poses.Num() < 2) { return; }
 
 	const FVector center = (_base + _tip) * .5f;
-	if (!IsValid(m_fx))
+	if (!hand.m_fx.IsValid())
 	{
-		m_fx = UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, m_trail, center, FRotator::ZeroRotator, FVector::OneVector, true, false, ENCPoolMethod::None, false);
+		hand.m_fx = UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, m_trail, center, FRotator::ZeroRotator, FVector::OneVector, true, false, ENCPoolMethod::None, false);
 	}
-	if (!m_fx) { return; }
-	m_fx->SetWorldLocation(center);
+	if (!hand.m_fx.IsValid()) { return; }
+	hand.m_fx->SetWorldLocation(center);
 	constexpr int32 sections = 4;
 
 	//マテリアルの各点はXYZと余白の4値で並ぶ。
@@ -204,13 +178,13 @@ void UEnemySwing::UpdateSweep(FVector _base, FVector _tip)
 	int32 next = 1;
 	for (int32 i = 0; i < sections; ++i)
 	{
-		const double time = FMath::Lerp(FMath::Max(oldest, m_poses[0].time), now, double(i) / (sections - 1));
-		while (next < m_poses.Num() - 1 && m_poses[next].time < time)
+		const double time = FMath::Lerp(FMath::Max(oldest, hand.m_poses[0].time), now, double(i) / (sections - 1));
+		while (next < hand.m_poses.Num() - 1 && hand.m_poses[next].time < time)
 		{
 			++next;
 		}
-		const auto& a = m_poses[next - 1];
-		const auto& b = m_poses[next];
+		const auto& a = hand.m_poses[next - 1];
+		const auto& b = hand.m_poses[next];
 		const double alpha = FMath::Clamp((time - a.time) / FMath::Max(UE_SMALL_NUMBER, b.time - a.time), 0., 1.);
 		const FVector3f basePos(FMath::Lerp(a.base, b.base, alpha));
 		const FVector3f tipPos(FMath::Lerp(a.tip, b.tip, alpha));
@@ -221,8 +195,8 @@ void UEnemySwing::UpdateSweep(FVector _base, FVector _tip)
 			points[offset + vectorSlots + axis] = tipPos[axis];
 		}
 	}
-	m_fx->SetCustomPrimitiveDataFloatArray(0, MakeArrayView(points));
-	if (!m_fx->IsActive()) { m_fx->Activate(); }
+	hand.m_fx->SetCustomPrimitiveDataFloatArray(0, MakeArrayView(points));
+	if (!hand.m_fx->IsActive()) { hand.m_fx->Activate(); }
 }
 
 //死亡・解除・マップ終了でも残さない。

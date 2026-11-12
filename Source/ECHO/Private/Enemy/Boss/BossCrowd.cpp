@@ -7,6 +7,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "AIController.h"
+#include "Navigation/PathFollowingComponent.h"
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
 #include "NiagaraFunctionLibrary.h"
@@ -76,12 +77,39 @@ bool UBossCrowd::CanPush() const
 	TArray<ACharacter*> targets;
 	int32 clones = 0;
 	GetTargets(targets, clones);
-	return clones >= FMath::Max(1, m_count);
+	const bool crowded = clones >= FMath::Max(1, m_count);
+	const bool waited = m_blockSince >= 0. && GetWorld()->GetTimeSeconds() - m_blockSince >= m_blockWait;
+	const bool blocked = waited && clones >= FMath::Max(1, m_blockCount);
+	return crowded || blocked;
+}
+
+//攻撃や気絶ではなく、追跡が足止めされた時間だけ数える。
+void UBossCrowd::UpdateBlock()
+{
+	//相手へ移動中かを調べる。
+	auto* boss = Cast<ABossEnemyCharacter>(GetOwner());
+	auto* ai = boss ? Cast<AAIController>(boss->GetController()) : nullptr;
+	const bool moving = ai && ai->GetMoveStatus() == EPathFollowingStatus::Moving;
+	if (!boss || !moving || !boss->CanDecide())
+	{
+		m_blockSince = -1.;
+		return;
+	}
+
+	//少しずつ進んでいる時は、足止めとみなさない。
+	const FVector place = boss->GetActorLocation();
+	const float travel = FVector::Dist2D(place, m_lastPlace);
+	if (m_blockSince < 0. || travel >= m_blockTravel)
+	{
+		m_lastPlace = place;
+		m_blockSince = GetWorld()->GetTimeSeconds();
+	}
 }
 
 //既存の攻撃管理を使うので、途中の攻撃を切らない。
 bool UBossCrowd::TryPush()
 {
+	UpdateBlock();
 	auto* boss = Cast<ABossEnemyCharacter>(GetOwner());
 	if (!boss || !boss->HasAuthority() || boss->IsActing() || !CanPush()) { return false; }
 
@@ -98,6 +126,7 @@ bool UBossCrowd::TryPush()
 		return false;
 	}
 	m_nextTime = GetWorld()->GetTimeSeconds() + m_cooldown;
+	m_blockSince = -1.;
 	return true;
 }
 
@@ -152,4 +181,6 @@ void UBossCrowd::Reset()
 {
 	m_nextTime = 0.;
 	m_lastSerial = INDEX_NONE;
+	m_blockSince = -1.;
+	m_lastPlace = FVector::ZeroVector;
 }

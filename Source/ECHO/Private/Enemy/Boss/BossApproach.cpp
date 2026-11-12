@@ -10,6 +10,38 @@
 #include "Navigation/PathFollowingComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Components/PrimitiveComponent.h"
+#include "Components/CapsuleComponent.h"
+
+namespace
+{
+	//道が途切れた時は、体が通り、足が着く方向だけ一歩進む。
+	void FollowFloor(ABossEnemyCharacter& boss, const AActor& target)
+	{
+		auto* move = boss.GetCharacterMovement();
+		const auto* capsule = boss.GetCapsuleComponent();
+		const float radius = capsule->GetScaledCapsuleRadius();
+		const float half = capsule->GetScaledCapsuleHalfHeight();
+		const FVector center = boss.GetActorLocation();
+		const FVector forward = (target.GetActorLocation() - center).GetSafeNormal2D();
+		const FVector step = FVector::UpVector * move->MaxStepHeight;
+		const FVector feet = center - FVector::UpVector * half;
+		const auto shape = FCollisionShape::MakeCapsule(radius, half);
+		FCollisionQueryParams query(SCENE_QUERY_STAT(BossApproachFloor), false, &boss);
+
+		for (const float angle : { 0.f, 40.f, -40.f, 75.f, -75.f })
+		{
+			const FVector direction = forward.RotateAngleAxis(angle, FVector::UpVector);
+			const FVector ahead = direction * radius;
+			FHitResult floor;
+			auto* world = boss.GetWorld();
+			if (!world->LineTraceSingleByChannel(floor, feet + ahead + step, feet + ahead - step, ECC_Pawn, query)) { continue; }
+			if (!move->IsWalkable(floor) || Cast<APawn>(floor.GetActor())) { continue; }
+			if (world->SweepTestByChannel(center + step, center + step + ahead, FQuat::Identity, ECC_Pawn, shape, query)) { continue; }
+			boss.AddMovementInput(direction);
+			return;
+		}
+	}
+}
 
 //初期設定と必要な部品を用意する。
 UBossApproach::UBossApproach()
@@ -54,6 +86,14 @@ void UBossApproach::ShowSword()
 	if (!GetOwner() || !GetOwner()->HasAuthority()) { return; }
 	m_swordOut = true;
 	UpdateSword();
+}
+
+//登場演出の抜刀を、戦闘開始後も引き継ぐ。
+void UBossApproach::FinishDraw()
+{
+	m_drawn = true;
+	m_drawing = false;
+	ShowSword();
 }
 
 //次の戦闘に向けて状態を初期化する。
@@ -178,6 +218,13 @@ void UBossApproach::TickComponent(float _delta, ELevelTick _type, FActorComponen
 	{
 		m_runTime = 0.f;
 		return;
+	}
+
+	//追跡経路がなくても、見えている相手には安全な床を伝って近づく。
+	const bool outsideReach = distance > boss->GetMeleeDistance() + move->MaxStepHeight;
+	if (outsideReach && !boss->m_stationary && ai->GetMoveStatus() == EPathFollowingStatus::Idle && boss->CanDecide())
+	{
+		if (boss->GetPendingComboId().IsNone() && ai->LineOfSightTo(target)) { FollowFloor(*boss, *target); }
 	}
 
 	//全力走りの条件で追跡中か。

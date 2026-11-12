@@ -24,6 +24,14 @@ class ECHO_API ABossEnemyCharacter : public AEnemyCharacterBase
     GENERATED_BODY()
 
 public:
+    //登場演出中は移動と戦闘を止める。
+    UFUNCTION(BlueprintCallable, Category = "Boss|Intro")
+    void BeginIntro();
+
+    //演出の終了またはスキップ後に戦闘を始める。
+    UFUNCTION(BlueprintCallable, Category = "Boss|Intro")
+    void EndIntro();
+
     //ボスの体力と二つの段階を管理する。
     ABossEnemyCharacter();
 
@@ -144,6 +152,9 @@ protected:
     virtual void OnAttackFinished() override;
 
 private:
+    //登場演出の終了待ちか。
+    bool m_intro = false;
+
     //分身の腕や足に移動だけが引っ掛かるのを防ぐ。
     void WatchClone(AActor* _actor);
 

@@ -1,5 +1,4 @@
 #include "Enemy/Animation/BossAnimation.h"
-#include "Enemy/Animation/EnemySwing.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
 #include "Enemy/Combat/Combat.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -28,13 +27,16 @@ void UBossAnimInstance::NativeUpdateAnimation(float _deltaSeconds)
 	//現在の移動速度。
 	FVector velocity = enemy->GetVelocity();
 	velocity.Z = 0.f;
-	m_speed = velocity.Size();
+	//大きくした体の歩幅に合わせ、足を速く回しすぎないようにする。
+	const float size = FMath::Max(KINDA_SMALL_NUMBER, enemy->GetActorScale3D().GetAbsMax());
+	m_speed = velocity.Size() / size;
 	m_state = enemy->m_state;
 	m_dualStance = enemy->m_combat && enemy->m_combat->HasTwoSwords();
 
 	//キャラクターを基準にした値。
 	FVector local = enemy->GetActorRotation().UnrotateVector(velocity);
-	m_direction = m_speed > 1 ? FMath::RadiansToDegrees(FMath::Atan2(local.Y, local.X)) : 0;
+	//止まった瞬間に、横歩きから正面の姿勢へ飛ばさない。
+	if (m_speed > 1) { m_direction = FMath::RadiansToDegrees(FMath::Atan2(local.Y, local.X)); }
 	m_bInAir = enemy->GetCharacterMovement()->IsFalling();
 }
 
@@ -50,11 +52,6 @@ void UBossCombatWindow::NotifyBegin(USkeletalMeshComponent* _mesh, UAnimSequence
 	if (m_window == EBossWindow::Damage)
 	{
 		enemy->m_combat->BeginHitWindow(m_damageScale, m_hitBone, m_tipOffset, m_leftBlade);
-		const auto* event = _reference.GetNotify();
-		if (event && enemy->m_swing && !enemy->m_swing->UsesTrailNotify())
-		{
-			enemy->m_swing->SetSwingEnd(Cast<UAnimMontage>(_anim), event->GetTime() + _duration);
-		}
 	}
 
 	if (m_window == EBossWindow::DodgeInvulnerability)
@@ -74,7 +71,7 @@ void UBossCombatWindow::NotifyEnd(USkeletalMeshComponent* _mesh, UAnimSequenceBa
 	AEnemyCharacterBase* enemy = _mesh ? Cast<AEnemyCharacterBase>(_mesh->GetOwner()) : nullptr;
 	if (!enemy || _mesh != enemy->GetMesh()) { return; }
 
-	if (m_window == EBossWindow::Damage) { enemy->m_combat->EndHitWindow(); }
+	if (m_window == EBossWindow::Damage) { enemy->m_combat->EndHand(m_leftBlade); }
 
 	if (m_window == EBossWindow::DodgeInvulnerability)
 	{

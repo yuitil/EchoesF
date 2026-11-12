@@ -45,6 +45,18 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crowd", meta = (ClampMin = "1"))
     int32 m_count = 4;
 
+    //追跡を止められた時に押し返す、近くの分身の数。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crowd|Blocked", meta = (ClampMin = "1"))
+    int32 m_blockCount = 2;
+
+    //この秒数進めなければ、分身を押し返して道を開ける。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crowd|Blocked", meta = (ClampMin = "0.5", Units = "s"))
+    float m_blockWait = 1.5f;
+
+    //この距離を進めたら、足止めの時間を数え直す。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crowd|Blocked", meta = (ClampMin = "1", Units = "cm"))
+    float m_blockTravel = 30.f;
+
     //分身を数え、押し返す範囲。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crowd", meta = (ClampMin = "1", Units = "cm"))
     float m_radius = 500.f;
@@ -74,6 +86,9 @@ public:
     TObjectPtr<USoundBase> m_sound;
 
 private:
+    //追跡を指示しているのに進めない時間を数える。
+    void UpdateBlock();
+
     //相手が近くにいて壁に遮られていないか。
     bool IsNear(ACharacter* _target) const;
 
@@ -86,4 +101,10 @@ private:
 
     //同じ通知で二度押し返さないための攻撃番号。
     int32 m_lastSerial = INDEX_NONE;
+
+    //追跡が止まり始めた時刻。負の値なら足止めされていない。
+    double m_blockSince = -1.;
+
+    //追跡で最後に進んだ位置。
+    FVector m_lastPlace = FVector::ZeroVector;
 };

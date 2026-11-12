@@ -1,4 +1,4 @@
-#include "Enemy/Boss/BossShadow.h"
+﻿#include "Enemy/Boss/BossShadow.h"
 #include "Enemy/Audio/EnemyAudio.h"
 #include "Enemy/Combat/Combat.h"
 #include "Enemy/Boss/BossShadowSummon.h"
@@ -103,7 +103,7 @@ void ABossShadow::Setup(AActor* _target, float _life)
 {
 	m_targeting->m_fixedTarget = _target;
 	m_combatTarget = _target;
-	m_life = FMath::Max(m_riseTime, _life);
+	m_life = FMath::Max(m_showDelay + m_riseTime, _life);
 
 	//通常召喚でも次の分身を探す範囲を引き継ぐ。
 	if (auto* boss = Cast<ABossEnemyCharacter>(GetOwner()))
@@ -117,7 +117,7 @@ bool ABossShadow::IsRepositioning() const
 {
 	const auto* owner = Cast<ABossEnemyCharacter>(GetOwner());
 	if (owner && owner->m_summon->IsWaitingForSwap(this)) { return true; }
-	return m_fading || m_age < m_riseTime || GetWorld()->GetTimeSeconds() < m_followTime || (m_join && (m_joinDone || m_age < m_joinDelay));
+	return m_fading || m_age < m_showDelay + m_riseTime || GetWorld()->GetTimeSeconds() < m_followTime || (m_join && (m_joinDone || m_age < m_joinDelay));
 }
 
 //本体のフェーズ2の攻撃を抽選候補にする。
@@ -128,6 +128,8 @@ bool ABossShadow::IsActionAllowed(const FEnemyActionData& _action) const
 	{
 		return false;
 	}
+    //連携の最初は、ガードや退避ではなく攻撃から始める。
+    if (m_join && m_actionSerial == 0 && _action.m_damage <= 0.f) { return false; }
 	return !m_fading && (!data || data->m_phaseTwoActions.IsEmpty() || data->m_phaseTwoActions.Contains(_action.m_actionId));
 }
 
@@ -165,7 +167,7 @@ void ABossShadow::StartJoin(FName _action, float _delay, float _range)
 {
 	m_join = true;
 	m_joinAction = _action;
-	m_joinDelay = FMath::Max(m_riseTime, _delay);
+	m_joinDelay = FMath::Max(m_showDelay + m_riseTime, _delay);
 	m_cloneRange = _range;
 }
 
@@ -242,7 +244,7 @@ void ABossShadow::FadeOut()
 //本体を待っている影も、出現が終われば交代できる。
 bool ABossShadow::CanRelay() const
 {
-	return IsCombatActive() && !m_fading && m_age >= m_riseTime && !IsActing() && (!m_join || (!m_joinDone && m_age >= m_joinDelay));
+	return IsCombatActive() && !m_fading && m_age >= m_showDelay + m_riseTime && !IsActing() && (!m_join || (!m_joinDone && m_age >= m_joinDelay));
 }
 
 //次に動ける瞬間、交代位置から一撃を返す。
@@ -303,7 +305,7 @@ void ABossShadow::Tick(float _delta)
 	if (m_fading) { m_fadeAge += _delta; }
 
 	//出現中は濃くし、消滅中は薄くする。
-	const float age = m_fading ? m_fadeAge : m_age;
+	const float age = m_fading ? m_fadeAge : FMath::Max(0.f, m_age - m_showDelay);
 	const float duration = m_fading ? m_fadeTime : m_riseTime;
 	const float progress = FMath::Clamp(age / FMath::Max(UE_SMALL_NUMBER, duration), 0.f, 1.f);
 	const float fade = m_fading ? 1.f - progress : progress;

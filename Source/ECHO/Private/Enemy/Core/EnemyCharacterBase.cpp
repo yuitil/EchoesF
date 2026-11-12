@@ -1,4 +1,4 @@
-#include "Enemy/Core/EnemyCharacterBase.h"
+﻿#include "Enemy/Core/EnemyCharacterBase.h"
 #include "Enemy/Audio/EnemyAudio.h"
 #include "Enemy/Animation/EnemySwing.h"
 #include "Enemy/AI/EnemyTargeting.h"
@@ -622,6 +622,10 @@ int32 AEnemyCharacterBase::ChooseAction() const
 {
 	if (!m_definition || !m_combatTarget) { return INDEX_NONE; }
 
+	//受け流し後の反撃を、通常の行動より先に選ぶ。
+	const int32 counter = FindComboAction(m_defense->GetCounterAction());
+	if (counter != INDEX_NONE) { return counter; }
+
 	//攻撃された後のガード予約があれば先に使う。
 	if (m_defense->HasGuardRequest() && m_defense->ShouldStartGuard())
 	{ 
@@ -864,6 +868,12 @@ bool AEnemyCharacterBase::RequestAction(FName _actionId)
 	{
 		FinishAction(true);
 		return false;
+	}
+
+	//反撃が始まったら予約を消し、重ねて発動しない。
+	if (IsActing() && m_definition->m_actions[m_activeIndex].m_kind == EEnemyAction::Counter)
+	{
+		m_defense->ClearCounter();
 	}
 
 	return IsActing();

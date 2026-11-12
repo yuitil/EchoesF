@@ -80,6 +80,9 @@ bool UDefense::IsThreat_Implementation(AActor* _target) const
 //相手の攻撃に備えてガードするか調べる。
 bool UDefense::ShouldStartGuard() const
 {
+
+	//ガード後には、攻撃や退避を選ぶ時間を作る。
+	if (GetWorld() && GetWorld()->GetTimeSeconds() < m_guardReady) { return false; }
 	//処理の対象となる敵。
 	const AEnemyCharacterBase* enemy = Cast<AEnemyCharacterBase>(GetOwner());
 	if (!enemy || !enemy->m_definition || !enemy->m_definition->m_useGuard || IsBusy() || enemy->IsActing() || enemy->GetCharacterMovement()->IsFalling() || !IsFrontFacing(enemy->m_combatTarget))
@@ -130,7 +133,9 @@ EDefenseResult UDefense::ResolveHit(AActor* _attacker, bool _unblockable, bool _
 	const UEnemyData* data = enemy->m_definition;
 
 	//通常ガードで防げる状態か。
-	const bool guard = data->m_useGuard && (enemy->m_combat->m_bGuarding || GetWorld()->GetTimeSeconds() < m_guardPose);
+	const double time = GetWorld()->GetTimeSeconds();
+	const bool inWindow = m_guardLimit <= 0.f || time < m_guardEnd;
+	const bool guard = data->m_useGuard && inWindow && (enemy->m_combat->m_bGuarding || time < m_guardPose);
 
 	//使用する行動の設定。
 	const FEnemyActionData* action = enemy->GetActiveAction();
@@ -156,6 +161,9 @@ EDefenseResult UDefense::ResolveHit(AActor* _attacker, bool _unblockable, bool _
 
 		//連続で抽選し続けないよう、次の時刻を決める。
 		m_nextAttemptTime = now + FMath::Max(DefenseTuning::minWindow, data->m_defenseInterval);
+
+		//抽選した回数を記録する。
+		++m_attempts;
 
 		//抽選に使う確率。
 		const float chance = enemy->GetSpecialDefenseChance();
@@ -190,6 +198,9 @@ EDefenseResult UDefense::ResolveHit(AActor* _attacker, bool _unblockable, bool _
 			auto* hit = enemy->m_combat->HasTwoSwords() && data->m_dualGuardHit ? data->m_dualGuardHit.Get() : data->m_guardHit.Get();
 			if (hit) { enemy->PlayAnimMontage(hit); }
 			m_guardPose = GetWorld()->GetTimeSeconds() + data->m_guardHold;
+
+			//被弾し続けてもガードの終了を先延ばしにしない。
+			if (m_guardLimit > 0.f) { m_guardPose = FMath::Min(m_guardPose, m_guardEnd); }
 		}
 		return result;
 	}
@@ -390,6 +401,7 @@ void UDefense::ResetDefense()
 	GetWorld()->GetTimerManager().ClearTimer(m_counterTimer);
 	m_guardPending = false;
 	m_guardUntil = m_guardPose = m_counterUntil = 0.;
+	m_guardEnd = m_guardReady = 0.;
 	m_guardTarget.Reset();
 
 	m_bGuardBroken = false;
@@ -423,36 +435,47 @@ void UDefense::RememberHit(AActor* _attacker)
 	m_guardUntil = GetWorld()->GetTimeSeconds() + enemy->m_definition->m_guardMemory;
 }
 
-//予約した反撃を開始できるか調べる。
-void UDefense::TryCounter()
+//受け流し後に、距離と持っている刀に合う反撃を選ぶ。
+FName UDefense::GetCounterAction() const
 {
-	//処理の対象となる敵。
-	auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
-	if (!enemy || !enemy->IsCombatActive() || !enemy->m_definition || GetWorld()->GetTimeSeconds() > m_counterUntil)
-	{
-		GetWorld()->GetTimerManager().ClearTimer(m_counterTimer);
-		return;
-	}
-	if (!enemy->CanDecide() || !IsValid(enemy->m_combatTarget) ||
-		IsTargetAttacking(enemy->m_combatTarget))
-	{
-		return;
-	}
+	const auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
+	if (!enemy || !GetWorld() || !enemy->m_definition) { return NAME_None; }
+	if (!enemy->IsCombatActive() || !IsValid(enemy->m_combatTarget)) { return NAME_None; }
+	if (m_counterUntil <= GetWorld()->GetTimeSeconds()) { return NAME_None; }
+
+	//二刀では相手がいる側の反撃を優先する。
 	const auto* data = enemy->m_definition.Get();
 	if (enemy->m_combat->HasTwoSwords())
 	{
 		const FVector toward = enemy->m_combatTarget->GetActorLocation() - enemy->GetActorLocation();
-		const FName side = FVector::DotProduct(enemy->GetActorRightVector(), toward) >= 0.f ? data->m_counterRight : data->m_counterLeft;
-		if (!side.IsNone() && enemy->RequestAction(side))
-		{
-			GetWorld()->GetTimerManager().ClearTimer(m_counterTimer);
-			return;
-		}
+		const bool right = FVector::DotProduct(enemy->GetActorRightVector(), toward) >= 0.f;
+		const FName side = right ? data->m_counterRight : data->m_counterLeft;
+		if (enemy->GetReadyAction(side)) { return side; }
 	}
-	if (!data->m_counter.IsNone() && enemy->RequestAction(data->m_counter))
-	{
-		GetWorld()->GetTimerManager().ClearTimer(m_counterTimer);
-	}
+
+	//相手が離れた時や再使用待ちの時は無理に反撃しない。
+	if (enemy->GetReadyAction(data->m_counter)) { return data->m_counter; }
+	return NAME_None;
+}
+
+//反撃の予約と待ち時間を消す。
+void UDefense::ClearCounter()
+{
+	m_counterUntil = 0.;
+	if (GetWorld()) { GetWorld()->GetTimerManager().ClearTimer(m_counterTimer); }
+}
+
+//反応が終わったら、一度だけ反撃を開始する。
+void UDefense::TryCounter()
+{
+	if (!GetWorld()) { return; }
+	if (GetWorld()->GetTimeSeconds() >= m_counterUntil) { ClearCounter(); return; }
+
+	//通常の行動と同じ条件で反撃を開始する。
+	auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
+	if (!enemy || !enemy->CanDecide()) { return; }
+	const FName counter = GetCounterAction();
+	if (!counter.IsNone() && enemy->RequestAction(counter)) { ClearCounter(); }
 }
 
 //攻撃後のガード予約が残っているか調べる。
@@ -467,4 +490,15 @@ bool UDefense::HasGuardRequest() const
 void UDefense::AttackFinished()
 {
 	if (m_guardPending && m_guardTarget.IsValid()) RememberHit(m_guardTarget.Get());
+}
+
+//ガードの予約を使い、終了と再使用の時刻を決める。
+void UDefense::ConsumeGuardRequest()
+{
+	m_guardPending = false;
+	if (!GetWorld()) { return; }
+
+	const double now = GetWorld()->GetTimeSeconds();
+	m_guardEnd = now + m_guardLimit;
+	m_guardReady = now + FMath::Max(m_guardLimit, m_guardGap);
 }

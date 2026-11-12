@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
@@ -56,10 +56,24 @@ public:
     //攻撃を終えた後に防御へつなぐ。
     void AttackFinished();
 
+    //受け流し後に使える反撃を返す。
+    FName GetCounterAction() const;
+
+    //反撃の予約と待ち時間を消す。
+    void ClearCounter();
+
     //予約していたガードを使用する。
-    void ConsumeGuardRequest() { m_guardPending = false; }
+    void ConsumeGuardRequest();
 
 public:
+
+    //連続でガードできる秒数。0なら制限しない。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Defense", meta = (ClampMin = "0"))
+    float m_guardLimit = 0.f;
+
+    //ガード開始から、次のガードまでの秒数。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Defense", meta = (ClampMin = "0"))
+    float m_guardGap = 0.f;
 
     //相手がこちらを向き、攻撃が届く位置にいるか。
     UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "Enemy|Defense")
@@ -119,6 +133,12 @@ protected:
     virtual void EndPlay(const EEndPlayReason::Type _reason) override;
 
 private:
+
+    //連続ガードを終える時刻。
+    double m_guardEnd = 0.;
+
+    //次のガードを始められる時刻。
+    double m_guardReady = 0.;
 
     //予約した反撃を開始できるか調べる。
     void TryCounter();

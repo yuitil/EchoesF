@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Enemy/Boss/BossEnemyCharacter.h"
@@ -83,6 +83,10 @@ public:
     //マテリアルの出現率を変える名前。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shadow|Look")
     FName m_fadeParam = TEXT("ShadowFade");
+
+    //煙が広がってから姿を見せるまでの秒数。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shadow|Look", meta = (ClampMin = "0"))
+    float m_showDelay = 0.f;
 
     //地面から姿を現す時間。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shadow|Look", meta = (ClampMin = "0.1"))

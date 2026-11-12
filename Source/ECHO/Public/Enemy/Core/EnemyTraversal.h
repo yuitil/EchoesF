@@ -43,6 +43,10 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traversal", meta = (ClampMin = "10", DisplayName = "Obstacle Distance"))
     float m_probe = 130.f;
 
+    //正面が通れない時に試す左右の角度。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traversal", meta = (ClampMin = "0", ClampMax = "60"))
+    float m_sideAngle = 32.f;
+
     //段差移動に必要な空間の余裕。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Traversal",meta = (ClampMin = "10", DisplayName = "Arc Clearance"))
     float m_clearance = 65.f;
@@ -60,6 +64,9 @@ protected:
     virtual void TickComponent(float _delta, ELevelTick _type, FActorComponentTickFunction* _function) override;
 
 private:
+    //一方向の着地点と、そこまでの軌道を確かめる。
+    bool TryDirection(class AEnemyCharacterBase& enemy, AActor& target, const FVector& direction, float distance, bool& needsJump);
+
     //段差を越える移動中か。
     bool m_running = false;
 

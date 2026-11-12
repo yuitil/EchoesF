@@ -21,6 +21,10 @@ public:
 
 public:
 
+	//戦闘開始後、壁の向こうのプレイヤーも追う。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Target")
+	bool m_trackPlayer = false;
+
 	//本体が見える時は、分身より本体を優先する。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Target")
 	bool m_preferPlayer = false;

@@ -51,6 +51,8 @@ AActor* UEnemyTargeting::SelectTarget()
 	//ボスは行動の切れ目で本体へ戻る。影の固定相手は上で処理済み。
 	auto* player = UGameplayStatics::GetPlayerPawn(this, 0);
 	auto* controller = Cast<AAIController>(enemy->GetController());
+	if (m_trackPlayer && enemy->IsCombatActive() && IsCandidate(player)) { return player; }
+
 	if (m_preferPlayer && IsCandidate(player) && FVector::Dist2D(enemy->GetActorLocation(), player->GetActorLocation()) <= m_range && controller && controller->LineOfSightTo(player))
 	{
 		return player;
