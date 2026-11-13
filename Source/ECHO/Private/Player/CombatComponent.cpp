@@ -15,6 +15,7 @@
 #include "Combat/EnemyQuery.h"
 #include "Player/ComboDataAsset.h"
 #include "Sound/SoundBase.h"
+#include "Components/CapsuleComponent.h"
 
 static const FName LungeRootMotionName(TEXT("AttackLunge"));
 
@@ -494,13 +495,16 @@ void UCombatComponent::ExecuteDodge(const FVector& OverrideDirection)
 	UActionMovementComponent* MoveComp = Cast<UActionMovementComponent>(OwnerCharacter->GetCharacterMovement());
 	if (!MoveComp) return;
 
-	UWorld* World = GetWorld();
-	if (!World) return;
+	//ローリングを使うか（モーション未設定の分身などは従来の回避）
+	const bool bUseRoll = m_RollMontages.Num() > 0;
 
-	bool bInAir = MoveComp->IsFalling();
-	if (bInAir && m_bHasAirDodged) return;
-
-	if (bInAir) m_bHasAirDodged = true;
+	const bool bInAir = MoveComp->IsFalling();
+	if (bInAir)
+	{
+		if (bUseRoll) return;          //ローリングは地上だけ（空中回避はなし）
+		if (m_bHasAirDodged) return;
+		m_bHasAirDodged = true;
+	}
 
 	//回避が確定したので、攻撃モーションを止めてコンボをリセット
 	if (bCancelAttack)
@@ -512,8 +516,6 @@ void UCombatComponent::ExecuteDodge(const FVector& OverrideDirection)
 		CancelAttack();   //コンボ状態のリセット＋空中攻撃の滞空を解除
 	}
 
-	m_bIsDodging = true;
-
 	//回避方向：AI指定 → スティックの向き → 入力なしなら後ろ（または前）
 	//攻撃中は移動入力がキャラに渡らないので、攻撃中も記録している m_DesiredDirection を使う
 	FVector DodgeDirection = OverrideDirection;
@@ -524,6 +526,7 @@ void UCombatComponent::ExecuteDodge(const FVector& OverrideDirection)
 		const FVector Forward = OwnerCharacter->GetActorForwardVector();
 		DodgeDirection = m_bBackstepWhenNoInput ? -Forward : Forward;
 	}
+	DodgeDirection = DodgeDirection.GetSafeNormal2D();
 
 	//回避クールダウンタイマーの開始
 	m_bCanDodge = false;
@@ -535,8 +538,13 @@ void UCombatComponent::ExecuteDodge(const FVector& OverrideDirection)
 	//攻撃キャンセル用
 	MoveComp->RemoveRootMotionSource(LungeRootMotionName);
 
-	MoveComp->StartDodge(DodgeDirection, m_DodgeForce);
+	m_bIsDodging = true;
 
+	//ローリング：モーションの動きで移動する（距離はモーション × 倍率で一定）
+	if (bUseRoll && StartRoll(OwnerCharacter, MoveComp, DodgeDirection)) return;
+
+	//従来の回避：重力を止めて押し出す（分身用）
+	MoveComp->StartDodge(DodgeDirection, m_DodgeForce);
 	GetWorld()->GetTimerManager().SetTimer(
 		DodgeTimerHandle, this, &UCombatComponent::EndDodge, m_DodgeDuration, false);
 }
@@ -548,10 +556,142 @@ void UCombatComponent::EndDodge()
 		if (UActionMovementComponent* MoveComp =
 			Cast<UActionMovementComponent>(OwnerCharacter->GetCharacterMovement()))
 		{
-			MoveComp->EndDodge();
+			MoveComp->EndDodge();   //従来の回避のときだけ中で処理される
 		}
+		//ローリングの距離の倍率を元に戻す
+		OwnerCharacter->SetAnimRootMotionTranslationScale(1.f);
 	}
+
+	//敵のすり抜けは、重なりが解けてから戻す
+	if (m_bPassingThrough) StartRestorePawnCollision();
+
 	m_bIsDodging = false;
+}
+
+// -----------------------------------------------------------------------
+// ローリング回避
+// -----------------------------------------------------------------------
+bool UCombatComponent::StartRoll(ACharacter* Owner, UActionMovementComponent* MoveComp, const FVector& Dir)
+{
+	UAnimInstance* Anim = Owner->GetMesh() ? Owner->GetMesh()->GetAnimInstance() : nullptr;
+	if (!Anim) return false;
+
+	int32 Index = 0;
+	if (IsOwnerLockedOn())
+	{
+		//ロックオン中：敵の方を向いたまま、入力方向に合ったローリング
+		Index = GetRollIndex(Owner->GetActorForwardVector(), Dir);
+	}
+	else
+	{
+		//ロックオン外：入力方向を向いて前ローリング
+		Owner->SetActorRotation(Dir.Rotation());
+	}
+
+	//その方向のモーションがなければ前ローリングで代用
+	UAnimMontage* Montage = (m_RollMontages.IsValidIndex(Index) && m_RollMontages[Index])
+		? m_RollMontages[Index].Get() : m_RollMontages[0].Get();
+	if (!Montage) return false;
+
+	//走っていた勢いを消してから、モーションの動きだけで進む
+	MoveComp->StopMovementImmediately();
+	Owner->SetAnimRootMotionTranslationScale(m_RollDistanceScale);
+
+	if (Anim->Montage_Play(Montage, m_RollPlayRate) <= 0.f)
+	{
+		Owner->SetAnimRootMotionTranslationScale(1.f);
+		return false;
+	}
+	m_CurrentRollMontage = Montage;
+
+	//モーションが終わり始めたら（または割り込まれたら）回避終了
+	FOnMontageBlendingOutStarted BlendOut;
+	BlendOut.BindUObject(this, &UCombatComponent::OnRollBlendingOut);
+	Anim->Montage_SetBlendingOutDelegate(BlendOut, Montage);
+
+	if (m_bRollPassThroughPawns) BeginPassThroughPawns(Owner);
+	return true;
+}
+
+int32 UCombatComponent::GetRollIndex(const FVector& Forward, const FVector& Dir) const
+{
+	//キャラの正面から見た入力方向の角度（右がプラス）を45度ごとに8つに分ける
+	//[0]前 [1]右前 [2]右 [3]右後ろ [4]後ろ [5]左後ろ [6]左 [7]左前
+	const FVector F = Forward.GetSafeNormal2D();
+	const float Dot = FVector::DotProduct(F, Dir);
+	const float Cross = FVector::CrossProduct(F, Dir).Z;
+	const float Angle = FMath::RadiansToDegrees(FMath::Atan2(Cross, Dot));
+	return (FMath::RoundToInt(Angle / 45.f) + 8) % 8;
+}
+
+bool UCombatComponent::IsOwnerLockedOn() const
+{
+	const ULockOnComponent* LockOn = GetOwner() ? GetOwner()->FindComponentByClass<ULockOnComponent>() : nullptr;
+	return LockOn && LockOn->IsLockedOn();
+}
+
+void UCombatComponent::OnRollBlendingOut(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (Montage != m_CurrentRollMontage) return;
+	m_CurrentRollMontage = nullptr;
+	EndDodge();
+}
+
+// -----------------------------------------------------------------------
+// ローリング中の敵のすり抜け
+// -----------------------------------------------------------------------
+void UCombatComponent::BeginPassThroughPawns(ACharacter* Owner)
+{
+	UCapsuleComponent* Capsule = Owner->GetCapsuleComponent();
+	if (!Capsule) return;
+
+	//すでにすり抜け中なら、元の設定は上書きしない
+	if (!m_bPassingThrough)
+	{
+		m_SavedPawnResponse = Capsule->GetCollisionResponseToChannel(ECC_Pawn);
+	}
+	GetWorld()->GetTimerManager().ClearTimer(m_PassThroughTimer);
+	Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+	m_bPassingThrough = true;
+}
+
+void UCombatComponent::StartRestorePawnCollision()
+{
+	m_PassThroughDeadline = GetWorld()->GetTimeSeconds() + m_PassThroughMaxExtraTime;
+	TryRestorePawnCollision();
+
+	//まだ重なっていたら、離れるまで少しずつ確認する
+	if (m_bPassingThrough)
+	{
+		GetWorld()->GetTimerManager().SetTimer(m_PassThroughTimer, this,
+			&UCombatComponent::TryRestorePawnCollision, 0.05f, true);
+	}
+}
+
+void UCombatComponent::TryRestorePawnCollision()
+{
+	ACharacter* Owner = Cast<ACharacter>(GetOwner());
+	UCapsuleComponent* Capsule = Owner ? Owner->GetCapsuleComponent() : nullptr;
+	if (!Capsule)
+	{
+		m_bPassingThrough = false;
+		GetWorld()->GetTimerManager().ClearTimer(m_PassThroughTimer);
+		return;
+	}
+
+	//まだ敵と重なっているなら戻さない（急に押し出されてガタッとしないように）
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(DodgePassThrough), false, Owner);
+	const FCollisionShape Shape = FCollisionShape::MakeCapsule(
+		Capsule->GetScaledCapsuleRadius() - 2.f, Capsule->GetScaledCapsuleHalfHeight() - 2.f);
+	const bool bOverlap = GetWorld()->OverlapAnyTestByObjectType(
+		Capsule->GetComponentLocation(), Capsule->GetComponentQuat(),
+		FCollisionObjectQueryParams(ECC_Pawn), Shape, Params);
+
+	if (bOverlap && GetWorld()->GetTimeSeconds() < m_PassThroughDeadline) return;
+
+	Capsule->SetCollisionResponseToChannel(ECC_Pawn, m_SavedPawnResponse);
+	m_bPassingThrough = false;
+	GetWorld()->GetTimerManager().ClearTimer(m_PassThroughTimer);
 }
 
 void UCombatComponent::ResetDodgeCooldown()

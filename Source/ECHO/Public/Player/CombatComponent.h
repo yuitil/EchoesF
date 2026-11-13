@@ -9,7 +9,11 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Engine/EngineTypes.h"
 #include "CombatComponent.generated.h"
+
+class UActionMovementComponent;
+class UAnimMontage;
 
 //敵にヒットした際、キャラクタークラスにダメージを通知するデリゲート
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnHitEnemyDelegate, float);
@@ -188,6 +192,28 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Combat|Dodge")
 	bool m_bBackstepWhenNoInput = true;
 
+	// --- ローリング回避（モーションの動きで移動する） ---
+	//8方向のローリング [0]前 [1]右前 [2]右 [3]右後ろ [4]後ろ [5]左後ろ [6]左 [7]左前
+	//ロックオン外は入力方向を向いて [0] を使う。空なら従来の回避（分身用）
+	UPROPERTY(EditAnywhere, Category = "Combat|Dodge|Roll")
+	TArray<TObjectPtr<UAnimMontage>> m_RollMontages;
+
+	//再生速度
+	UPROPERTY(EditAnywhere, Category = "Combat|Dodge|Roll", meta = (ClampMin = "0.1"))
+	float m_RollPlayRate = 1.f;
+
+	//進む距離の倍率（モーションの移動量 × この値）
+	UPROPERTY(EditAnywhere, Category = "Combat|Dodge|Roll", meta = (ClampMin = "0.1"))
+	float m_RollDistanceScale = 1.f;
+
+	//ローリング中は敵をすり抜ける
+	UPROPERTY(EditAnywhere, Category = "Combat|Dodge|Roll")
+	bool m_bRollPassThroughPawns = true;
+
+	//ローリング後も敵と重なっていたら、すり抜けを続ける最大時間（離れたらすぐ戻る）
+	UPROPERTY(EditAnywhere, Category = "Combat|Dodge|Roll", meta = (ClampMin = "0"))
+	float m_PassThroughMaxExtraTime = 1.f;
+
 	//攻撃の当たり判定（黄色・赤の球）を表示する
 	UPROPERTY(EditAnywhere, Category = "Combat|Debug")
 	bool m_bDebugDrawHit = false;
@@ -250,6 +276,23 @@ private:
 	bool m_bCanDodge;               //現在回避可能かどうか
 	bool m_bHasAirDodged;           //空中回避を既に実行したか
 	bool m_bIsDodging;
+
+	// --- ローリング ---
+	UPROPERTY()
+	TObjectPtr<UAnimMontage> m_CurrentRollMontage;
+
+	bool m_bPassingThrough = false;                                   //敵をすり抜け中か
+	TEnumAsByte<ECollisionResponse> m_SavedPawnResponse = ECR_Block;  //すり抜け前の設定
+	float m_PassThroughDeadline = 0.f;                                //すり抜けを強制的に戻す時刻
+	FTimerHandle m_PassThroughTimer;
+
+	bool StartRoll(ACharacter* Owner, UActionMovementComponent* MoveComp, const FVector& Dir);
+	int32 GetRollIndex(const FVector& Forward, const FVector& Dir) const;
+	bool IsOwnerLockedOn() const;
+	void OnRollBlendingOut(UAnimMontage* Montage, bool bInterrupted);
+	void BeginPassThroughPawns(ACharacter* Owner);
+	void StartRestorePawnCollision();
+	void TryRestorePawnCollision();
 
 	//多段ヒット防止、当たった敵を記録するリスト
 	TArray<AActor*> HitActorsThisAttack;

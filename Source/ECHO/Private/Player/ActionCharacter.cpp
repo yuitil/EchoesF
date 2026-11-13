@@ -593,11 +593,8 @@ void AActionCharacter::Move(const FInputActionValue& Value)
 	//のけぞり中は移動しない
 	if (m_bIsHitStunned) return;
 
-	//回避中は移動しない（既存の処理）
-	if (UActionMovementComponent* MoveComp = GetActionMovementComponent())
-	{
-		if (MoveComp->IsDodging()) return;
-	}
+	//回避中は移動しない（ローリング中も含む）
+	if (CombatComponent && CombatComponent->IsDodging()) return;
 
 	//のけぞりモーションの残りは、動き出したら打ち切って歩きに切り替える
 	if (m_HitReactMontage && !MovementVector.IsNearlyZero())
@@ -692,6 +689,9 @@ bool AActionCharacter::CanJumpInternal_Implementation() const
 	if (IsHealing()) return false;
 
 	if (m_bIsHitStunned) return false;
+
+	//回避中はジャンプしない
+	if (CombatComponent && CombatComponent->IsDodging()) return false;
 
 	return Super::CanJumpInternal_Implementation();
 }
