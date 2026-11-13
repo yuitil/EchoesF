@@ -36,12 +36,15 @@ protected:
 
     virtual void BeginPlay() override;
 
-    // --- 歩行・ダッシュ速度設定 ---
+    // --- 走り・猛ダッシュの速度設定 ---
+    //（変数名を変えるとBPの値が消えるので、表示名だけ変えている）
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ActionMovement")
+    //走りの速さ（スティックを少しだけ倒すと、これより遅い「歩き」になる）
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ActionMovement", meta = (DisplayName = "Run Speed"))
     float m_BaseWalkSpeed;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ActionMovement")
+    //猛ダッシュの速さ（走り続けると自動で切り替わる）
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ActionMovement", meta = (DisplayName = "Sprint Speed"))
     float m_SprintSpeed;
 
     //現在ダッシュ中かどうかのフラグ

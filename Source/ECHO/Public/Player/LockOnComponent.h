@@ -60,14 +60,25 @@ private:
 	UPROPERTY(EditAnywhere, Category = "LockOn")
 	float m_SwitchCooldown;
 
+	//ロックオン中の敵を倒したら、近くの別の敵へ自動で切り替える
+	UPROPERTY(EditAnywhere, Category = "LockOn")
+	bool m_bAutoSwitchOnKill = true;
+
+	//自動で切り替える敵を探す範囲
+	UPROPERTY(EditAnywhere, Category = "LockOn", meta = (ClampMin = "0"))
+	float m_AutoSwitchRange = 1200.f;
+
 	//切り替えクールダウンの残り時間
 	float m_SwitchCooldownTimer;
 
 	//スティックが基準値を超えているか
 	bool m_bSwitchInputActive;
 
-	//画面中央に最も近い敵を探す
-	AActor* FindBestTarget() const;
+	//Exclude：候補から外す敵（倒した敵など）　MaxRange：探す範囲（0以下ならロックオン可能距離）
+	AActor* FindBestTarget(const AActor* Exclude = nullptr, float MaxRange = -1.f) const;
+
+	//倒した敵の代わりに近くの敵へ切り替える（いなければ解除）
+	void RetargetOrClear(AActor* DeadTarget);
 
 	//現在のターゲットから見て右か左にいる次の敵を探す
 	AActor* FindNextTarget(float Direction) const;

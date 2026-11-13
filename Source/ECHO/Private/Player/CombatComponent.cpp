@@ -496,12 +496,12 @@ void UCombatComponent::ExecuteDodge(const FVector& OverrideDirection)
 	if (!MoveComp) return;
 
 	//ローリングを使うか（モーション未設定の分身などは従来の回避）
-	const bool bUseRoll = m_RollMontages.Num() > 0;
+	const bool bUseDodgeMontage = m_DodgeMontages.Num() > 0;
 
 	const bool bInAir = MoveComp->IsFalling();
 	if (bInAir)
 	{
-		if (bUseRoll) return;          //ローリングは地上だけ（空中回避はなし）
+		if (bUseDodgeMontage) return;          //ローリングは地上だけ（空中回避はなし）
 		if (m_bHasAirDodged) return;
 		m_bHasAirDodged = true;
 	}
@@ -541,7 +541,7 @@ void UCombatComponent::ExecuteDodge(const FVector& OverrideDirection)
 	m_bIsDodging = true;
 
 	//ローリング：モーションの動きで移動する（距離はモーション × 倍率で一定）
-	if (bUseRoll && StartRoll(OwnerCharacter, MoveComp, DodgeDirection)) return;
+	if (bUseDodgeMontage && StartDodgeMontage(OwnerCharacter, MoveComp, DodgeDirection)) return;
 
 	//従来の回避：重力を止めて押し出す（分身用）
 	MoveComp->StartDodge(DodgeDirection, m_DodgeForce);
@@ -571,7 +571,7 @@ void UCombatComponent::EndDodge()
 // -----------------------------------------------------------------------
 // ローリング回避
 // -----------------------------------------------------------------------
-bool UCombatComponent::StartRoll(ACharacter* Owner, UActionMovementComponent* MoveComp, const FVector& Dir)
+bool UCombatComponent::StartDodgeMontage(ACharacter* Owner, UActionMovementComponent* MoveComp, const FVector& Dir)
 {
 	UAnimInstance* Anim = Owner->GetMesh() ? Owner->GetMesh()->GetAnimInstance() : nullptr;
 	if (!Anim) return false;
@@ -580,7 +580,7 @@ bool UCombatComponent::StartRoll(ACharacter* Owner, UActionMovementComponent* Mo
 	if (IsOwnerLockedOn())
 	{
 		//ロックオン中：敵の方を向いたまま、入力方向に合ったローリング
-		Index = GetRollIndex(Owner->GetActorForwardVector(), Dir);
+		Index = GetDodgeIndex(Owner->GetActorForwardVector(), Dir);
 	}
 	else
 	{
@@ -589,31 +589,31 @@ bool UCombatComponent::StartRoll(ACharacter* Owner, UActionMovementComponent* Mo
 	}
 
 	//その方向のモーションがなければ前ローリングで代用
-	UAnimMontage* Montage = (m_RollMontages.IsValidIndex(Index) && m_RollMontages[Index])
-		? m_RollMontages[Index].Get() : m_RollMontages[0].Get();
+	UAnimMontage* Montage = (m_DodgeMontages.IsValidIndex(Index) && m_DodgeMontages[Index])
+		? m_DodgeMontages[Index].Get() : m_DodgeMontages[0].Get();
 	if (!Montage) return false;
 
 	//走っていた勢いを消してから、モーションの動きだけで進む
 	MoveComp->StopMovementImmediately();
-	Owner->SetAnimRootMotionTranslationScale(m_RollDistanceScale);
+	Owner->SetAnimRootMotionTranslationScale(m_DodgeDistanceScale);
 
-	if (Anim->Montage_Play(Montage, m_RollPlayRate) <= 0.f)
+	if (Anim->Montage_Play(Montage, m_DodgePlayRate) <= 0.f)
 	{
 		Owner->SetAnimRootMotionTranslationScale(1.f);
 		return false;
 	}
-	m_CurrentRollMontage = Montage;
+	m_CurrentDodgeMontage = Montage;
 
 	//モーションが終わり始めたら（または割り込まれたら）回避終了
 	FOnMontageBlendingOutStarted BlendOut;
-	BlendOut.BindUObject(this, &UCombatComponent::OnRollBlendingOut);
+	BlendOut.BindUObject(this, &UCombatComponent::OnDodgeBlendingOut);
 	Anim->Montage_SetBlendingOutDelegate(BlendOut, Montage);
 
-	if (m_bRollPassThroughPawns) BeginPassThroughPawns(Owner);
+	if (m_bDodgePassThroughPawns) BeginPassThroughPawns(Owner);
 	return true;
 }
 
-int32 UCombatComponent::GetRollIndex(const FVector& Forward, const FVector& Dir) const
+int32 UCombatComponent::GetDodgeIndex(const FVector& Forward, const FVector& Dir) const
 {
 	//キャラの正面から見た入力方向の角度（右がプラス）を45度ごとに8つに分ける
 	//[0]前 [1]右前 [2]右 [3]右後ろ [4]後ろ [5]左後ろ [6]左 [7]左前
@@ -630,10 +630,10 @@ bool UCombatComponent::IsOwnerLockedOn() const
 	return LockOn && LockOn->IsLockedOn();
 }
 
-void UCombatComponent::OnRollBlendingOut(UAnimMontage* Montage, bool bInterrupted)
+void UCombatComponent::OnDodgeBlendingOut(UAnimMontage* Montage, bool bInterrupted)
 {
-	if (Montage != m_CurrentRollMontage) return;
-	m_CurrentRollMontage = nullptr;
+	if (Montage != m_CurrentDodgeMontage) return;
+	m_CurrentDodgeMontage = nullptr;
 	EndDodge();
 }
 

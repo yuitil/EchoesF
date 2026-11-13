@@ -109,9 +109,21 @@ protected:
 	// 移動
 	// -----------------------------------------------------------------------
 
-	//オートダッシュへの移行時間
+	//走り続けてから猛ダッシュに切り替わるまでの時間
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float m_TimeToSprint;
+
+	//この速さ以上で走っているときだけ猛ダッシュに向けて数える（歩きでは猛ダッシュしない）
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", meta = (ClampMin = "0"))
+	float m_SprintStartSpeed = 500.f;
+
+	//ロックオン中に横へ動くときの速さの倍率
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", meta = (ClampMin = "0", ClampMax = "1"))
+	float m_LockOnSideSpeedRate = 0.85f;
+
+	//ロックオン中に後ろへ動くときの速さの倍率
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", meta = (ClampMin = "0", ClampMax = "1"))
+	float m_LockOnBackSpeedRate = 0.6f;
 
 	//走り続けている時間を計測する変数
 	float m_CurrentRunTime;
@@ -293,6 +305,10 @@ public:
 	//至近距離での追従速度
 	UPROPERTY(EditAnywhere, Category = "LockOn")
 	float m_LockOnInterpSpeedNear = 12.f;
+
+	//ロックオン中に足す見下ろしの角度（マイナスほど上から見下ろす）
+	UPROPERTY(EditAnywhere, Category = "LockOn", meta = (ClampMin = "-60", ClampMax = "30"))
+	float m_LockOnPitchOffset = -12.f;
 
 	FVector DefaultSocketOffset;
 

@@ -185,15 +185,20 @@ void AActionCharacter::Tick(float DeltaTime)
 	//キャラクターの現在の平行移動速度を取得
 	const float Speed = GetVelocity().Size2D();
 
-	//戦闘中でなく、一定以上の速度で走り続けたらダッシュ
-	if (Speed > 10.f && !m_bInCombat)
+	//猛ダッシュに切り替えてよい状態か
+	//（戦闘中・ロックオン中・歩いているときは猛ダッシュしない）
+	const bool bLockedOn = LockOnComponent && LockOnComponent->IsLockedOn();
+	const bool bCanSprint = Speed >= m_SprintStartSpeed && !m_bInCombat && !bLockedOn;
+
+	if (bCanSprint)
 	{
+		//走り続けたら猛ダッシュ
 		m_CurrentRunTime += DeltaTime;
 		if (m_CurrentRunTime >= m_TimeToSprint) StartSprint();
 	}
 	else
 	{
-		//止まった、または戦闘に入ったらダッシュ解除
+		//止まった・歩きになった・戦闘やロックオンに入ったら猛ダッシュ解除
 		m_CurrentRunTime = 0.f;
 		StopSprint();
 	}
@@ -543,6 +548,8 @@ void AActionCharacter::UpdateLockOnCamera(float DeltaTime)
 	if (ToFocus.SizeSquared2D() < FMath::Square(20.f)) return;
 
 	FRotator TargetRot = ToFocus.Rotation();
+	//少し上から見下ろす角度にする
+	TargetRot.Pitch += m_LockOnPitchOffset;
 
 	//距離に応じて補完速度を変える
 	float Distance = FVector::Dist(PlayerLocation, TargetLocation);
@@ -593,7 +600,7 @@ void AActionCharacter::Move(const FInputActionValue& Value)
 	//のけぞり中は移動しない
 	if (m_bIsHitStunned) return;
 
-	//回避中は移動しない（ローリング中も含む）
+	//回避中は移動しない（回避モーション中も含む）
 	if (CombatComponent && CombatComponent->IsDodging()) return;
 
 	//のけぞりモーションの残りは、動き出したら打ち切って歩きに切り替える
@@ -608,8 +615,19 @@ void AActionCharacter::Move(const FInputActionValue& Value)
 		}
 	}
 
-	AddMovementInput(FRotationMatrix(Yaw).GetUnitAxis(EAxis::X), MovementVector.Y);
-	AddMovementInput(FRotationMatrix(Yaw).GetUnitAxis(EAxis::Y), MovementVector.X);
+	//ロックオン中は、横・後ろへ動くときに少し遅くする（後ろ向きに全力で走ると不自然なので）
+	float SpeedScale = 1.f;
+	if (LockOnComponent && LockOnComponent->IsLockedOn())
+	{
+		const FVector InputDir = (Forward * MovementVector.Y + Right * MovementVector.X).GetSafeNormal2D();
+		const float Dot = FVector::DotProduct(InputDir, GetActorForwardVector());   //前=1 横=0 後ろ=-1
+		SpeedScale = (Dot >= 0.f)
+			? FMath::Lerp(m_LockOnSideSpeedRate, 1.f, Dot)
+			: FMath::Lerp(m_LockOnSideSpeedRate, m_LockOnBackSpeedRate, -Dot);
+	}
+
+	AddMovementInput(Forward, MovementVector.Y * SpeedScale);
+	AddMovementInput(Right, MovementVector.X * SpeedScale);
 }
 
 void AActionCharacter::MoveCompleted(const FInputActionValue& Value)
