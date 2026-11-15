@@ -106,6 +106,10 @@ public:
 	//この一振りの判定と残り線を左の剣に切り替える。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Hit")
 	bool m_leftBlade = false;
+
+	//最後の一撃が当たった時に控えめな揺れを付ける。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Impact")
+	bool m_finishHit = false;
 };
 
 //アニメーションから音や見た目の合図を送る。

@@ -37,6 +37,9 @@ public:
     //終了通知を出した手の判定だけを閉じる。
     void EndHand(bool left);
 
+    //この一振りを締めの一撃として扱う。
+    void SetFinishHit(bool _left, bool _finish) { m_hands[_left].m_finishHit = _finish; }
+
     //爆発が回避開始位置まで届いたか調べる。
     bool DodgedBlast(AActor* target, FVector point, float radius, float window) const;
 
@@ -88,6 +91,10 @@ public:
     //一撃の揺れの強さ。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Impact", meta = (ClampMin = "0", ClampMax = "2"))
     float m_shakeScale = .7f;
+
+    //通知で指定した最後の一撃だけ画面を揺らす。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Impact")
+    bool m_finishShakeOnly = false;
 
     //狙っている相手以外も、剣が直接当たれば判定する。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Combat")
@@ -146,6 +153,9 @@ private:
 
         //攻撃判定の区間内か。
         bool m_bHitWindow = false;
+
+        //締めの一撃として揺れを付けるか。
+        bool m_finishHit = false;
 
         //前回の剣の位置があるか。
         bool m_hasPreviousHit = false;

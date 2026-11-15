@@ -21,6 +21,7 @@
 
 #include "Enemy/Minion/MinionFormation.h"
 #include "Enemy/Boss/BossEnemyCharacter.h"
+#include "Enemy/Boss/BossShadowSummon.h"
 
 //判定に使う幅や待ち時間。
 namespace BossPeformActionTuning
@@ -208,7 +209,12 @@ bool UBossPeformAction::StartAttack(UBehaviorTreeComponent& _ownerComp)
 			return false;
 		}
 	}
-	if (!enemy->RequestAction()) { return false; }
+
+	//影の追撃が可能なら、通常の抽選より先に使う。
+	auto* boss = Cast<ABossEnemyCharacter>(enemy);
+	const double now = enemy->GetWorld()->GetTimeSeconds();
+	const bool followed = boss && boss->m_summon && boss->m_summon->TryEcho(*boss, now);
+	if (!followed && !enemy->RequestAction()) { return false; }
 
 	m_serial = enemy->m_actionSerial;
 

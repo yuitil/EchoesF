@@ -19,6 +19,10 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shadow|Debug")
     FName m_spawnState;
 
+    //追撃を待っている理由をPlay中に確認する。
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shadow|Debug")
+    FName m_echoState;
+
     //一定間隔で分身を確認する。
     UBossShadowSummon();
 
@@ -36,6 +40,12 @@ public:
 
     //交代できる位置にいる影だけ、次の一撃を少し待つ。
     bool CanCover(const ABossShadow& _partner) const;
+
+    //次の技を選ぶ時に、影に続く追撃を先に試す。
+    bool TryEcho(ABossEnemyCharacter& _boss, double _now);
+
+    //影との短い時間差を保つ間だけ、別の攻撃を待つ。
+    bool IsWaitingForEcho() const;
 
     //入れ替えに使う短い足運び。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shadow|Swap")
@@ -165,6 +175,24 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shadow")
     TWeakObjectPtr<ABossShadow> m_secondShadow;
 
+public:
+
+    //影の後に本体も使える技。攻撃データと同じ名前を入れる。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shadow|Echo")
+    TArray<FName> m_echoMoves;
+
+    //影が動いてから本体が続くまでの秒数。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shadow|Echo", meta = (ClampMin = "0.2"))
+    float m_echoDelay = .6f;
+
+    //本体が動けなければ追撃を取り消すまでの秒数。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shadow|Echo", meta = (ClampMin = "0.1"))
+    float m_echoWait = 1.f;
+
+    //連携を続けすぎないための間。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shadow|Echo", meta = (ClampMin = "1"))
+    float m_echoCooldown = 6.f;
+
 protected:
 
     //分身とボスの状態に合わせて影を管理する。
@@ -174,6 +202,21 @@ protected:
     virtual void EndPlay(const EEndPlayReason::Type _reason) override;
 
 private:
+
+    //追撃のきっかけにした影。
+    TWeakObjectPtr<ABossShadow> m_echoShadow;
+
+    //同じ一振りを何度も追わないための番号。
+    int32 m_echoSerial = INDEX_NONE;
+
+    //次に本体が続ける技。
+    FName m_echoAction;
+
+    //影の予告を見せてから本体が動く時刻。
+    double m_echoTime = 0.;
+
+    //次の連携を予約できる時刻。
+    double m_nextEcho = 0.;
 
     //連携の抽選が外れた回数。
     int32 m_joinMisses = 0;

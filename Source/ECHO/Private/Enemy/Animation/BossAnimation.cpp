@@ -52,6 +52,7 @@ void UBossCombatWindow::NotifyBegin(USkeletalMeshComponent* _mesh, UAnimSequence
 	if (m_window == EBossWindow::Damage)
 	{
 		enemy->m_combat->BeginHitWindow(m_damageScale, m_hitBone, m_tipOffset, m_leftBlade);
+		enemy->m_combat->SetFinishHit(m_leftBlade, m_finishHit);
 	}
 
 	if (m_window == EBossWindow::DodgeInvulnerability)
