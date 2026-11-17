@@ -135,7 +135,8 @@ EDefenseResult UDefense::ResolveHit(AActor* _attacker, bool _unblockable, bool _
 	//通常ガードで防げる状態か。
 	const double time = GetWorld()->GetTimeSeconds();
 	const bool inWindow = m_guardLimit <= 0.f || time < m_guardEnd;
-	const bool guard = data->m_useGuard && inWindow && (enemy->m_combat->m_bGuarding || time < m_guardPose);
+	const bool holding = time < m_guardPose;
+	const bool guard = data->m_useGuard && ((inWindow && enemy->m_combat->m_bGuarding) || holding);
 
 	//使用する行動の設定。
 	const FEnemyActionData* action = enemy->GetActiveAction();
@@ -176,7 +177,20 @@ EDefenseResult UDefense::ResolveHit(AActor* _attacker, bool _unblockable, bool _
 
 			//処理の結果。
 			const EDefenseResult result = deflect ? EDefenseResult::Deflect : EDefenseResult::Parry;
-			BeginReaction(deflect ? data->m_deflectMontage : data->m_parryMontage, deflect ? data->m_deflectRecovery : data->m_parryRecovery);
+
+			//持っている刀の数に合う防御の構えを選ぶ。
+			UAnimMontage* move = deflect ? data->m_deflectMontage.Get() : data->m_parryMontage.Get();
+			if (enemy->m_combat->HasTwoSwords())
+			{
+
+				//二刀用が設定されていれば、その構えに替える。
+				UAnimMontage* dualMove = deflect ? data->m_dualDeflect.Get() : data->m_dualParry.Get();
+				if (dualMove) { move = dualMove; }
+			}
+
+			//防御の動きと、その後の待ち時間を渡す。
+			const float recovery = deflect ? data->m_deflectRecovery : data->m_parryRecovery;
+			BeginReaction(move, recovery);
 
 			m_counterUntil = m_busyUntilTime + data->m_counterTime;
 			GetWorld()->GetTimerManager().SetTimer(m_counterTimer, this, &UDefense::TryCounter, DefenseTuning::minWindow, true);
@@ -192,15 +206,17 @@ EDefenseResult UDefense::ResolveHit(AActor* _attacker, bool _unblockable, bool _
 		if (result == EDefenseResult::Guard)
 		{
 			RememberHit(_attacker);
+
+			//受付時間を過ぎたら、今の受け止め動作だけを最後まで守る。
+			if (!inWindow) { return result; }
 			enemy->CancelAction();
 			if (auto* ai = Cast<AAIController>(enemy->GetController())) ai->StopMovement();
 			enemy->GetCharacterMovement()->StopMovementImmediately();
 			auto* hit = enemy->m_combat->HasTwoSwords() && data->m_dualGuardHit ? data->m_dualGuardHit.Get() : data->m_guardHit.Get();
-			if (hit) { enemy->PlayAnimMontage(hit); }
-			m_guardPose = GetWorld()->GetTimeSeconds() + data->m_guardHold;
 
-			//被弾し続けてもガードの終了を先延ばしにしない。
-			if (m_guardLimit > 0.f) { m_guardPose = FMath::Min(m_guardPose, m_guardEnd); }
+			//ガードの見た目が終わるまで防御を保つ。
+			const float duration = hit ? enemy->PlayAnimMontage(hit) : 0.f;
+			m_guardPose = time + FMath::Max(data->m_guardHold, duration);
 		}
 		return result;
 	}

@@ -63,6 +63,12 @@ UBossShadowSummon::UBossShadowSummon()
 //本体の戦闘が終われば影も消す。
 void UBossShadowSummon::Reset()
 {
+
+	//前の戦闘で予約した追撃を残さない。
+	m_echoShadow.Reset();
+	m_echoSerial = INDEX_NONE;
+	m_echoAction = NAME_None;
+	m_echoTime = m_nextEcho = 0.;
 	for (auto* shadow : { m_shadow.Get(), m_secondShadow.Get() })
 	{
 		if (IsValid(shadow)) { shadow->FadeOut(); }
@@ -93,6 +99,60 @@ void UBossShadowSummon::EndPlay(const EEndPlayReason::Type _reason)
 		shadow->Destroy();
 	}
 	Super::EndPlay(_reason);
+}
+
+//影との時間差を保つ間は、別の技を選ばない。
+bool UBossShadowSummon::IsWaitingForEcho() const
+{
+	return !m_echoAction.IsNone() && m_echoShadow.IsValid() && GetWorld()->GetTimeSeconds() < m_echoTime;
+}
+
+//影の攻撃に続けられる時だけ、同じ技で追撃する。
+bool UBossShadowSummon::TryEcho(ABossEnemyCharacter& _boss, double _now)
+{
+	//相手が変わった時や、待ちすぎた追撃は取り消す。
+	if (!m_echoAction.IsNone())
+	{
+		auto* shadow = m_echoShadow.Get();
+		const bool sameTarget = shadow && shadow->m_combatTarget == _boss.m_combatTarget;
+		if (!sameTarget || !shadow->IsCombatActive() || _now > m_echoTime + m_echoWait)
+		{
+			m_echoAction = NAME_None;
+			m_echoState = TEXT("Cancelled");
+			return false;
+		}
+		if (_now < m_echoTime) { m_echoState = TEXT("Delay"); return false; }
+		if (!_boss.CanDecide()) { m_echoState = TEXT("Busy"); return false; }
+
+		//距離や持ち替えは、通常の攻撃受付でもう一度調べる。
+		const FName action = m_echoAction;
+		m_echoAction = NAME_None;
+		const bool started = _boss.RequestAction(action);
+		m_echoState = started ? TEXT("Following") : TEXT("Unavailable");
+		if (started) { m_nextEcho = _now + m_echoCooldown; }
+		return started;
+	}
+	if (_now < m_nextEcho || IsChanging()) { return false; }
+
+	//同じ相手を狙う影の、BPで指定した技だけを追う。
+	for (auto* shadow : { m_shadow.Get(), m_secondShadow.Get() })
+	{
+		if (!IsValid(shadow) || !shadow->IsActing()) { continue; }
+		if (shadow->m_combatTarget != _boss.m_combatTarget) { continue; }
+		if (m_echoShadow == shadow && m_echoSerial == shadow->m_actionSerial) { continue; }
+		const auto* move = shadow->GetActiveAction();
+		if (!move || move->m_damage <= 0.f) { continue; }
+		if (!m_echoMoves.Contains(move->m_actionId)) { continue; }
+
+		//予約だけを作り、再生中の本体の攻撃は止めない。
+		m_echoShadow = shadow;
+		m_echoSerial = shadow->m_actionSerial;
+		m_echoAction = move->m_actionId;
+		m_echoState = TEXT("Reserved");
+		m_echoTime = _now + m_echoDelay;
+		break;
+	}
+	return false;
 }
 
 //空いている場所へ影を呼び、同時に二体までにする。
@@ -142,6 +202,9 @@ void UBossShadowSummon::TickComponent(float _delta, ELevelTick _type, FActorComp
 		}
 	}
 	if (TryStep(*boss, now)) { m_spawnState = TEXT("Swapping"); return; }
+
+	//交代が不要なら、影の一撃に少し遅れて続く。
+	if (TryEcho(*boss, now)) { m_spawnState = TEXT("FollowingShadow"); return; }
 	const bool second = m_shadow.IsValid();
 	if (!m_shadowClass) { m_spawnState = TEXT("NoShadowClass"); return; }
 	if (m_secondShadow.IsValid()) { m_spawnState = TEXT("TwoShadowsActive"); return; }

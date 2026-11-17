@@ -33,11 +33,21 @@ void ULockOnComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 
 	if (!CurrentTarget.IsValid()) return;
 
-	//ターゲットが無効になったら自動解除
+	//ターゲットが無効になったら
 	if (!IsTargetValid(CurrentTarget.Get()))
 	{
-		UE_LOG(LogTemp, Log, TEXT("[LockOn] ターゲット無効により自動解除: %s"), *CurrentTarget->GetName());
-		ClearLockOn();
+		AActor* OldTarget = CurrentTarget.Get();
+		if (!EnemyQuery::IsAliveEnemy(OldTarget))
+		{
+			//倒した（または消えた）ので、近くに敵がいれば切り替える
+			RetargetOrClear(OldTarget);
+		}
+		else
+		{
+			//離れすぎたので解除
+			UE_LOG(LogTemp, Log, TEXT("[LockOn] 距離が離れたので解除: %s"), *OldTarget->GetName());
+			ClearLockOn();
+		}
 	}
 
 	//デバッグ用
@@ -127,8 +137,8 @@ void ULockOnComponent::OnEnemyEliminated(AEnemyChara* EliminatedEnemy)
 	//倒された敵が現在のターゲットなら即解除
 	if (CurrentTarget.Get() == EliminatedEnemy)
 	{
-		UE_LOG(LogTemp, Log, TEXT("[LockOn] ターゲット死亡により解除: %s"), *EliminatedEnemy->GetName());
-		ClearLockOn();
+		UE_LOG(LogTemp, Log, TEXT("[LockOn] ターゲットを倒した: %s"), *EliminatedEnemy->GetName());
+		RetargetOrClear(EliminatedEnemy);
 	}
 }
 
@@ -168,7 +178,7 @@ bool ULockOnComponent::IsTargetValid(AActor* Target) const
 	return true;
 }
 
-AActor* ULockOnComponent::FindBestTarget() const
+AActor* ULockOnComponent::FindBestTarget(const AActor* Exclude, float MaxRange) const
 {
 	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
 	if (!OwnerCharacter) return nullptr;
@@ -189,14 +199,16 @@ AActor* ULockOnComponent::FindBestTarget() const
 
 	for (AActor* Enemy : Enemies)
 	{
+		if (Enemy == Exclude) continue;
 		if (!IsTargetValid(Enemy)) continue;
 
-		//距離チェック
+		//距離チェック（範囲の指定がなければロックオン可能距離）
+		const float Range = (MaxRange > 0.f) ? MaxRange : m_LockOnRange;
 		float Distance = FVector::Dist(
 			OwnerCharacter->GetActorLocation(),
 			Enemy->GetActorLocation()
 		);
-		if (Distance > m_LockOnRange) continue;
+		if (Distance > Range) continue;
 
 		//カメラ前方との内積で画面中央に近いものを選ぶ
 		FVector ToEnemy = (Enemy->GetActorLocation() - CameraLocation).GetSafeNormal();
@@ -294,4 +306,32 @@ void ULockOnComponent::DrawLockOnDebug() const
 			FString::Printf(TEXT("%+.2f"), RightDot), nullptr, Col, 0.f, true, 2.f);
 	}
 #endif
+}
+
+void ULockOnComponent::RetargetOrClear(AActor* DeadTarget)
+{
+	//近くにいる、画面の中央に近い敵を探す（倒した敵は除く）
+	AActor* Next = m_bAutoSwitchOnKill ? FindBestTarget(DeadTarget, m_AutoSwitchRange) : nullptr;
+	if (!Next)
+	{
+		ClearLockOn();
+		return;
+	}
+
+	//倒した敵の通知を外して、新しい敵の通知を受け取る
+	if (AEnemyChara* OldEnemy = Cast<AEnemyChara>(CurrentTarget.Get()))
+	{
+		OldEnemy->m_onEnemyEliminated.RemoveDynamic(this, &ULockOnComponent::OnEnemyEliminated);
+	}
+	if (AEnemyChara* NewEnemy = Cast<AEnemyChara>(Next))
+	{
+		NewEnemy->m_onEnemyEliminated.AddUniqueDynamic(this, &ULockOnComponent::OnEnemyEliminated);
+	}
+
+	CurrentTarget = Next;
+	m_bSwitchInputActive = false;
+	m_SwitchCooldownTimer = m_SwitchCooldown;   //切り替え直後にスティックで飛ばないように
+
+	UE_LOG(LogTemp, Log, TEXT("[LockOn] 次の敵へ自動で切り替え: %s"), *Next->GetName());
+	OnLockOnChanged.Broadcast(Next);
 }

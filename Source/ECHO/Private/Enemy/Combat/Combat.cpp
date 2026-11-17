@@ -146,6 +146,7 @@ void UCombat::BeginHitWindow(float _damageScale, FName _bone, FVector _tip, bool
 	hand.m_hitActors.Empty();
 	hand.m_hasPreviousHit = false;
 	hand.m_bHitWindow = true;
+	hand.m_finishHit = false;
 	if (auto* swing = GetOwner()->FindComponentByClass<UEnemySwing>())
 	{
 		swing->StartHand(_leftBlade);
@@ -177,7 +178,11 @@ void UCombat::EndHand(bool left)
 //左手に刀が出ているかを返す。
 bool UCombat::HasTwoSwords() const
 {
-	return IsValid(m_leftWeapon) && m_leftWeapon->IsVisible();
+	if (!GetOwner() || m_leftWeaponTag.IsNone()) { return false; }
+
+	//BPにある現在の左刀を確認する。生成前の参照だけで判断しない。
+	const UMeshComponent* leftBlade = GetOwner()->FindComponentByTag<UMeshComponent>(m_leftWeaponTag);
+	return IsValid(leftBlade) && leftBlade->IsVisible();
 }
 
 //今の持ち方と次の技が違う時だけ持ち替える。
@@ -534,7 +539,9 @@ void UCombat::TraceHand(bool left, FHitWindow& hand)
 		if (actualDamage > 0.0f)
 		{
 			//大技を実際に受けたプレイヤーの画面だけに短い衝撃を出す。
-			if (m_hitShake && m_shakeScale > 0.f && (heavy || action->m_unblockable || action->m_special) && m_shakeAction != enemy->m_actionSerial)
+			const bool impact = m_finishShakeOnly ? hand.m_finishHit : heavy || action->m_unblockable || action->m_special;
+			const bool newImpact = m_shakeAction != enemy->m_actionSerial;
+			if (m_hitShake && m_shakeScale > 0.f && impact && newImpact)
 			{
 				APawn* pawn = Cast<APawn>(hitActor);
 				auto* player = pawn ? Cast<APlayerController>(pawn->GetController()) : nullptr;

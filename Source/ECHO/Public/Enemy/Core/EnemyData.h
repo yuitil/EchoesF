@@ -420,6 +420,14 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Defense", meta = (DisplayName = "ParryMontage"))
     TObjectPtr<UAnimMontage> m_parryMontage;
 
+    //二刀で弾く時に使うモンタージュ。
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Defense", meta = (DisplayName = "Dual Deflect Montage"))
+    TObjectPtr<UAnimMontage> m_dualDeflect;
+
+    //二刀で受け流す時に使うモンタージュ。
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Defense", meta = (DisplayName = "Dual Parry Montage"))
+    TObjectPtr<UAnimMontage> m_dualParry;
+
     //よろけに使うモンタージュ。
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy | Defense", meta = (DisplayName = "AttackDeflectedMontage"))
     TObjectPtr<UAnimMontage> m_staggerMontage;

@@ -88,10 +88,10 @@ float ABossEnemyCharacter::GetAttackRate(const FEnemyActionData& _action) const
 	return m_bossPhase == EBossPhase::PhaseTwo && attack && _action.m_damage > 0.f ? FMath::Min(2.f, rate * m_phaseAttackRate) : rate;
 }
 
-//第二形態はガード中の強攻撃だけを数える。
+//両形態ともガードした攻撃ではHPを減らさない。
 bool ABossEnemyCharacter::HasStrongGuard() const
 {
-	return m_bossPhase == EBossPhase::PhaseTwo;
+	return true;
 }
 
 //ガードに成功した分だけ体勢を少し減らす。
@@ -336,6 +336,9 @@ void ABossEnemyCharacter::EndPlay(const EEndPlayReason::Type _reason)
 //間合いを取り直しているか返す。
 bool ABossEnemyCharacter::IsRepositioning() const
 {
+
+	//影が振り始めた直後は、予約した追撃の時間まで構える。
+	if (m_summon && m_summon->IsWaitingForEcho()) { return true; }
 	return (m_summon && (m_summon->IsChanging() || m_summon->IsWaitingForSwap(this))) || (m_approach && m_approach->IsDrawing()) || (m_spacing && m_spacing->IsSpacing());
 }
 
