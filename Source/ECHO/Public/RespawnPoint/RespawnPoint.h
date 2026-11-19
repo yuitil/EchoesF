@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -28,12 +28,12 @@ protected:
 
 	UFUNCTION()
 	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
-	                    int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+		int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 
 	UFUNCTION()
 	void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
-	                  int32 OtherBodyIndex);
+		int32 OtherBodyIndex);
 
 	//HP加算量
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rotation")
@@ -50,8 +50,12 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "Collision")
 	TObjectPtr<UBoxComponent> m_PlayerDitectionBox;
-	
+
 	// 回復オーラ
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Effect")
 	TObjectPtr<UNiagaraComponent> m_HealAura;
+
+	UPROPERTY(EditAnywhere, Category = "Effect")
+	FVector m_HealAuraLocationOffset = FVector::ZeroVector;
+
 };

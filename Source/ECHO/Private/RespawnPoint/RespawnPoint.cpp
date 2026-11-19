@@ -62,8 +62,15 @@ void ARespawnPoint::Tick(float DeltaTime)
 	{
 		if (m_OverlappingPlayer.IsValid())
 		{
-			//ここにHP加算処理書いて
+			// 回復オーラの位置をプレイヤーに追従させる
+			if (m_HealAura)
+			{
+				FVector AuraLocation = m_OverlappingPlayer->GetActorLocation() + m_HealAuraLocationOffset;
 
+				m_HealAura->SetWorldLocation(AuraLocation);
+			}
+
+			// HP回復処理
 			float HealAmount = m_HPAdditionAmount * DeltaTime;
 
 			m_OverlappingPlayer->AddHp(HealAmount);
@@ -72,8 +79,8 @@ void ARespawnPoint::Tick(float DeltaTime)
 }
 
 void ARespawnPoint::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-                                   UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
-                                   const FHitResult& SweepResult)
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
+	const FHitResult& SweepResult)
 {
 	AActionCharacter* PlayerCharacter = Cast<AActionCharacter>(OtherActor);
 
@@ -110,7 +117,7 @@ void ARespawnPoint::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* 
 
 
 void ARespawnPoint::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-                                 UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
 	if (m_OverlappingPlayer.Get() != OtherActor) return;
 

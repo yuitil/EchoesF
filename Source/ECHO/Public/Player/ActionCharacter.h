@@ -180,7 +180,7 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Health", meta = (AllowPrivateAccess = "true", ClampMin = "1"))
 	float m_MaxHP = 100.f;
 
-	UPROPERTY(VisibleInstanceOnly, Category = "Health", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, Category = "Health", meta = (AllowPrivateAccess = "true"))
 	float m_CurrentHP = 0.f;
 
 	//被弾後の無敵時間（多段ヒット防止）
