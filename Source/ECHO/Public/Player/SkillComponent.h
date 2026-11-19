@@ -135,6 +135,10 @@ private:
 	FVector m_UltDir = FVector::ForwardVector;   //放った向き
 	TWeakObjectPtr<UNiagaraComponent> m_ChargeFX;   //剣にまとわせているエフェクト
 
+	TWeakObjectPtr<UNiagaraComponent> m_ChargeGroundFX;  //ため中の足元のエフェクト
+	TWeakObjectPtr<UNiagaraComponent> m_BeamFX;          //剣から出る光の斬撃
+	FTimerHandle m_BeamTimer;
+
 	// --- 共通 ---
 	bool m_bHovering = false;                         //空中で発動したので重力を止めている
 	TEnumAsByte<ECollisionResponse> m_SavedPawnResponse = ECR_Block;
@@ -168,5 +172,7 @@ private:
 	void PlayImpactShake(float Scale);
 	void UpdateChargeEffect();
 	void ClearChargeEffect();
+	void StopChargeGroundEffect();
+	void StopBeamEffect();
 	int32 DamageInWedge(const FVector& Origin, const FVector& Dir, const FUltimateLevelData& Level);
 };

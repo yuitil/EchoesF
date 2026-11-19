@@ -82,7 +82,7 @@ void UCombatComponent::ExecuteAttack()
 		//コンボ受付が開いていたら次の段数へ移行
 		if (m_bComboWindowOpen)
 		{
-			int32 NextIndex = m_iCurrentComboIndex + 1;
+			int32 NextIndex = GetNextComboIndex();
 			ExecuteComboStep(ComboSteps.IsValidIndex(NextIndex) ? NextIndex : 0);
 		}
 		else
@@ -251,6 +251,7 @@ void UCombatComponent::ExecuteComboStep(int32 StepIndex)
 	}
 
 	//ステートの更新
+	m_bCounterActive = false;   //通常の段に移ったら反撃は終わり
 	m_iCurrentComboIndex = StepIndex;
 	m_AttackStartTime = GetWorld()->GetTimeSeconds();
 	m_bIsAttacking = true;
@@ -306,7 +307,7 @@ void UCombatComponent::OpenComboWindow()
 	if (m_bComboInputBuffered)
 	{
 		m_bComboInputBuffered = false;
-		int32 NextIndex = m_iCurrentComboIndex + 1;
+		int32 NextIndex = GetNextComboIndex();
 		if (NextIndex < ComboSteps.Num())
 			ExecuteComboStep(NextIndex);
 	}
@@ -321,6 +322,7 @@ void UCombatComponent::OnComboResetTimeout()
 {
 	//猶予時間に入力がなければコンボステートを初期化
 	m_iCurrentComboIndex = 0;
+	m_bCounterActive = false;
 	m_bIsAttacking = false;
 	m_bComboWindowOpen = false;
 	m_bComboInputBuffered = false;
@@ -334,12 +336,13 @@ void UCombatComponent::CheckHit()
 	//回避キャンセルで攻撃を中断した後、消えかけのモーションの通知で当たらないように
 	if (!m_bIsAttacking) return;
 
-	if (!ComboSteps.IsValidIndex(m_iCurrentComboIndex)) return;
-
 	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
 	if (!OwnerCharacter) return;
 
-	const FComboStepData& Step = ComboSteps[m_iCurrentComboIndex];
+	//今の攻撃の設定（反撃中なら反撃の設定）
+	const FComboStepData* StepPtr = GetCurrentStep();
+	if (!StepPtr) return;
+	const FComboStepData& Step = *StepPtr;
 
 	//自身の位置からキャラクターの前方へリーチの分だけ伸ばした線分を作成
 	FVector Start = OwnerCharacter->GetActorLocation();
@@ -432,10 +435,11 @@ void UCombatComponent::CheckHit()
 bool UCombatComponent::IsPlayingAttackMontage() const
 {
 	const ACharacter* Owner = Cast<ACharacter>(GetOwner());
-	if (!Owner || !ComboSteps.IsValidIndex(m_iCurrentComboIndex)) return false;
+	const FComboStepData* Step = GetCurrentStep();
+	if (!Owner || !Step) return false;
 
 	const UAnimInstance* Anim = Owner->GetMesh() ? Owner->GetMesh()->GetAnimInstance() : nullptr;
-	return Anim && Anim->Montage_IsPlaying(ComboSteps[m_iCurrentComboIndex].Montage);
+	return Anim && Anim->Montage_IsPlaying(Step->Montage);
 }
 
 // -----------------------------------------------------------------------
@@ -511,7 +515,10 @@ void UCombatComponent::ExecuteDodge(const FVector& OverrideDirection)
 	{
 		if (UAnimInstance* Anim = OwnerCharacter->GetMesh()->GetAnimInstance())
 		{
-			Anim->Montage_Stop(m_DodgeCancelBlendOut, ComboSteps[m_iCurrentComboIndex].Montage);
+			if (const FComboStepData* Current = GetCurrentStep())
+			{
+				Anim->Montage_Stop(m_DodgeCancelBlendOut, Current->Montage);
+			}
 		}
 		CancelAttack();   //コンボ状態のリセット＋空中攻撃の滞空を解除
 	}
@@ -745,4 +752,66 @@ void UCombatComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	//止めたまま消えると、敵が遅いままになるので戻す
 	EndHitStop();
 	Super::EndPlay(EndPlayReason);
+}
+
+// -----------------------------------------------------------------------
+// ジャスト回避の反撃
+// -----------------------------------------------------------------------
+const FComboStepData* UCombatComponent::GetCurrentStep() const
+{
+	if (m_bCounterActive) return &m_CounterStep;
+	return ComboSteps.IsValidIndex(m_iCurrentComboIndex) ? &ComboSteps[m_iCurrentComboIndex] : nullptr;
+}
+
+int32 UCombatComponent::GetNextComboIndex() const
+{
+	//反撃のあとは、設定した段からコンボを続ける
+	return m_bCounterActive ? m_CounterFollowUpIndex : m_iCurrentComboIndex + 1;
+}
+
+bool UCombatComponent::IsCounterAttacking() const
+{
+	return m_bCounterActive && IsPlayingAttackMontage();
+}
+
+bool UCombatComponent::ExecuteCounter(AActor* Target)
+{
+	if (!m_CounterStep.Montage) return false;
+
+	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
+	UAnimInstance* Anim = (OwnerCharacter && OwnerCharacter->GetMesh())
+		? OwnerCharacter->GetMesh()->GetAnimInstance() : nullptr;
+	if (!Anim) return false;
+
+	//ステートの更新（反撃は通常のコンボとは別の1段として扱う）
+	m_bCounterActive = true;
+	m_AttackStartTime = GetWorld()->GetTimeSeconds();
+	m_bIsAttacking = true;
+	m_bComboWindowOpen = false;
+	m_bComboInputBuffered = false;
+	HitActorsThisAttack.Empty();
+
+	GetWorld()->GetTimerManager().ClearTimer(ComboResetTimerHandle);
+	GetWorld()->GetTimerManager().SetTimer(ComboResetTimerHandle, this,
+		&UCombatComponent::OnComboResetTimeout, m_CounterStep.ComboResetTime, false);
+
+	//避けた攻撃の相手に向かって踏み込む（相手がいなければ正面へ）
+	OwnerCharacter->GetCharacterMovement()->StopMovementImmediately();
+	FVector Dir = OwnerCharacter->GetActorForwardVector();
+	if (Target)
+	{
+		const FVector ToTarget = (Target->GetActorLocation() - OwnerCharacter->GetActorLocation()).GetSafeNormal2D();
+		if (!ToTarget.IsNearlyZero()) Dir = ToTarget;
+	}
+	StartTurn(OwnerCharacter, Dir);
+	StartLunge(OwnerCharacter, Dir, Target, m_CounterStep);
+
+	//回避モーション中でも、反撃のモーションで上書きする（回避はそこで終わる）
+	Anim->Montage_Play(m_CounterStep.Montage, m_CounterStep.m_PlayRate,
+		EMontagePlayReturnType::MontageLength, m_CounterStep.m_StartTime);
+
+	FOnMontageEnded EndDelegate;
+	EndDelegate.BindUObject(this, &UCombatComponent::OnAttackMontageEnded);
+	Anim->Montage_SetEndDelegate(EndDelegate, m_CounterStep.Montage);
+	return true;
 }

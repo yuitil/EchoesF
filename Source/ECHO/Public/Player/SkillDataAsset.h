@@ -240,6 +240,26 @@ struct FUltimateData
 	UPROPERTY(EditAnywhere, Category = "Ultimate")
 	FName m_ChargeEffectSocket;
 
+	//ため中に足元に出すエフェクト（ためている間だけ出し、放つかキャンセルで止める）
+	UPROPERTY(EditAnywhere, Category = "Ultimate|Effect")
+	TObjectPtr<UNiagaraSystem> ChargeGroundEffect;
+
+	//光の斬撃エフェクトを付ける剣のソケット（None なら剣の原点）
+	UPROPERTY(EditAnywhere, Category = "Ultimate|Effect")
+	FName m_BeamSocket;
+
+	//光の斬撃エフェクトの向きの補正（エフェクトの向きと剣の向きを合わせる）
+	UPROPERTY(EditAnywhere, Category = "Ultimate|Effect")
+	FRotator m_BeamRotationOffset = FRotator::ZeroRotator;
+
+	//光の斬撃エフェクトを出しておく時間（過ぎたら止める）
+	UPROPERTY(EditAnywhere, Category = "Ultimate|Effect", meta = (ClampMin = "0.1"))
+	float m_BeamDuration = 1.5f;
+
+	//ため中のエフェクトの向きの補正（エディタ上の X＝Roll、Y＝Pitch、Z＝Yaw）
+	UPROPERTY(EditAnywhere, Category = "Ultimate")
+	FRotator m_ChargeEffectRotation = FRotator(-90.f, 0.f, 0.f);
+
 	//1段階上がるのにかかる時間
 	UPROPERTY(EditAnywhere, Category = "Ultimate", meta = (ClampMin = "0.05"))
 	float m_ChargeStepTime = 0.5f;

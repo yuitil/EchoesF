@@ -113,6 +113,7 @@ void USkillComponent::EndSkill()
 	SetMoveSpeedRate(1.f);
 	FreezeCamera(false);
 	ClearChargeEffect();
+	StopChargeGroundEffect();
 
 	if (m_bHovering)
 	{
@@ -664,6 +665,14 @@ bool USkillComponent::StartCharge()
 	m_ChargeLevel = 0;
 	SetMoveSpeedRate(SkillData->Ultimate.m_ChargeMoveSpeedRate);
 	PlayMontage(SkillData->Ultimate.ChargeMontage);
+
+	//足元のエフェクト（ためている間だけ出す）
+	if (UNiagaraSystem* Ground = SkillData->Ultimate.ChargeGroundEffect)
+	{
+		const float HalfHeight = Owner->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+		m_ChargeGroundFX = UNiagaraFunctionLibrary::SpawnSystemAttached(Ground, Owner->GetRootComponent(), NAME_None,
+			FVector(0.f, 0.f, -HalfHeight), FRotator::ZeroRotator, EAttachLocation::KeepRelativeOffset, true);
+	}
 	SetComponentTickEnabled(true);
 	return true;
 }
@@ -702,16 +711,27 @@ void USkillComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 //剣にまとわせるエフェクトを、今の段階のものに差し替える
 void USkillComponent::UpdateChargeEffect()
 {
-	ClearChargeEffect();
-	if (m_ChargeLevel <= 0) return;
+	if (m_ChargeLevel <= 0)
+	{
+		ClearChargeEffect();
+		return;
+	}
 
 	const FUltimateData& U = SkillData->Ultimate;
 	UNiagaraSystem* Effect = U.Levels[m_ChargeLevel - 1].ChargeEffect;
+
+	//同じエフェクトのままなら出し直さない（段階が上がるたびに途切れないように）
+	if (UNiagaraComponent* Current = m_ChargeFX.Get())
+	{
+		if (Current->GetAsset() == Effect) return;
+	}
+
+	ClearChargeEffect();
 	UStaticMeshComponent* Weapon = GetOwnerCharacter()->GetWeaponMesh();
 	if (!Effect || !Weapon) return;
 
 	m_ChargeFX = UNiagaraFunctionLibrary::SpawnSystemAttached(Effect, Weapon, U.m_ChargeEffectSocket,
-		FVector::ZeroVector, FRotator::ZeroRotator, EAttachLocation::SnapToTarget, true);
+		FVector::ZeroVector, U.m_BeamRotationOffset, EAttachLocation::SnapToTarget, true);
 }
 
 void USkillComponent::ClearChargeEffect()
@@ -731,7 +751,13 @@ void USkillComponent::ReleaseCharge()
 	AActionCharacter* Owner = GetOwnerCharacter();
 	SetComponentTickEnabled(false);
 	SetMoveSpeedRate(1.f);
-	ClearChargeEffect();
+	//剣のエフェクトは放ったあとも振り下ろしに合わせて残し、決めた時間で止める
+	StopBeamEffect();
+	m_BeamFX = m_ChargeFX;
+	m_ChargeFX.Reset();
+	GetWorld()->GetTimerManager().SetTimer(m_BeamTimer, this,
+		&USkillComponent::StopBeamEffect, U.m_BeamDuration, false);
+	StopChargeGroundEffect();
 
 	//1段もたまっていなければ何もせず終わり（ゲージは減らない）
 	if (m_ChargeLevel <= 0 || !TryConsume(m_ChargeLevel))
@@ -791,9 +817,26 @@ void USkillComponent::Ultimate_Fire()
 	m_UltOrigin = Owner->GetActorLocation();
 	m_UltDir = Owner->GetActorForwardVector().GetSafeNormal2D();
 
-	if (L.BeamEffect)
+	//ため中からの剣のエフェクトが残っていれば、そちらを使う（重ねて出さない）
+	if (L.BeamEffect && !m_BeamFX.IsValid())
 	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, L.BeamEffect, m_UltOrigin, m_UltDir.Rotation());
+		const FUltimateData& U = SkillData->Ultimate;
+		StopBeamEffect();
+
+		//剣にくっつけて出す（振り下ろしに合わせて光も動く）
+		if (UStaticMeshComponent* Weapon = Owner->GetWeaponMesh())
+		{
+			m_BeamFX = UNiagaraFunctionLibrary::SpawnSystemAttached(L.BeamEffect, Weapon, U.m_BeamSocket,
+				FVector::ZeroVector, U.m_BeamRotationOffset, EAttachLocation::SnapToTarget, true);
+		}
+		else
+		{
+			m_BeamFX = UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, L.BeamEffect, m_UltOrigin, m_UltDir.Rotation());
+		}
+
+		//決めた時間がたったら止める（出しっぱなしにしない）
+		GetWorld()->GetTimerManager().SetTimer(m_BeamTimer, this,
+			&USkillComponent::StopBeamEffect, U.m_BeamDuration, false);
 	}
 
 	m_UltHitsLeft = L.m_HitCount;
@@ -902,4 +945,24 @@ void USkillComponent::PlayImpactShake(float Scale)
 	{
 		PC->ClientStartCameraShake(m_ImpactShake, Scale);
 	}
+}
+
+void USkillComponent::StopChargeGroundEffect()
+{
+	//新しく出すのをやめて、出ている分は自然に消えるのを待つ（消えたら自動で破棄される）
+	if (UNiagaraComponent* FX = m_ChargeGroundFX.Get())
+	{
+		FX->Deactivate();
+	}
+	m_ChargeGroundFX.Reset();
+}
+
+void USkillComponent::StopBeamEffect()
+{
+	if (UNiagaraComponent* FX = m_BeamFX.Get())
+	{
+		FX->Deactivate();
+	}
+	m_BeamFX.Reset();
+	GetWorld()->GetTimerManager().ClearTimer(m_BeamTimer);
 }

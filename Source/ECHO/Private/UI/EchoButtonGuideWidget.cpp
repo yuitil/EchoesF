@@ -8,6 +8,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/Texture2D.h"
 #include "Components/TextBlock.h"
+#include "Player/JustDodgeComponent.h"
 
 namespace
 {
@@ -49,6 +50,20 @@ void UEchoButtonGuideWidget::NativeTick(const FGeometry& MyGeometry, float InDel
 	UpdateScale(IDX_DODGE, Btn_Dodge, IsAnyKeyDown(PC, m_DodgeKeys), InDeltaTime);
 	UpdateScale(IDX_JUMP, Btn_Jump, IsAnyKeyDown(PC, m_JumpKeys), InDeltaTime);
 	UpdateScale(IDX_RB, Btn_RB, bRB, InDeltaTime);
+
+	// --- 反撃できる間は、攻撃ボタンを金色で脈打たせて知らせる ---
+	{
+		const AActionCharacter* P = Cast<AActionCharacter>(GetOwningPlayerPawn());
+		const bool bCounter = P && P->JustDodgeComponent && P->JustDodgeComponent->IsCounterWindowOpen();
+		if (bCounter)
+		{
+			const float Time = GetWorld()->GetRealTimeSeconds();
+			const float Wave = 0.5f + 0.5f * FMath::Sin(Time * 2.f * PI * m_CounterPulseSpeed);
+			m_Scales[IDX_ATTACK] = FMath::Lerp(1.f, m_CounterPulseScale, Wave);
+			if (Btn_Attack) Btn_Attack->SetRenderScale(FVector2D(m_Scales[IDX_ATTACK]));
+		}
+		if (Icon_Attack) Icon_Attack->SetColorAndOpacity(bCounter ? m_CounterTint : FLinearColor::White);
+	}
 
 	// --- RBを押している間はスキルの絵に差し替える（未設定なら通常のまま） ---
 	SetIcon(Icon_Attack, (bRB && m_AttackSkillTexture) ? m_AttackSkillTexture : m_NormalAttack.Get());

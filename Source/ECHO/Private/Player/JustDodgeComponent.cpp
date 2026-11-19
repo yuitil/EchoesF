@@ -32,8 +32,12 @@ void UJustDodgeComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Super::EndPlay(EndPlayReason);
 }
 
-void UJustDodgeComponent::TriggerJustDodge()
+void UJustDodgeComponent::TriggerJustDodge(AActor* Attacker)
 {
+	//反撃できる時間を開く
+	m_CounterRemain = m_CounterWindowTime;
+	m_CounterTarget = Attacker;
+
 	//報酬は毎回つける（残り時間を満タンに戻す）
 	m_BuffRemain = m_BuffTime;
 
@@ -67,6 +71,7 @@ void UJustDodgeComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 
 	m_CooldownRemain = FMath::Max(0.f, m_CooldownRemain - RealDt);
 	m_BuffRemain = FMath::Max(0.f, m_BuffRemain - RealDt);
+	m_CounterRemain = FMath::Max(0.f, m_CounterRemain - RealDt);
 
 	// --- スロー：止めておく → なめらかに戻す ---
 	bool bHolding = false;

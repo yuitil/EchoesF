@@ -119,6 +119,12 @@ public:
 	//被弾などで攻撃を強制的に中断する
 	void CancelAttack() { OnComboResetTimeout(); }
 
+	//ジャスト回避の反撃を出す（Target：避けた攻撃の相手。いなければ正面へ）
+	bool ExecuteCounter(AActor* Target);
+
+	//反撃の最中か（この間は無敵）
+	bool IsCounterAttacking() const;
+
 	//AnimationNotifyから呼ばれる、コンボの次の段階への移行を受け付ける関数
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void OpenComboWindow();
@@ -214,6 +220,15 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Combat|Dodge|Motion", meta = (ClampMin = "0"))
 	float m_PassThroughMaxExtraTime = 1.f;
 
+	// --- ジャスト回避の反撃 ---
+	//反撃の設定（モーション・ダメージ・踏み込みなど。通常攻撃の1段と同じ項目）
+	UPROPERTY(EditAnywhere, Category = "Combat|Counter")
+	FComboStepData m_CounterStep;
+
+	//反撃のあとに攻撃ボタンを押したとき、コンボの何段目につなぐか（0＝1段目、1＝2段目）
+	UPROPERTY(EditAnywhere, Category = "Combat|Counter", meta = (ClampMin = "0"))
+	int32 m_CounterFollowUpIndex = 1;
+
 	//攻撃の当たり判定（黄色・赤の球）を表示する
 	UPROPERTY(EditAnywhere, Category = "Combat|Debug")
 	bool m_bDebugDrawHit = false;
@@ -280,6 +295,11 @@ private:
 	// --- ローリング ---
 	UPROPERTY()
 	TObjectPtr<UAnimMontage> m_CurrentDodgeMontage;
+
+	// --- 反撃 ---
+	bool m_bCounterActive = false;                //今の攻撃が反撃か
+	const FComboStepData* GetCurrentStep() const; //今の攻撃の設定（反撃なら反撃の設定）
+	int32 GetNextComboIndex() const;              //次に出すコンボの段
 
 	bool m_bPassingThrough = false;                                   //敵をすり抜け中か
 	TEnumAsByte<ECollisionResponse> m_SavedPawnResponse = ECR_Block;  //すり抜け前の設定

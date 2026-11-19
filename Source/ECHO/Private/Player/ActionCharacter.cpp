@@ -236,6 +236,16 @@ void AActionCharacter::Attack()
 	if (SkillComponent && SkillComponent->IsBusy()) return;
 	if (IsHealing()) return;
 	if (m_bIsHitStunned) return;
+
+	//ジャスト回避の直後なら反撃
+	if (JustDodgeComponent && CombatComponent && JustDodgeComponent->IsCounterWindowOpen())
+	{
+		if (CombatComponent->ExecuteCounter(JustDodgeComponent->GetCounterTarget()))
+		{
+			JustDodgeComponent->ConsumeCounterWindow();
+			return;
+		}
+	}
 	if (CombatComponent) CombatComponent->ExecuteAttack();
 }
 
@@ -254,6 +264,9 @@ float AActionCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damag
 		if (m_bDebugHP) GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Cyan, TEXT("Dodge! No Damage"));
 		return 0.f;
 	}
+
+	//反撃中は無敵
+	if (CombatComponent && CombatComponent->IsCounterAttacking()) return 0.f;
 
 	//被弾直後の無敵時間
 	const float Now = GetWorld()->GetTimeSeconds();
@@ -1051,7 +1064,7 @@ void AActionCharacter::AttackDefended_Implementation(AActor* _actor, EDefenseRes
 {
 	//ジャスト回避だけ受け取る（ガードなどは今は使わない）
 	if (_result != EDefenseResult::PerfectDodge) return;
-	if (JustDodgeComponent) JustDodgeComponent->TriggerJustDodge();
+	if (JustDodgeComponent) JustDodgeComponent->TriggerJustDodge(_actor);
 }
 
 void AActionCharacter::UpdateGravityWatchdog(float DeltaTime)

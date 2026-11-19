@@ -86,6 +86,19 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Guide|Press", meta = (ClampMin = "1"))
 	float m_ScaleSpeed = 25.f;
 
+	// --- 反撃できる間の攻撃ボタン ---
+	//脈打つときの最大の大きさ
+	UPROPERTY(EditAnywhere, Category = "Guide|Counter", meta = (ClampMin = "1"))
+	float m_CounterPulseScale = 1.3f;
+
+	//脈打つ速さ（1秒あたりの回数）
+	UPROPERTY(EditAnywhere, Category = "Guide|Counter", meta = (ClampMin = "0.1"))
+	float m_CounterPulseSpeed = 4.f;
+
+	//アイコンの色
+	UPROPERTY(EditAnywhere, Category = "Guide|Counter")
+	FLinearColor m_CounterTint = FLinearColor(1.f, 0.8f, 0.25f, 1.f);
+
 	// --- ジャンプ ---
 	//地上の絵（未設定ならWBPで Icon_Jump に入れた絵を使う）
 	UPROPERTY(EditAnywhere, Category = "Guide|Jump")

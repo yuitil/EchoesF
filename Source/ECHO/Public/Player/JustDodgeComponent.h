@@ -25,7 +25,16 @@ public:
 	UJustDodgeComponent();
 
 	//ジャスト回避が成立したときに呼ぶ
-	void TriggerJustDodge();
+	void TriggerJustDodge(AActor* Attacker = nullptr);
+
+	//反撃できる時間の中か
+	bool IsCounterWindowOpen() const { return m_CounterRemain > 0.f; }
+
+	//反撃を使った（反撃できる時間を閉じる）
+	void ConsumeCounterWindow() { m_CounterRemain = 0.f; }
+
+	//避けた攻撃の相手（反撃で向かう先）
+	AActor* GetCounterTarget() const { return m_CounterTarget.Get(); }
 
 	//攻撃で得るエネルギーの倍率（報酬中は m_EnergyRate、それ以外は1）
 	float GetEnergyRate() const { return m_BuffRemain > 0.f ? m_EnergyRate : 1.f; }
@@ -78,6 +87,11 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "JustDodge|Reward", meta = (ClampMin = "1"))
 	float m_EnergyRate = 2.f;
 
+	// --- 反撃 ---
+	//ジャスト回避のあと、反撃できる時間（実時間）
+	UPROPERTY(EditAnywhere, Category = "JustDodge|Counter", meta = (ClampMin = "0"))
+	float m_CounterWindowTime = 1.f;
+
 	//成立したときに画面に文字を出す
 	UPROPERTY(EditAnywhere, Category = "JustDodge|Debug")
 	bool m_bDebug = false;
@@ -91,6 +105,8 @@ private:
 	float m_CooldownRemain = 0.f;  //次のスローまでの残り
 	float m_BuffRemain = 0.f;      //エネルギー倍の残り
 	float m_Saturation = 1.f;      //今の彩度
+	float m_CounterRemain = 0.f;                //反撃できる残り時間
+	TWeakObjectPtr<AActor> m_CounterTarget;     //避けた攻撃の相手
 
 	void SetSaturation(float Value);
 };
