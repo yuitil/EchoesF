@@ -339,7 +339,8 @@ void UDefense::EndGuardBreak()
 
 	if (m_breakMove.IsValid()) { enemy->StopAnimMontage(m_breakMove.Get()); }
 
-	enemy->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	//BPで決めた移動に戻し、飛行敵を地上歩行にしない。
+	enemy->GetCharacterMovement()->SetDefaultMovementMode();
 }
 
 //防御後の反応アニメーションを開始する。
@@ -411,7 +412,8 @@ void UDefense::ResetDefense()
 
 	if (m_bGuardBroken && enemy && enemy->IsCombatActive())
 	{
-		enemy->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+		//飛行敵も、BPの移動設定で再開する。
+		enemy->GetCharacterMovement()->SetDefaultMovementMode();
 	}
 
 	GetWorld()->GetTimerManager().ClearTimer(m_counterTimer);

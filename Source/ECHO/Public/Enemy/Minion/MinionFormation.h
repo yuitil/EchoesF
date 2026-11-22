@@ -72,6 +72,14 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Formation")
     bool m_nearestFirst = true;
 
+    //近さだけで選ばない時、待った秒数に応じて順番を早める。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Formation|Timing", meta = (ClampMin = "0"))
+    float m_waitWeight = 40.f;
+
+    //遠くで待つ敵を優先しすぎないための上限。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Formation|Timing", meta = (ClampMin = "0"))
+    float m_waitLimit = 600.f;
+
     //もう一体の加勢を許すか。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Formation|Counter")
     bool m_allowSupport = false;

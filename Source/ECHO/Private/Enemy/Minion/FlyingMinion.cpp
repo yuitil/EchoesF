@@ -14,6 +14,7 @@ void AFlyingMinion::BeginPlay()
 	if (!m_spawnMove) { return; }
 	const float length = PlayAnimMontage(m_spawnMove);
 	m_readyTime = GetWorld()->GetTimeSeconds() + length;
+	m_spawnUntil = m_readyTime;
 }
 
 //攻撃の選択はBTに任せ、ここでは安全な移動だけを行う。
@@ -21,7 +22,9 @@ void AFlyingMinion::Tick(float _delta)
 {
 	Super::Tick(_delta);
 	if (!HasAuthority() || !IsCombatActive()) { return; }
-	if (IsActing() || GetWorld()->GetTimeSeconds() < m_readyTime)
+
+	//出現中だけ止め、射撃後の待ち時間も飛行を続ける。
+	if (GetWorld()->GetTimeSeconds() < m_spawnUntil)
 	{
 		GetCharacterMovement()->StopMovementImmediately();
 		return;
@@ -48,7 +51,10 @@ void AFlyingMinion::Tick(float _delta)
 		const float range = offset.Size2D();
 		if (range > m_shotRange + m_rangeMargin) { direction = forward; }
 		else if (range < m_shotRange - m_rangeMargin) { direction = -forward; }
-		else { direction = FVector::CrossProduct(FVector::UpVector, forward) * m_sideSpeed; }
+
+		//近づく時も離れる時も、BPで決めた横移動を加える。
+		const FVector side = FVector::CrossProduct(FVector::UpVector, forward);
+		direction += side * m_sideSpeed;
 	}
 
 	//高さのずれを緩やかに直す。

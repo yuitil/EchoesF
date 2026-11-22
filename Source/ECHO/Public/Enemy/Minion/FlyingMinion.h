@@ -43,6 +43,9 @@ public:
 	float m_wallDistance = 180.f;
 
 protected:
+	//出現動作の間だけ飛行を待つ。攻撃後の待ち時間とは分ける。
+	double m_spawnUntil = 0.;
+
 	//出現動作が終わってから戦闘を始める。
 	virtual void BeginPlay() override;
 

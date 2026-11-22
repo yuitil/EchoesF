@@ -20,6 +20,7 @@
 #include "Components/SkeletalMeshComponent.h"
 
 #include "Enemy/Minion/MinionFormation.h"
+#include "Enemy/Minion/MinionEnemyCharacter.h"
 #include "Enemy/Boss/BossEnemyCharacter.h"
 #include "Enemy/Boss/BossShadowSummon.h"
 
@@ -202,7 +203,9 @@ bool UBossPeformAction::StartAttack(UBehaviorTreeComponent& _ownerComp)
 		{
 			return false;
 		}
-		const bool tooClose = distance < enemy->GetMeleeDistance() - BossPeformActionTuning::closeMargin;
+		//雑魚敵は攻撃が届くなら、退避を繰り返さず攻撃へ進む。
+		const bool canStrike = enemy->IsA<AMinionEnemyCharacter>() && enemy->CanRushAttack(distance);
+		const bool tooClose = !canStrike && distance < enemy->GetMeleeDistance() - BossPeformActionTuning::closeMargin;
 		if (tooClose && !enemy->GetCharacterMovement()->IsFalling() &&
 			enemy->GetReadyAction(m_retreatAction))
 		{
@@ -452,7 +455,9 @@ EBTNodeResult::Type UBossPeformAction::ExecuteTask(UBehaviorTreeComponent& _owne
 	//相手までの距離。
 	const float distance = FVector::Dist2D(enemy->GetActorLocation(), enemy->m_combatTarget->GetActorLocation());
 
-	const bool tooClose = distance < enemy->GetMeleeDistance() - BossPeformActionTuning::closeMargin;
+	//雑魚敵は攻撃が届くなら、退避を繰り返さず攻撃へ進む。
+	const bool canStrike = enemy->IsA<AMinionEnemyCharacter>() && enemy->CanRushAttack(distance);
+	const bool tooClose = !canStrike && distance < enemy->GetMeleeDistance() - BossPeformActionTuning::closeMargin;
 	if (tooClose && enemy->GetCharacterMovement()->IsMovingOnGround() && (enemy->GetReadyAction(m_retreatAction) || HasRetreatSpace(enemy)))
 	{
 

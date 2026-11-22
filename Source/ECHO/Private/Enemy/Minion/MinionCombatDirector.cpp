@@ -39,10 +39,6 @@ namespace MinionCombatDirectorTuning
 	constexpr auto updateDelay = .2;
 	//一回転の角度。
 	constexpr auto fullTurn = 360.f;
-	//待ち時間による優先度の上限。
-	constexpr auto maxWaitBonus = 150.;
-	//待っていた敵を優先する値。
-	constexpr auto waitBonus = 10.;
 	//反撃を優先する値。
 	constexpr auto counterBonus = 100000.f;
 	//隙の確認時間の下限。
@@ -278,7 +274,7 @@ void UMinionCombatDirector::Update()
 
 			//現在調べている候補。
 			const double waited = FMath::Max(0., now - member->m_ready);
-			const double waitBonus = FMath::Min(MinionCombatDirectorTuning::maxWaitBonus, waited * MinionCombatDirectorTuning::waitBonus);
+			const double waitBonus = FMath::Min(double(member->m_waitLimit), waited * member->m_waitWeight);
 			const double rank = member->m_nearestFirst ? distance : distance - waitBonus;
 			const float candidate = rank - (counter ? MinionCombatDirectorTuning::counterBonus : 0.f);
 			if (candidate < score)

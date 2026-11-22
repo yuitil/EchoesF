@@ -1019,7 +1019,7 @@ void AEnemyCharacterBase::ResetEncounter()
 	m_combatTarget = nullptr;
 	SetCanBeDamaged(true);
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	GetCharacterMovement()->SetDefaultMovementMode();
 	SetState(EEnemyState::Alive);
 	SetHealthPool(m_definition ? m_definition->m_initialHealth : EnemyCharacterBaseTuning::baseHealth);
 	if (AAIController* aiController = Cast<AAIController>(GetController()))
