@@ -208,11 +208,115 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Echo|Heal", meta = (ClampMin = "1"))
 	float m_HealPopScale = 1.25f;
 
+	// --- HPが少ないときの回復の主張 ---
+	//回復アイコンの後ろに敷く光
+	UPROPERTY(meta = (BindWidgetOptional))
+	UImage* HealGlow;
+
+	//寄せる緑（台座の丸・十字キー・数字）
+	UPROPERTY(EditAnywhere, Category = "Echo|Heal|LowHP")
+	FLinearColor m_HealAlertColor = FLinearColor(0.35f, 1.f, 0.45f, 1.f);
+
+	//後ろの光の色
+	UPROPERTY(EditAnywhere, Category = "Echo|Heal|LowHP")
+	FLinearColor m_HealGlowColor = FLinearColor(0.2f, 1.f, 0.35f, 0.9f);
+
+	//HPが少ないときの大きさ
+	UPROPERTY(EditAnywhere, Category = "Echo|Heal|LowHP", meta = (ClampMin = "1"))
+	float m_HealAlertScale = 1.3f;
+
+	//脈打つときに、さらに膨らむ量（0.08 なら +8%）
+	UPROPERTY(EditAnywhere, Category = "Echo|Heal|LowHP", meta = (ClampMin = "0"))
+	float m_HealAlertPulseScale = 0.08f;
+
+	//後ろの光の大きさ（回復アイコンに対する倍率）
+	UPROPERTY(EditAnywhere, Category = "Echo|Heal|LowHP", meta = (ClampMin = "0.1"))
+	float m_HealGlowScale = 1.6f;
+
 private:
 	FDelegateHandle m_HealCountHandle;
 	int32 m_HealCount = -1;      //前回の回数（減ったかどうかを見る）
 	float m_HealScale = 1.f;
+	float m_HealAlert = 0.f;     //主張の強さ（0：ふだん → 1：HPが少ない）
 
 	void HandleHealCountChanged(int32 Count, int32 Max);
 	void UpdateHeal(float DeltaTime);
+
+
+	//----------------
+	//エネルギーゲージの演出
+	//----------------
+protected:
+	//膨らませる・脈打たせるまとまり（エネルギーゲージ一式が入っているウィジェット）
+	UPROPERTY(meta = (BindWidgetOptional))
+	UWidget* EnergyRoot;
+
+	//たまった区間に重ねて光らせる画像（EnergyBar と同じ Overlay に入れる）
+	UPROPERTY(meta = (BindWidgetOptional))
+	UImage* EnergyStockFlash;
+
+	// --- ゲージの色（WBP で設定してある色に掛け合わせる。白(1,1,1)なら今のまま） ---
+	//ふだんの色合い（1より小さい値で暗く・濃くなる）
+	UPROPERTY(EditAnywhere, Category = "Echo|Energy|Color")
+	FLinearColor m_EnergyTint = FLinearColor(0.6f, 0.8f, 1.f, 1.f);
+
+	//最大のときの色合い（1より大きい値で明るくなる）
+	UPROPERTY(EditAnywhere, Category = "Echo|Energy|Color")
+	FLinearColor m_EnergyMaxTint = FLinearColor(1.3f, 1.5f, 2.f, 1.f);
+
+	// --- 1本たまったとき ---
+	//光の色
+	UPROPERTY(EditAnywhere, Category = "Echo|Energy|Stock")
+	FLinearColor m_StockFlashColor = FLinearColor(0.7f, 0.95f, 1.f, 0.85f);
+
+	//光っている時間（秒）
+	UPROPERTY(EditAnywhere, Category = "Echo|Energy|Stock", meta = (ClampMin = "0.01"))
+	float m_StockFlashTime = 0.45f;
+
+	//光る区間が膨らむ大きさ
+	UPROPERTY(EditAnywhere, Category = "Echo|Energy|Stock", meta = (ClampMin = "1"))
+	float m_StockFlashScale = 1.35f;
+
+	//ゲージ全体がポンッと膨らむ大きさ
+	UPROPERTY(EditAnywhere, Category = "Echo|Energy|Stock", meta = (ClampMin = "1"))
+	float m_StockPopScale = 1.08f;
+
+	// --- 最大のとき（ドクンドクン） ---
+	//鼓動1セットの間隔（秒）
+	UPROPERTY(EditAnywhere, Category = "Echo|Energy|Max", meta = (ClampMin = "0.2"))
+	float m_MaxBeatInterval = 0.9f;
+
+	//1回目の「ドクン」から2回目までの間（秒）
+	UPROPERTY(EditAnywhere, Category = "Echo|Energy|Max", meta = (ClampMin = "0"))
+	float m_MaxBeatGap = 0.6f;
+
+	//1回の「ドクン」の長さ（秒）
+	UPROPERTY(EditAnywhere, Category = "Echo|Energy|Max", meta = (ClampMin = "0.02"))
+	float m_MaxBeatLength = 1.5f;
+
+	//鼓動で膨らむ量（0.1 なら 1.1倍）
+	UPROPERTY(EditAnywhere, Category = "Echo|Energy|Max", meta = (ClampMin = "0"))
+	float m_MaxBeatScale = 0.1f;
+
+	//最大のときの光の濃さ（ふだん／鼓動の瞬間）
+	UPROPERTY(EditAnywhere, Category = "Echo|Energy|Max", meta = (ClampMin = "0", ClampMax = "1"))
+	float m_MaxGlowBase = 0.15f;
+
+	UPROPERTY(EditAnywhere, Category = "Echo|Energy|Max", meta = (ClampMin = "0", ClampMax = "1"))
+	float m_MaxGlowPeak = 0.6f;
+
+private:
+	FLinearColor m_EnergyBaseColor = FLinearColor::White;  //WBP で設定してあるゲージの色
+	int32 m_LastStock = -1;          //前回の本数（増えたかどうかを見る）
+	int32 m_MaxStockCache = 0;       //最大本数
+	int32 m_FlashFromStock = 0;      //光らせる区間（何本目から）
+	int32 m_FlashToStock = 0;        //光らせる区間（何本目まで）
+	float m_StockFlashRemain = 0.f;  //光の残り時間
+	float m_EnergyPopScale = 1.f;    //ポンッと膨らんだ大きさ
+	bool  m_bEnergyMax = false;      //最大かどうか
+	float m_BeatTime = 0.f;          //鼓動の経過時間
+
+	void UpdateEnergyFeedback(float DeltaTime);
+	float CalcBeat() const;
+	void PlaceStockFlash(float FromRatio, float ToRatio);
 };
