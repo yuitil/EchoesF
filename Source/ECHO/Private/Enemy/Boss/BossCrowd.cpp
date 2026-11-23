@@ -2,6 +2,7 @@
 #include "Enemy/Audio/EnemyAudio.h"
 #include "Enemy/Boss/BossEnemyCharacter.h"
 #include "Enemy/Boss/BossShadow.h"
+#include "Enemy/Boss/BossSpacing.h"
 #include "Ghost/GhostCharacter/GhostCharacter.h"
 #include "Ghost/GhostEnemy/GhostEnemyComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -90,7 +91,8 @@ void UBossCrowd::UpdateBlock()
 	auto* boss = Cast<ABossEnemyCharacter>(GetOwner());
 	auto* ai = boss ? Cast<AAIController>(boss->GetController()) : nullptr;
 	const bool moving = ai && ai->GetMoveStatus() == EPathFollowingStatus::Moving;
-	if (!boss || !moving || !boss->CanDecide())
+	const bool facingThreat = boss && IsValid(boss->m_combatTarget) && !boss->IsActing();
+	if (!boss || (!moving && !facingThreat) || !boss->IsCombatActive())
 	{
 		m_blockSince = -1.;
 		return;
@@ -111,7 +113,7 @@ bool UBossCrowd::TryPush()
 {
 	UpdateBlock();
 	auto* boss = Cast<ABossEnemyCharacter>(GetOwner());
-	if (!boss || !boss->HasAuthority() || boss->IsActing() || !CanPush()) { return false; }
+	if (!boss || !boss->HasAuthority() || !CanPush()) { return false; }
 
 	//遠くのプレイヤーとの距離で、足元の分身への反撃を止めない。
 	TArray<ACharacter*> targets;
@@ -119,8 +121,10 @@ bool UBossCrowd::TryPush()
 	GetTargets(targets, clones);
 	AActor* previous = boss->m_combatTarget.Get();
 	if (targets.IsEmpty()) { return false; }
+	//包囲から抜ける技を、周回の終了まで待たせない。
+	if (boss->m_spacing && boss->m_spacing->IsSpacing()) { boss->m_spacing->Stop(); }
 	if (!targets.Contains(Cast<ACharacter>(previous))) { boss->m_combatTarget = targets[0]; }
-	if (!boss->RequestAction(m_action))
+	if (!boss->RequestCrowdPush(m_action))
 	{
 		boss->m_combatTarget = previous;
 		return false;

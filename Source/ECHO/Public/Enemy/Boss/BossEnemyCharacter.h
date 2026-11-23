@@ -32,6 +32,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Boss|Intro")
     void EndIntro();
 
+    //包囲された時だけ、通常攻撃後の待ち時間を切り上げる。
+    bool RequestCrowdPush(FName _action);
+
     //ボスの体力と二つの段階を管理する。
     ABossEnemyCharacter();
 

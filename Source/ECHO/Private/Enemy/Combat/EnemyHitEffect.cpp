@@ -49,15 +49,19 @@ void UEnemyHitEffect::FindBladePoint(AActor* _owner, const FVector& _near, FVect
 //攻撃者の刀に近い体の表面を探す。
 bool UEnemyHitEffect::EstimateContact(AActor* _attacker, FVector& _point, FVector& _normal) const
 {
+	FName bone;
+	return FindContact(_attacker, _point, _normal, bone);
+}
+
+//物理判定で見つかった骨を、鎧と体の判定にも使う。
+bool UEnemyHitEffect::FindContact(AActor* _attacker, FVector& _point, FVector& _normal, FName& bone) const
+{
 	const auto* victim = Cast<ACharacter>(GetOwner());
 	if (!victim || !IsValid(_attacker)) { return false; }
 
 	//素手の攻撃では、攻撃者の位置を基準にする。
 	FVector source = _attacker->GetActorLocation();
 	FindBladePoint(_attacker, victim->GetActorLocation(), source);
-
-	//対象のボーン。
-	FName bone;
 
 	//相手までの距離。
 	float distance = 0.f;
@@ -89,25 +93,35 @@ void UEnemyHitEffect::PlayHit(AActor* _attacker, const FHitResult* _hit)
 {
 	if (!GetOwner()->HasAuthority()) { return; }
 	FVector point, normal;
+	FName bone;
 	if (_hit && _hit->GetActor() == GetOwner() && !_hit->bStartPenetrating && !_hit->ImpactPoint.ContainsNaN())
 	{
 		point = _hit->ImpactPoint;
 		normal = _hit->ImpactNormal.GetSafeNormal();
+		bone = _hit->BoneName;
 	}
-	else if (!EstimateContact(_attacker, point, normal)) { return; }
-	ShowHit(point, normal);
+	else if (!FindContact(_attacker, point, normal, bone)) { return; }
+	//命中した骨が届かない攻撃は、接触位置に近い骨で判定する。
+	const auto* victim = Cast<ACharacter>(GetOwner());
+	if (bone.IsNone() && victim && victim->GetMesh())
+	{
+		bone = victim->GetMesh()->FindClosestBone(point);
+	}
+	ShowHit(point, normal, m_armorBones.IsEmpty() || m_armorBones.Contains(bone));
 }
 
 //命中位置でエフェクトを再生する。
-void UEnemyHitEffect::ShowHit_Implementation(FVector _point, FVector _normal)
+void UEnemyHitEffect::ShowHit_Implementation(FVector _point, FVector _normal, bool armor)
 {
 	//鎧や体の命中音。
 	if (auto* audio = GetOwner()->FindComponentByClass<UEnemyAudio>())
 	{
-		audio->Emit_Implementation(EEnemySound::Armor, _point, 1.f);
+		audio->Emit_Implementation(armor ? EEnemySound::Armor : EEnemySound::Hit, _point, 1.f);
 	}
-	if (!m_effect || GetNetMode() == NM_DedicatedServer) { return; }
-	UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, m_effect, _point + _normal * m_offset, _normal.Rotation(), m_scale, true, true, ENCPoolMethod::AutoRelease);
+	const bool spark = armor && !m_armorBones.IsEmpty() && m_clashEffect;
+	auto* effect = spark ? m_clashEffect.Get() : m_effect.Get();
+	if (!effect || GetNetMode() == NM_DedicatedServer) { return; }
+	UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, effect, _point + _normal * m_offset, _normal.Rotation(), spark ? m_clashScale : m_scale, true, true, ENCPoolMethod::AutoRelease);
 }
 
 //相手に近い剣の位置を使う。剣がなければ体の接触位置を使う。

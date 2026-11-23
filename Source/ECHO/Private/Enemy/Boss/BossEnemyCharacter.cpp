@@ -1,6 +1,7 @@
 #include "Enemy/Boss/BossEnemyCharacter.h"
 #include "Enemy/Combat/Defense.h"
 #include "Enemy/Combat/Combat.h"
+#include "Enemy/Core/EnemyTraversal.h"
 #include "Enemy/Audio/EnemyAudio.h"
 #include "Enemy/Boss/BossShadowSummon.h"
 #include "Enemy/Boss/BossShadow.h"
@@ -237,6 +238,24 @@ float ABossEnemyCharacter::GetSpecialDefenseChance() const
 		return 0.f;
 	}
 	return data ? (m_bossPhase == EBossPhase::PhaseTwo ? data->m_phaseTwoChance : data->m_phaseOneChance) : Super::GetSpecialDefenseChance();
+}
+
+//囲まれた時は、次の一振りの前に押し返す。
+bool ABossEnemyCharacter::RequestCrowdPush(FName _action)
+{
+	if (m_defense->IsBusy() || IsRepositioning() || m_traversal->IsTraversing()) { return false; }
+	if (IsActing())
+	{
+		const auto* current = GetActiveAction();
+		if (!current || current->m_actionId == _action || current->m_kind != EEnemyAction::Slash) { return false; }
+		if (m_combat->IsHitWindowOpen() || FindComboAction(_action) == INDEX_NONE) { return false; }
+		CancelAction();
+	}
+	const double ready = m_readyTime;
+	m_readyTime = GetWorld()->GetTimeSeconds();
+	if (RequestAction(_action)) { return true; }
+	m_readyTime = ready;
+	return false;
 }
 
 //現在の状態で選べる攻撃か調べる。

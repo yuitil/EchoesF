@@ -117,8 +117,10 @@ void UEnemySwing::UpdateHand(FTrail& hand, float _delta)
 	if (m_bladeArc && !hand.m_poses.IsEmpty())
 	{
 		const auto& last = hand.m_poses.Last();
+		//長く更新されなかった剣を古い位置からつながない。
+		const bool stale = GetWorld()->GetTimeSeconds() - last.time > FMath::Max(.1f, m_sweepTime * 2.f);
 		const float limit = FMath::Square(m_maxStep * enemy->GetActorScale3D().GetAbsMax());
-		jumped = FVector::DistSquared(last.base, base) > limit || FVector::DistSquared(last.tip, tip) > limit;
+		jumped = stale || FVector::DistSquared(last.base, base) > limit || FVector::DistSquared(last.tip, tip) > limit;
 	}
 	if (jumped || step > m_maxStep)
 	{

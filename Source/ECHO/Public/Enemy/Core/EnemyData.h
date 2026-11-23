@@ -231,10 +231,14 @@ struct ECHO_API FEnemyActionData
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Combat")
     bool m_dualBlade = false;
 
+    //両方の構えで使える技は、持ち替えずに始める。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sword")
+    bool m_keepStance = false;
+
     //急な回避や突進は、今の持ち方のまま始める。
     bool ChangesSwordStance() const
     {
-        return m_dualBlade || m_kind == EEnemyAction::Slash || m_kind == EEnemyAction::Heavy || m_kind == EEnemyAction::Counter;
+        return !m_keepStance && (m_dualBlade || m_kind == EEnemyAction::Slash || m_kind == EEnemyAction::Heavy || m_kind == EEnemyAction::Counter);
     }
 
     //コンボ間の待ち時間。

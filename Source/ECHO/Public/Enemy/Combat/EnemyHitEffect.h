@@ -28,7 +28,11 @@ public:
 
     //体への命中エフェクトをBPで表示する。
     UFUNCTION(NetMulticast, Unreliable)
-    void ShowHit(FVector point, FVector normal);
+    void ShowHit(FVector point, FVector normal, bool armor = true);
+
+    //鎧で覆われた骨。空なら従来の鎧音を使う。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Hit FX")
+    TArray<FName> m_armorBones;
 
     //剣の火花を全員に見せる。
     UFUNCTION(NetMulticast, Unreliable)
@@ -76,6 +80,9 @@ public:
     FName m_tip = TEXT("BladeTip");
 
 private:
+    //命中した表面と、そこを覆う骨を一緒に調べる。
+    bool FindContact(AActor* attacker, FVector& point, FVector& normal, FName& bone) const;
+
     //表示中の刀から近い点を探す。刀がなければ元の位置を使う。
     void FindBladePoint(AActor* _owner, const FVector& _near, FVector& _point) const;
 };
