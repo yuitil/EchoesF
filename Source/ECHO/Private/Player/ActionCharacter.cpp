@@ -123,7 +123,7 @@ void AActionCharacter::BeginPlay()
 
 	//最大エネルギーは「1本分 × 最大本数」で決める
 	m_MaxEnergy = m_EnergyPerStock * m_iMaxEnergyStock;
-	SetEnergy(0.f);
+	ResetEnergy();
 	SetHP(m_MaxHP);
 	RefillHeals();
 
@@ -422,6 +422,7 @@ void AActionCharacter::OnRespawn()
 	//HP と回復回数を全快、しばらく無敵
 	SetHP(m_MaxHP);
 	RefillHeals();
+	ResetEnergy();      //エネルギーも開始時の本数に戻す
 	m_InvincibleUntil = GetWorld()->GetTimeSeconds() + m_RespawnInvincibleTime;
 
 	if (m_bDebugHP) GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Green, TEXT("RESPAWN"));
@@ -987,6 +988,13 @@ void AActionCharacter::RefillHeals()
 {
 	m_iHealCount = m_iMaxHealCount;
 	OnHealCountChanged.Broadcast(m_iHealCount, m_iMaxHealCount);
+}
+
+void AActionCharacter::ResetEnergy()
+{
+	//最大本数を超えないように
+	const int32 Stock = FMath::Clamp(m_iStartEnergyStock, 0, m_iMaxEnergyStock);
+	SetEnergy(m_EnergyPerStock * Stock);
 }
 
 //スキル関連

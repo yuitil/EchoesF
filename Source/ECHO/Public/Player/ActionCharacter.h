@@ -104,7 +104,6 @@ protected:
 	class UInputAction* HealAction;
 	void Heal();
 	
-	
 	// -----------------------------------------------------------------------
 	// 移動
 	// -----------------------------------------------------------------------
@@ -298,7 +297,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "LockOn")
 	float m_SideBlendRange = 0.5f;
 
-	//注視店をどれだけ敵側によせるか(0=プレイヤー 1=敵)
+	//注視点をどれだけ敵側によせるか(0=プレイヤー 1=敵)
 	UPROPERTY(EditAnywhere, Category = "LockOn")
 	float m_TargetFocusBias = 0.5f;
 
@@ -501,11 +500,18 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Ghost")
 	int32 m_iMaxEnergyStock = 5;
 
+	//ゲーム開始時と、やられて復帰したときのエネルギー本数
+	UPROPERTY(EditAnywhere, Category = "Ghost", meta = (ClampMin = "0"))
+	int32 m_iStartEnergyStock = 1;
+
 	//召喚中の分身の一覧（UIでカプセルの色を決めるのに使う）
 	TArray<TWeakObjectPtr<AGhostCharacter>> m_ActiveGhosts;
 
 	//エネルギーを変更する窓口（変更したら必ずUIに通知する）
 	void SetEnergy(float NewEnergy);
+
+	//エネルギーを開始時の本数に戻す（開始時と復帰時）
+	void ResetEnergy();
 
 	//分身の状態が変わったとき（消える直前など）
 	UFUNCTION()

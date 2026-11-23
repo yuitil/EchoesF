@@ -13,6 +13,27 @@
 void UEchoStatusWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+
+	//光る画像は最初は透明にして、クリックなどの判定も持たせない
+	if (EnergyStockFlash)
+	{
+		EnergyStockFlash->SetVisibility(ESlateVisibility::HitTestInvisible);
+		EnergyStockFlash->SetColorAndOpacity(FLinearColor::Transparent);
+	}
+
+	//WBP で設定してあるゲージの色を、色合いの基準として覚えておく
+	if (EnergyBar)
+	{
+		m_EnergyBaseColor = EnergyBar->GetFillColorAndOpacity();
+	}
+
+	//回復の後ろの光も、最初は透明＆クリック判定なし
+	if (HealGlow)
+	{
+		HealGlow->SetVisibility(ESlateVisibility::HitTestInvisible);
+		HealGlow->SetColorAndOpacity(FLinearColor::Transparent);
+	}
+
 	TryBindPlayer();
 }
 
@@ -32,6 +53,9 @@ void UEchoStatusWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
 
 	//被弾したときの赤い光と揺れ
 	UpdateDamageFeedback(InDeltaTime);
+
+	//エネルギー：1本たまったときの光と、最大のときの鼓動
+	UpdateEnergyFeedback(InDeltaTime);
 
 	//HPバー、減った分の帯を、少し遅れて追いかけさせる
 	if (m_TrailRatio > m_HPRatio)
@@ -140,6 +164,31 @@ void UEchoStatusWidget::HandleEnergyChanged(float Current, float Max)
 		const float Total = TotalMax > 0.f ? FMath::Clamp(Current / TotalMax, 0.f, 1.f) : 0.f;
 		EnergyBar->SetPercent(FMath::Lerp(m_BarStartRatio, m_BarEndRatio, Total));
 	}
+
+	//--- 演出：本数が増えた瞬間／最大かどうか ---
+	if (m_LastStock >= 0 && Stock > m_LastStock)
+	{
+		//増えた区間を光らせる（一度に何本も増えたら、その範囲まとめて）
+		m_FlashFromStock = m_LastStock;
+		m_FlashToStock = Stock;
+		m_StockFlashRemain = m_StockFlashTime;
+		m_EnergyPopScale = m_StockPopScale;
+	}
+	else if (Stock < m_LastStock)
+	{
+		//使ったときは光を止める
+		m_StockFlashRemain = 0.f;
+	}
+
+	const bool bMax = (MaxStock > 0 && Stock >= MaxStock);
+	if (bMax && !m_bEnergyMax)
+	{
+		//最大になった瞬間は「たまった光」が先に出るので、鼓動はそのあとから始める
+		m_BeatTime = (m_LastStock >= 0) ? -m_StockFlashTime : 0.f;
+	}
+	m_bEnergyMax = bMax;
+	m_LastStock = Stock;
+	m_MaxStockCache = MaxStock;
 }
 
 void UEchoStatusWidget::HandleGhostsChanged()
@@ -233,19 +282,47 @@ void UEchoStatusWidget::UpdateHeal(float DeltaTime)
 	AActionCharacter* P = Player.Get();
 	if (!P) return;
 
+	const bool bHasHeal = P->GetHealCount() > 0;
+	const bool bBusy = P->IsHealing();
+
 	//残り0 → 薄く／回復動作中 → 暗く／それ以外 → 通常
 	FLinearColor Color = m_HealReadyColor;
-	if (P->GetHealCount() <= 0)  Color = m_HealEmptyColor;
-	else if (P->IsHealing())     Color = m_HealBusyColor;
+	if (!bHasHeal)  Color = m_HealEmptyColor;
+	else if (bBusy) Color = m_HealBusyColor;
 
-	if (HealCircle)    HealCircle->SetColorAndOpacity(Color);
-	if (HealArrow)     HealArrow->SetColorAndOpacity(Color);
+	// --- HPが少ないときの「回復して！」 ---
+	//画面端が赤くなるのと同じ条件。回復が残っていて、回復動作中でないときだけ
+	const bool bLowHP = (m_HPRatio > 0.f && m_HPRatio < m_LowHPThreshold);
+	const float AlertTarget = (bLowHP && bHasHeal && !bBusy) ? 1.f : 0.f;
+	m_HealAlert = FMath::FInterpTo(m_HealAlert, AlertTarget, DeltaTime, 6.f);
+
+	//画面端の赤と同じリズムで脈打つ（0〜1）。実時間なのでスロー中も同じ速さ
+	const float Time = GetWorld() ? GetWorld()->GetRealTimeSeconds() : 0.f;
+	const float Pulse = 0.5f + 0.5f * FMath::Sin(Time * m_LowHPPulseSpeed * 2.f * PI);
+
+	//緑に寄せる（ポーションの絵は色を崩さないよう、そのまま）
+	const FLinearColor AlertColor = FMath::Lerp(Color, m_HealAlertColor, m_HealAlert * (0.6f + 0.4f * Pulse));
+
+	if (HealCircle)    HealCircle->SetColorAndOpacity(AlertColor);
+	if (HealArrow)     HealArrow->SetColorAndOpacity(AlertColor);
 	if (HealIcon)      HealIcon->SetColorAndOpacity(Color);
-	if (HealCountText) HealCountText->SetColorAndOpacity(FSlateColor(Color));
+	if (HealCountText) HealCountText->SetColorAndOpacity(FSlateColor(AlertColor));
 
-	//膨らんだ大きさを1に戻していく
+	// --- 大きさ：使った瞬間のポンッ × HPが少ないときの拡大と鼓動 ---
 	m_HealScale = FMath::FInterpTo(m_HealScale, 1.f, DeltaTime, 12.f);
-	if (HealRoot) HealRoot->SetRenderScale(FVector2D(m_HealScale));
+	const float AlertScale = 1.f + m_HealAlert * ((m_HealAlertScale - 1.f) + m_HealAlertPulseScale * Pulse);
+
+	if (HealRoot)  HealRoot->SetRenderScale(FVector2D(m_HealScale * AlertScale));
+	if (HealArrow) HealArrow->SetRenderScale(FVector2D(AlertScale));
+
+	// --- 後ろの緑の光：鼓動に合わせて濃くなる ---
+	if (HealGlow)
+	{
+		FLinearColor Glow = m_HealGlowColor;
+		Glow.A *= m_HealAlert * (0.4f + 0.6f * Pulse);
+		HealGlow->SetColorAndOpacity(Glow);
+		HealGlow->SetRenderScale(FVector2D(m_HealGlowScale * (0.95f + 0.1f * Pulse)));
+	}
 }
 
 void UEchoStatusWidget::UpdateDamageFeedback(float DeltaTime)
@@ -293,4 +370,86 @@ void UEchoStatusWidget::UpdateDamageFeedback(float DeltaTime)
 		m_VignetteOpacity = FMath::FInterpTo(m_VignetteOpacity, Target, DeltaTime, 4.f);
 		LowHPVignette->SetRenderOpacity(m_VignetteOpacity);
 	}
+}
+
+void UEchoStatusWidget::UpdateEnergyFeedback(float DeltaTime)
+{
+	// --- 最大のとき：鼓動を進める ---
+	float Beat = 0.f;
+	if (m_bEnergyMax)
+	{
+		m_BeatTime += DeltaTime;
+		Beat = CalcBeat();
+	}
+
+	// --- ゲージの色：ふだんは濃い青、最大のときは明るい青 ---
+	if (EnergyBar)
+	{
+		const FLinearColor Tint = m_bEnergyMax ? m_EnergyMaxTint : m_EnergyTint;
+		EnergyBar->SetFillColorAndOpacity(m_EnergyBaseColor * Tint);
+	}
+
+	// --- ゲージ全体の大きさ（1本たまったときのポンッ × 最大のときの鼓動） ---
+	m_EnergyPopScale = FMath::FInterpTo(m_EnergyPopScale, 1.f, DeltaTime, 10.f);
+	if (EnergyRoot)
+	{
+		EnergyRoot->SetRenderScale(FVector2D(m_EnergyPopScale * (1.f + m_MaxBeatScale * Beat)));
+	}
+
+	// --- たまった区間の光 ---
+	if (!EnergyStockFlash) return;
+
+	float Alpha = 0.f;
+	float Scale = 1.f;
+	if (m_StockFlashRemain > 0.f && m_MaxStockCache > 0)
+	{
+		//たまった瞬間：その区間がパッと光って、膨らみながら消える
+		m_StockFlashRemain = FMath::Max(0.f, m_StockFlashRemain - DeltaTime);
+		const float T = m_StockFlashRemain / m_StockFlashTime;   //1 → 0
+		Alpha = T;
+		Scale = FMath::Lerp(1.f, m_StockFlashScale, 1.f - T * T);
+		PlaceStockFlash(
+			static_cast<float>(m_FlashFromStock) / m_MaxStockCache,
+			static_cast<float>(m_FlashToStock) / m_MaxStockCache);
+	}
+	else if (m_bEnergyMax)
+	{
+		//最大のとき：ゲージ全体を、鼓動に合わせて光らせる
+		Alpha = FMath::Lerp(m_MaxGlowBase, m_MaxGlowPeak, Beat);
+		PlaceStockFlash(0.f, 1.f);
+	}
+
+	FLinearColor Color = m_StockFlashColor;
+	Color.A *= Alpha;
+	EnergyStockFlash->SetColorAndOpacity(Color);
+	EnergyStockFlash->SetRenderScale(FVector2D(Scale));
+}
+
+float UEchoStatusWidget::CalcBeat() const
+{
+	//「ドクン（強）、ドクン（弱）」を 0〜1 で返す
+	if (m_BeatTime < 0.f || m_MaxBeatInterval <= 0.f) return 0.f;
+
+	const float T = FMath::Fmod(m_BeatTime, m_MaxBeatInterval);
+	auto Bump = [this](float X)
+		{
+			return (X >= 0.f && X < m_MaxBeatLength) ? FMath::Sin(PI * X / m_MaxBeatLength) : 0.f;
+		};
+	return FMath::Max(Bump(T), 0.7f * Bump(T - m_MaxBeatGap));
+}
+
+void UEchoStatusWidget::PlaceStockFlash(float FromRatio, float ToRatio)
+{
+	if (!EnergyBar || !EnergyStockFlash) return;
+
+	//EnergyBar の実際の大きさから、光らせる区間の位置と幅を出す
+	//（左の四角ぶんをずらす変換は、SetPercent と同じ m_BarStartRatio / m_BarEndRatio を使う）
+	const FVector2D BarSize = EnergyBar->GetCachedGeometry().GetLocalSize();
+	if (BarSize.X <= 0.f) return;
+
+	const float X0 = BarSize.X * FMath::Lerp(m_BarStartRatio, m_BarEndRatio, FromRatio);
+	const float X1 = BarSize.X * FMath::Lerp(m_BarStartRatio, m_BarEndRatio, ToRatio);
+
+	EnergyStockFlash->SetDesiredSizeOverride(FVector2D(X1 - X0, BarSize.Y));
+	EnergyStockFlash->SetRenderTranslation(FVector2D(X0, 0.f));
 }
