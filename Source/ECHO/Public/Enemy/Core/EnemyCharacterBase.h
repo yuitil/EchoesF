@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -39,6 +39,14 @@ class ECHO_API AEnemyCharacterBase : public ACharacter, public IAbilitySystemInt
 public:
     //敵に共通する体力、攻撃、移動を管理する。
     AEnemyCharacterBase();
+
+    //死亡後に体と装備を消す素材。
+    UPROPERTY(EditDefaultsOnly, Category = "Enemy|Death")
+    TObjectPtr<UMaterialInterface> m_deathMaterial;
+
+    //死亡後の消え方は敵BPで調整する。
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy|Death")
+    TObjectPtr<class UEnemyDeathFade> m_deathFade;
 
     //地面に着いた時だけ着地音を鳴らす。
     virtual void Landed(const FHitResult& _hit) override;
@@ -296,6 +304,12 @@ protected:
 
     //終了時にタイマーや登録を解除する。
     virtual void EndPlay(const EEndPlayReason::Type _reason) override;
+
+    //旧BPの寿命タイマーでも消滅演出を途中で切らない。
+    virtual void LifeSpanExpired() override;
+
+    //死亡動作の最後の姿を残す時間。
+    virtual float GetDeathHold() const { return 0.f; }
 
     //体力がなくなった時の処理を行う。
     virtual void HandleHealthDepleted();

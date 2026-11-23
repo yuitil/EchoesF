@@ -1,4 +1,4 @@
-﻿#include "Enemy/UI/EnemyHealthWidget.h"
+#include "Enemy/UI/EnemyHealthWidget.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
 #include "Enemy/Boss/BossEnemyCharacter.h"
 #include "Enemy/Combat/Defense.h"
@@ -10,7 +10,22 @@
 //表示する敵を切り替え、残り時間をリセットする。
 void UEnemyHealthWidget::SetEnemy(AEnemyCharacterBase* _enemy)
 {
+	m_openParts.Reset();
+	m_openAge = 0.f;
+	if (Cast<ABossEnemyCharacter>(_enemy) && !m_postureMode && m_openTime > 0.f)
+	{
+		//文字と必殺技ゲージは元の形に保つ。
+		for (FName name : { FName("Image_0"), FName("m_healthBar"), FName("m_trailBar"), FName("HitFlash"), m_phaseGlowName })
+		{
+			auto* part = GetWidgetFromName(name);
+			if (!part) { continue; }
+			part->SetRenderTransformPivot(FVector2D(.5f, .5f));
+			part->SetRenderScale(FVector2D(0.f, 1.f));
+			m_openParts.Add(part);
+		}
+	}
 	m_enemy = _enemy;
+	m_lastCharge = -1.f;
 	m_phaseGlow = Cast<UImage>(GetWidgetFromName(m_phaseGlowName));
 	if (m_phaseGlow) { m_phaseGlow->SetVisibility(ESlateVisibility::Hidden); }
 	m_wasRising = false;
@@ -37,6 +52,18 @@ void UEnemyHealthWidget::NativeTick(const FGeometry& _shape, float _delta)
 	{
 		SetRenderOpacity(0.f);
 		return;
+	}
+
+	//中央を支点に左右へ開き、開き切ったら更新を終える。
+	if (!m_openParts.IsEmpty())
+	{
+		m_openAge += _delta;
+		const float width = FMath::SmoothStep(0.f, FMath::Max(m_openTime, UE_SMALL_NUMBER), m_openAge);
+		for (const auto& part : m_openParts)
+		{
+			if (part.IsValid()) { part->SetRenderScale(FVector2D(width, 1.f)); }
+		}
+		if (width >= 1.f) { m_openParts.Reset(); }
 	}
 
 	//今の体力とガード状態を確認する。
@@ -87,6 +114,11 @@ void UEnemyHealthWidget::NativeTick(const FGeometry& _shape, float _delta)
 
 	//立ち上がりの開始では空の表示から回復を見せる。
 	const auto* boss = Cast<ABossEnemyCharacter>(enemy);
+	if (boss && !m_postureMode && m_lastCharge != boss->m_ultimateCharge)
+	{
+		m_lastCharge = boss->m_ultimateCharge;
+		ShowUltimate(m_lastCharge);
+	}
 	const bool rising = boss && boss->m_bossPhase == EBossPhase::Transition;
 	if (rising && !m_wasRising && !m_postureMode) { m_shown = 0.f; }
 	m_wasRising = rising;

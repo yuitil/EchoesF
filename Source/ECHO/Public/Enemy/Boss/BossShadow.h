@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Enemy/Boss/BossEnemyCharacter.h"
@@ -187,6 +187,9 @@ private:
 
     //消え始めてからの時間。
     float m_fadeAge = 0.f;
+
+    //出現途中で倒されても、今の濃さからつなぐ。
+    float m_fadeFrom = 0.f;
 
     //消滅を開始したか。
     bool m_fading = false;

@@ -4,6 +4,8 @@
 #include "GameFramework/Character.h"
 #include "EnemyChara.generated.h"
 
+class UMaterialInterface;
+
 class UBehaviorTree;
 class UPawnSensingComponent;
 class UAnimMontage;
@@ -61,6 +63,14 @@ public:
     //Sets default values for this character's properties
     AEnemyChara();
 
+    //死亡後に体と装備を消す素材。
+    UPROPERTY(EditDefaultsOnly, Category = "Enemy|Death")
+    TObjectPtr<UMaterialInterface> m_deathMaterial;
+
+    //死亡後の消え方は敵BPで調整する。
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy|Death")
+    TObjectPtr<class UEnemyDeathFade> m_deathFade;
+
 protected:
 
     //Called when the game starts or when spawned
@@ -91,6 +101,9 @@ public:
 
     //倒された時の関数
     virtual void Die();
+
+    //消え切った敵をプールへ戻す。
+    void FinishDeath();
 
     //次の攻撃までの待ち時間を戻す。
     void ResetTimer();

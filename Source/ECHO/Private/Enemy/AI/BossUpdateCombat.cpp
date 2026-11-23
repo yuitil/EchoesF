@@ -132,6 +132,7 @@ void UBossUpdateCombat::TickNode(UBehaviorTreeComponent& _ownerComp, uint8* _nod
 	{
 		target = boss->m_combatTarget.Get();
 	}
+	if (auto* boss = Cast<ABossEnemyCharacter>(enemy)) { boss->UpdateUltimate(_delta); }
 
 	//生きていて戦闘できるか。
 	const bool alive = enemy->IsCombatActive();

@@ -22,6 +22,24 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "EngineUtils.h"
+#include "Net/UnrealNetwork.h"
+
+//観戦側の画面にも同じゲージを表示する。
+void ABossEnemyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ABossEnemyCharacter, m_ultimateCharge);
+}
+
+//発動できない間は満タンを保ち、攻撃が始まった時に消費する。
+void ABossEnemyCharacter::UpdateUltimate(float _delta)
+{
+	if (!HasAuthority() || m_ultimateAction.IsNone() || IsA<ABossShadow>()) { return; }
+	if (!IsCombatActive() || !IsValid(m_combatTarget) || !m_approach->HasDrawn()) { return; }
+	m_ultimateCharge = FMath::Min(1.f, m_ultimateCharge + _delta / FMath::Max(1.f, m_chargeSeconds));
+	if (m_ultimateCharge < 1.f || !GetPendingComboId().IsNone() || !GetReadyAction(m_ultimateAction)) { return; }
+	if (RequestAction(m_ultimateAction)) { m_ultimateCharge = 0.f; }
+}
 
 //動作を確かめるための幅や待ち時間。
 namespace BossEnemyCharacterTuning
@@ -263,6 +281,10 @@ bool ABossEnemyCharacter::IsActionAllowed(const FEnemyActionData& _action) const
 {
 	//刀を抜き終わってから攻撃を選ぶ。
 	if (m_approach && !m_approach->HasDrawn()) { return false; }
+	if (_action.m_actionId == m_ultimateAction && !m_ultimateAction.IsNone())
+	{
+		return !IsA<ABossShadow>() && m_ultimateCharge >= 1.f;
+	}
 
 	//押し返しは人数がそろった時だけ選ぶ。
 	if (m_crowd && _action.m_actionId == m_crowd->m_action) { return m_crowd->CanPush(); }
@@ -329,6 +351,7 @@ void ABossEnemyCharacter::ResetEncounter()
 {
 	m_crowd->Reset();
 	if (!HasAuthority()) { return; }
+	m_ultimateCharge = 0.f;
 
 	GetWorld()->GetTimerManager().ClearTimer(m_transitionTimer);
 	Super::ResetEncounter();

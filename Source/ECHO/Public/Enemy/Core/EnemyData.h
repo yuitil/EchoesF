@@ -219,6 +219,10 @@ struct ECHO_API FEnemyActionData
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy | Combo", meta = (DisplayName = "BlockedNextId"))
     FName m_blockedNextId;
 
+    //一振りで狙った相手一体だけに当てる。
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Attack")
+    bool m_singleTarget = false;
+
     //コンボの最初に選べるか。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy | Combo", meta = (DisplayName = "ComboEntry"))
     bool m_comboEntry = true;

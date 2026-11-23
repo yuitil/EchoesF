@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
@@ -21,6 +21,10 @@ public:
     //表示する敵を受け取る。
     UFUNCTION(BlueprintCallable, Category = "Enemy|UI")
     void SetEnemy(AEnemyCharacterBase* _enemy);
+
+    //ゲージの描画はWidget BPのグラフで行う。
+    UFUNCTION(BlueprintImplementableEvent, Category = "Enemy|UI")
+    void ShowUltimate(float charge);
 
 protected:
 
@@ -55,6 +59,16 @@ public:
 
 public:
 
+    //ボスHPの枠と中身が中央から開く時間。
+    UPROPERTY(EditAnywhere, Category = "Enemy|UI", meta = (ClampMin = "0"))
+    float m_openTime = .65f;
+
+private:
+    //登場中だけ動かす部品と経過時間。
+    TArray<TWeakObjectPtr<UWidget>> m_openParts;
+    float m_openAge = 0.f;
+
+public:
     //ダメージを受けた敵だけ表示する。
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|UI")
     bool m_hitOnly = false;
@@ -110,6 +124,8 @@ public:
     TObjectPtr<UImage> m_phaseGlow;
 
 private:
+    //前回の残量。変わった時だけBPに渡す。
+    float m_lastCharge = -1.f;
     //前回は立ち上がり中だったか。
     bool m_wasRising = false;
 

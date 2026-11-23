@@ -1,5 +1,6 @@
-﻿#include "Enemy/Minion/MinionEnemyCharacter.h"
+#include "Enemy/Minion/MinionEnemyCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Enemy/Animation/EnemyDeathFade.h"
 #include "AIController.h"
 #include "Engine/World.h"
 #include "Enemy/Core/EnemyData.h"
@@ -12,12 +13,8 @@
 //判定に使う幅や待ち時間。
 namespace MinionEnemyCharacterTuning
 {
-	//死亡演出を待つ時間の上限。
-	constexpr auto maxDeathTime = 30.f;
 	//待ち時間の下限。
 	constexpr auto minWait = .1f;
-	//死亡アニメーションの速度の下限。
-	constexpr auto minDeathRate = .01f;
 }
 
 //初期設定と必要な部品を用意する。
@@ -96,6 +93,12 @@ void AMinionEnemyCharacter::FinishParryReaction(UAnimMontage* _montage, float _d
 	m_formation->ReleaseTurn();
 }
 
+//最後の姿勢を保ってから消える。
+float AMinionEnemyCharacter::GetDeathHold() const
+{
+	return FMath::Max(0.f, m_corpseTime - m_deathFade->m_duration);
+}
+
 //体力がなくなった時の処理を行う。
 void AMinionEnemyCharacter::HandleHealthDepleted()
 {
@@ -103,17 +106,6 @@ void AMinionEnemyCharacter::HandleHealthDepleted()
 	m_rightHand->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Super::HandleHealthDepleted();
 	DetachFromControllerPendingDestroy();
-
-	//倒れる動作と、倒れたまま残す時間を合わせる。
-	float deathTime = 0.f;
-	if (m_definition && m_definition->m_deathMontage)
-	{
-		const auto* death = m_definition->m_deathMontage.Get();
-		const float rate =  FMath::Max(MinionEnemyCharacterTuning::minDeathRate, FMath::Abs(death->RateScale));
-		deathTime = FMath::Clamp(death->GetPlayLength() / rate, 0.f, MinionEnemyCharacterTuning::maxDeathTime);
-	}
-	const float corpseTime = FMath::Max(MinionEnemyCharacterTuning::minWait, m_corpseTime);
-	SetLifeSpan(deathTime + corpseTime);
 }
 
 //ダメージを受けた後の反応を行う。

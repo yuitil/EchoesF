@@ -28,6 +28,15 @@ public:
     //終了時にタイマーや登録を解除する。
     virtual void EndPlay(const EEndPlayReason::Type _reason) override;
 
+    //刀身に合わせてオーラを表示する。
+    void BeginBladeAura(UMaterialInterface* _material, class UNiagaraSystem* _mist, float _scale);
+
+    //攻撃終了時に剣の見た目を戻す。
+    void EndBladeAura();
+
+    //表示中の刀身だけに幅と明るさを反映する。
+    void SetBladeGlow(float _width, float _glow);
+
     //剣の攻撃判定を有効にする。
     void BeginHitWindow(float _damageScale = 1.0f, FName _bone = NAME_None, FVector _tip = FVector::ZeroVector, bool _leftBlade = false);
 
@@ -222,6 +231,18 @@ private:
     float m_dodgeHalf = 0.f;
 
 private:
+    //オーラを付けた剣と元の重ね描き用マテリアル。
+    TWeakObjectPtr<UMeshComponent> m_auraBlade;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UMaterialInterface> m_savedOverlay;
+
+    //この一振りで作ったオーラと煙。
+    UPROPERTY(Transient)
+    TObjectPtr<UMaterialInstanceDynamic> m_bladeAura;
+
+    TArray<TWeakObjectPtr<class UNiagaraComponent>> m_bladeMist;
+
     //攻撃判定に使う武器のモデル。
     UPROPERTY(Transient)
     TObjectPtr<UMeshComponent> m_weapon;

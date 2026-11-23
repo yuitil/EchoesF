@@ -1,5 +1,7 @@
-﻿#include "Enemy/Boss/BossShadow.h"
+#include "Enemy/Boss/BossShadow.h"
 #include "Enemy/Audio/EnemyAudio.h"
+#include "Enemy/Core/EnemyData.h"
+#include "Animation/AnimMontage.h"
 #include "Enemy/Combat/Combat.h"
 #include "Enemy/Boss/BossShadowSummon.h"
 #include "Enemy/Boss/BossApproach.h"
@@ -214,7 +216,13 @@ AActor* ABossShadow::FindClone() const
 //倒された影は立ち上がらずに消える。
 void ABossShadow::HandleHealthDepleted()
 {
+	if (m_fading) { return; }
 	FadeOut();
+	if (m_definition && m_definition->m_deathMontage)
+	{
+		const float rate = FMath::Max(UE_SMALL_NUMBER, FMath::Abs(m_definition->m_deathMontage->RateScale));
+		m_fadeAge = -PlayAnimMontage(m_definition->m_deathMontage) / rate;
+	}
 }
 
 //攻撃と移動を止め、当たり判定を消す。
@@ -222,6 +230,7 @@ void ABossShadow::FadeOut()
 {
 	if (m_fading) { return; }
 	m_fading = true;
+	m_fadeFrom = FMath::Clamp(m_lastFade, 0.f, 1.f);
 	if (m_audio) { m_audio->Play(EEnemySound::Fade, GetActorLocation()); }
 	PlaySmoke();
 	m_aura->Deactivate();
@@ -302,13 +311,22 @@ void ABossShadow::Tick(float _delta)
 	{
 		FadeOut();
 	}
-	if (m_fading) { m_fadeAge += _delta; }
+	if (m_fading)
+	{
+		//出現中に倒された影は、死亡動作の間も元の速さで姿を現す。
+		if (m_fadeAge < 0.f)
+		{
+			const float rise = _delta / FMath::Max(UE_SMALL_NUMBER, m_riseTime);
+			m_fadeFrom = FMath::Min(1.f, m_fadeFrom + rise);
+		}
+		m_fadeAge += _delta;
+	}
 
 	//出現中は濃くし、消滅中は薄くする。
 	const float age = m_fading ? m_fadeAge : FMath::Max(0.f, m_age - m_showDelay);
 	const float duration = m_fading ? m_fadeTime : m_riseTime;
 	const float progress = FMath::Clamp(age / FMath::Max(UE_SMALL_NUMBER, duration), 0.f, 1.f);
-	const float fade = m_fading ? 1.f - progress : progress;
+	const float fade = m_fading ? m_fadeFrom * (1.f - progress) : progress;
 	SetFade(fade);
 	if (HasAuthority() && m_fading && m_fadeAge >= m_fadeTime)
 	{

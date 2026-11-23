@@ -1,4 +1,7 @@
 #include "Enemy/Combat/Combat.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "NiagaraComponent.h"
+#include "NiagaraFunctionLibrary.h"
 #include "Enemy/Audio/EnemyAudio.h"
 #include "Enemy/Animation/EnemySwing.h"
 #include "Enemy/Combat/EnemyHitEffect.h"
@@ -127,7 +130,67 @@ void UCombat::EndLift()
 void UCombat::EndPlay(const EEndPlayReason::Type _reason)
 {
 	EndLift();
+	EndBladeAura();
 	Super::EndPlay(_reason);
+}
+
+//剣と同じメッシュに重ね描きし、根元から切っ先へ煙を置く。
+void UCombat::BeginBladeAura(UMaterialInterface* _material, UNiagaraSystem* _mist, float _scale)
+{
+	EndBladeAura();
+	if (!_material || GetNetMode() == NM_DedicatedServer) { return; }
+	if (!IsValid(m_weapon)) { BindWeapon(); }
+
+	FVector base, tip;
+	if (!GetBladePoints(false, base, tip)) { return; }
+
+	const FTransform transform = m_weapon->GetComponentTransform();
+	const FVector start = transform.InverseTransformPosition(base);
+	const FVector blade = transform.InverseTransformPosition(tip) - start;
+	if (blade.IsNearlyZero()) { return; }
+
+	m_bladeAura = UMaterialInstanceDynamic::Create(_material, this);
+	m_bladeAura->SetVectorParameterValue(TEXT("BladeBase"), FLinearColor(start));
+	m_bladeAura->SetVectorParameterValue(TEXT("BladeAxis"), FLinearColor(blade / blade.SizeSquared()));
+	m_auraBlade = m_weapon;
+	m_savedOverlay = m_weapon->GetOverlayMaterial();
+	m_weapon->SetOverlayMaterial(m_bladeAura);
+
+	//煙も実際の刀の子にして、手首の回転に左右されないようにする。
+	if (!_mist || _scale <= 0.f) { return; }
+	for (float part : { .2f, .5f, .8f })
+	{
+		const FVector point = start + blade * part;
+		auto* mist = UNiagaraFunctionLibrary::SpawnSystemAttached(_mist, m_weapon, NAME_None,
+			point, blade.Rotation(), FVector(_scale), EAttachLocation::KeepRelativeOffset,
+			false, ENCPoolMethod::None, true, false);
+		if (mist) { m_bladeMist.Add(mist); }
+	}
+}
+
+//通知の設定を、現在の剣のマテリアルへ渡す。
+void UCombat::SetBladeGlow(float _width, float _glow)
+{
+	if (!m_bladeAura) { return; }
+	m_bladeAura->SetScalarParameterValue(TEXT("AuraWidth"), _width);
+	m_bladeAura->SetScalarParameterValue(TEXT("Glow"), _glow);
+}
+
+//中断や死亡でも煙を片付け、元の剣の表示に戻す。
+void UCombat::EndBladeAura()
+{
+	for (auto& mist : m_bladeMist)
+	{
+		if (mist.IsValid()) { mist->DestroyComponent(); }
+	}
+	m_bladeMist.Reset();
+	if (m_auraBlade.IsValid() && m_auraBlade->GetOverlayMaterial() == m_bladeAura)
+	{
+		m_auraBlade->SetOverlayMaterial(m_savedOverlay);
+	}
+	m_auraBlade.Reset();
+	m_savedOverlay = nullptr;
+	m_bladeAura = nullptr;
 }
 
 //剣の攻撃判定を有効にする。
@@ -472,6 +535,9 @@ void UCombat::TraceHand(bool left, FHitWindow& hand)
 		//攻撃が当たった相手。
 		AActor* hitActor = hit.GetActor();
 		if (!IsValid(hitActor) || hand.m_hitActors.Contains(hitActor)) { continue; }
+
+		//単体技は狙った相手に一度だけ当てる。
+		if (action->m_singleTarget && (hitActor != target || !hand.m_hitActors.IsEmpty())) { continue; }
 
 		//敵同士は傷つけず、狙い以外への命中はBPの設定で許可する。
 		if (hitActor != target && (!m_hitNearby || !enemy->m_targeting->IsCandidate(hitActor)))

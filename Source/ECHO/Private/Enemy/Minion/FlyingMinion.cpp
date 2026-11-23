@@ -76,5 +76,12 @@ void AFlyingMinion::Tick(float _delta)
 void AFlyingMinion::HandleHealthDepleted()
 {
 	Super::HandleHealthDepleted();
+
+	//倒れた後も床との当たり判定を残し、AIが外れても落下を続ける。
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Ignore);
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
+	GetCharacterMovement()->bRunPhysicsWithNoController = true;
 	GetCharacterMovement()->SetMovementMode(MOVE_Falling);
 }

@@ -1,4 +1,5 @@
-﻿#include "Enemy/EnemyChara.h"
+#include "Enemy/EnemyChara.h"
+#include "Enemy/Animation/EnemyDeathFade.h"
 #include "Enemy/AI/EnemyAIController.h"
 #include "Enemy/Spawning/EnemyPool.h"
 #include "Perception/PawnSensingComponent.h"
@@ -11,6 +12,8 @@ AEnemyChara::AEnemyChara()
       m_cooldownTimer(2.f), m_moveSpeed(300.f), m_targetActor(nullptr), m_behaviorTree(nullptr),
       m_pawnSensing(nullptr), m_currentState(FEEnemyState::Idle)
 {
+
+    m_deathFade = CreateDefaultSubobject<UEnemyDeathFade>(TEXT("DeathFade"));
 
     //毎フレーム更新するかを決める。
     PrimaryActorTick.bCanEverTick = true;
@@ -52,6 +55,8 @@ void AEnemyChara::Tick(float DeltaTime)
 float AEnemyChara::TakeDamage(float _damageAmount, FDamageEvent const& _damageEvent,
     AController* _eventInstigator, AActor* _damageCauser)
 {
+
+    if (m_deathFade->IsFading()) { return 0.f; }
 
     //ダメージ処理を行う前に、親クラスのTakeDamage関数を呼び出す
     Super::TakeDamage(_damageAmount, _damageEvent, _eventInstigator, _damageCauser);
@@ -105,6 +110,13 @@ void AEnemyChara::Die()
         waveManager->NotifyEnemyDefeated(this);
     }
 
+    SetActorEnableCollision(false);
+    m_deathFade->Start(0.f, m_deathMaterial, FSimpleDelegate::CreateUObject(this, &AEnemyChara::FinishDeath));
+}
+
+//プールがなければ消え切った時点で破棄する。
+void AEnemyChara::FinishDeath()
+{
     //プールへ戻す
     AEnemyPool* enemyPool = Cast<AEnemyPool>(GetOwner());
     if(enemyPool)

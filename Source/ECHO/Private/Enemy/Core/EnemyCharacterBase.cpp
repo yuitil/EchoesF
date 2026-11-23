@@ -1,4 +1,5 @@
-﻿#include "Enemy/Core/EnemyCharacterBase.h"
+#include "Enemy/Core/EnemyCharacterBase.h"
+#include "Enemy/Animation/EnemyDeathFade.h"
 #include "Enemy/Audio/EnemyAudio.h"
 #include "Enemy/Animation/EnemySwing.h"
 #include "Enemy/AI/EnemyTargeting.h"
@@ -19,6 +20,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Animation/AnimInstance.h"
+#include "Animation/AnimMontage.h"
 #include "Engine/DamageEvents.h"
 #include "Engine/World.h"
 #include "BrainComponent.h"
@@ -65,6 +67,7 @@ namespace EnemyCharacterBaseTuning
 //初期設定と必要な部品を用意する。
 AEnemyCharacterBase::AEnemyCharacterBase()
 {
+	m_deathFade = CreateDefaultSubobject<UEnemyDeathFade>(TEXT("DeathFade"));
 	m_targeting = CreateDefaultSubobject<UEnemyTargeting>(TEXT("Targeting"));
 
 	PrimaryActorTick.bCanEverTick = true;
@@ -463,6 +466,13 @@ void AEnemyCharacterBase::HealthChanged(const FOnAttributeChangeData& _data)
 	if (_data.NewValue <= 0.0f && IsCombatActive()) { HandleHealthDepleted(); }
 }
 
+//消滅を開始した敵は、演出が終わった時に片付ける。
+void AEnemyCharacterBase::LifeSpanExpired()
+{
+	if (m_deathFade->IsFading()) { return; }
+	Super::LifeSpanExpired();
+}
+
 //体力がなくなった時の処理を行う。
 void AEnemyCharacterBase::HandleHealthDepleted()
 {
@@ -486,10 +496,17 @@ void AEnemyCharacterBase::HandleHealthDepleted()
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	//死亡用のモンタージュが設定されていれば再生する。
+	float deathLength = 0.f;
 	if (m_definition && m_definition->m_deathMontage)
 	{
-		PlayAnimMontage(m_definition->m_deathMontage);
+		const float length = PlayAnimMontage(m_definition->m_deathMontage);
+		const float rate = FMath::Max(UE_SMALL_NUMBER, FMath::Abs(m_definition->m_deathMontage->RateScale));
+		deathLength = length / rate;
 	}
+	m_deathFade->Start(deathLength + GetDeathHold(), m_deathMaterial, FSimpleDelegate::CreateWeakLambda(this, [this]()
+	{
+		if (HasAuthority()) { Destroy(); }
+	}));
 
 	//イベントで使用される敵なら死亡を通知する
 	if (m_IsEventEnemy)

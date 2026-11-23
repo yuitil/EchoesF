@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "CoreMinimal.h"
 #include "Enemy/Core/EnemyCharacterBase.h"
 #include "MinionEnemyCharacter.generated.h"
@@ -72,6 +72,9 @@ public:
 	bool m_interruptAttack = false;
 
 protected:
+
+	//BPの死亡後の表示時間には、薄くなる時間も含む。
+	virtual float GetDeathHold() const override;
 
 	//BPで選んだ手の骨へ判定をつなぐ。
 	virtual void BeginPlay() override;

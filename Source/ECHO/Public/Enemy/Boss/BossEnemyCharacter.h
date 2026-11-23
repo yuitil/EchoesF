@@ -38,6 +38,23 @@ public:
     //ボスの体力と二つの段階を管理する。
     ABossEnemyCharacter();
 
+    //戦闘中に必殺技をため、間合いに入ったら使う。
+    void UpdateUltimate(float _delta);
+
+    //本番のボスBPで選んだ必殺技。
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Ultimate")
+    FName m_ultimateAction;
+
+    //満タンになるまでの戦闘時間。
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Ultimate", meta = (ClampMin = "1"))
+    float m_chargeSeconds = 24.f;
+
+    //画面に渡す必殺技の割合。
+    UPROPERTY(Replicated, BlueprintReadOnly, Category = "Boss|Ultimate")
+    float m_ultimateCharge = 0.f;
+
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& _props) const override;
+
     //間合いを取り直しているか返す。
     virtual bool IsRepositioning() const override;
 
