@@ -8,9 +8,9 @@
 UCLASS(meta = (DisplayName = "BossDrawSword"))
 class ECHO_API UBossDrawSword : public UAnimNotify
 {
-    GENERATED_BODY()
+	GENERATED_BODY()
 
 public:
-    //アニメーションの指定位置で処理を呼ぶ。
-    virtual void Notify(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _anim, const FAnimNotifyEventReference& _event) override;
+	//アニメーションの指定位置で処理を呼ぶ。
+	virtual void Notify(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _anim, const FAnimNotifyEventReference& _event) override;
 };

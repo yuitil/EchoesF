@@ -13,10 +13,8 @@ namespace BossShadowTuning
 {
 	//分身を探す間隔。
 	constexpr float checkDelay = .5f;
-
 	//生成する床を探す横幅。
 	constexpr float floorWidth = 100.f;
-
 	//床との接触で生成に失敗しないための余白。
 	constexpr float floorGap = 3.f;
 
@@ -229,13 +227,13 @@ void UBossShadowSummon::TickComponent(float _delta, ELevelTick _type, FActorComp
 	{
 		const auto* action = boss->GetActiveAction();
 		auto* player = UGameplayStatics::GetPlayerPawn(this, 0);
-        if(!m_enableJoin || !action || !m_joinMoves.Contains(action->m_actionId) || !IsValid(player) || !player->CanBeDamaged())
-        {
+		if (!m_enableJoin || !action || !m_joinMoves.Contains(action->m_actionId) || !IsValid(player) || !player->CanBeDamaged())
+		{
 			m_spawnState = TEXT("WaitingForJoinMove");
 			return;
 		}
-        if(FVector::DistSquared2D(boss->GetActorLocation(), player->GetActorLocation()) > FMath::Square(m_joinRange))
-        {
+		if (FVector::DistSquared2D(boss->GetActorLocation(), player->GetActorLocation()) > FMath::Square(m_joinRange))
+		{
 			m_spawnState = TEXT("OutsideJoinRange");
 			return;
 		}
@@ -255,11 +253,11 @@ void UBossShadowSummon::TickComponent(float _delta, ELevelTick _type, FActorComp
 
 	//壁や床に埋まる場所には生成しない。
 	const auto* defaults = m_shadowClass->GetDefaultObject<ABossShadow>();
-    FVector location;
-    if (!BossShadowTuning::FindFloor(*boss, *defaults, m_spawnRange, location)) { m_spawnState = TEXT("NoSafeFloor"); return; }
-    const FTransform pose((target->GetActorLocation() - location).Rotation(), location);
-    auto *shadow = GetWorld()->SpawnActorDeferred<ABossShadow>(m_shadowClass, pose, boss, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding);
-    if (!shadow)
+	FVector location;
+	if (!BossShadowTuning::FindFloor(*boss, *defaults, m_spawnRange, location)) { m_spawnState = TEXT("NoSafeFloor"); return; }
+	const FTransform pose((target->GetActorLocation() - location).Rotation(), location);
+	auto* shadow = GetWorld()->SpawnActorDeferred<ABossShadow>(m_shadowClass, pose, boss, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding);
+	if (!shadow)
 	{
 		m_spawnState = TEXT("SpawnFailed");
 		m_nextTime = now + PrimaryComponentTick.TickInterval;
@@ -272,9 +270,9 @@ void UBossShadowSummon::TickComponent(float _delta, ELevelTick _type, FActorComp
 	if (!IsValid(shadow)) { return; }
 	m_spawnState = TEXT("Summoned");
 
-    //実際に呼べた時だけ抽選待ちの記録を消す。
-    m_joinMisses = 0;
-    m_joinReady = false;
+	//実際に呼べた時だけ抽選待ちの記録を消す。
+	m_joinMisses = 0;
+	m_joinReady = false;
 
 	if (second) { m_secondShadow = shadow; }
 	else
@@ -284,13 +282,13 @@ void UBossShadowSummon::TickComponent(float _delta, ELevelTick _type, FActorComp
 
 	//五体以上なら、次の確認で二体目も呼べるようにする。
 	const bool needSecond = !second && !join && m_cloneCount >= FMath::Max(2, m_twoCloneCount);
-    if (join)
-    {
-        m_nextJoinTime = now + FMath::Max(0.f, m_joinCooldown);
-    }
-    else
-    {
-        const float delay = needSecond ? PrimaryComponentTick.TickInterval : m_cooldown;
-        m_nextTime = now + FMath::Max(0.f, delay);
-    }
+	if (join)
+	{
+		m_nextJoinTime = now + FMath::Max(0.f, m_joinCooldown);
+	}
+	else
+	{
+		const float delay = needSecond ? PrimaryComponentTick.TickInterval : m_cooldown;
+		m_nextTime = now + FMath::Max(0.f, delay);
+	}
 }

@@ -248,7 +248,6 @@ void ABossEnemyCharacter::FinishTransition()
 //受け流しなどを選ぶ確率を返す。
 float ABossEnemyCharacter::GetSpecialDefenseChance() const
 {
-
 	//BPから設定した敵のデータ。
 	const UBossData* data = GetBossData();
 	if (data && m_bossPhase == EBossPhase::PhaseOne && GetHealth() > GetMaxHealth() * data->m_counterHealth)
@@ -378,7 +377,6 @@ void ABossEnemyCharacter::EndPlay(const EEndPlayReason::Type _reason)
 //間合いを取り直しているか返す。
 bool ABossEnemyCharacter::IsRepositioning() const
 {
-
 	//影が振り始めた直後は、予約した追撃の時間まで構える。
 	if (m_summon && m_summon->IsWaitingForEcho()) { return true; }
 	return (m_summon && (m_summon->IsChanging() || m_summon->IsWaitingForSwap(this))) || (m_approach && m_approach->IsDrawing()) || (m_spacing && m_spacing->IsSpacing());
@@ -393,7 +391,6 @@ void ABossEnemyCharacter::OnAttackFinished()
 //被弾した分を体勢ゲージにも伝える。
 float ABossEnemyCharacter::TakeDamage(float _damage, const FDamageEvent& _event, AController* _instigator, AActor* _causer)
 {
-
 	//致命傷によるフェーズ切り替えでは体勢を減らさない。
 	const EBossPhase phase = m_bossPhase;
 	const float taken = Super::TakeDamage(_damage * FMath::Clamp(m_takenScale, .1f, 2.f), _event, _instigator, _causer);

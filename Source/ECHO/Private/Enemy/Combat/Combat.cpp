@@ -624,8 +624,7 @@ void UCombat::TraceHand(bool left, FHitWindow& hand)
 			{
 				enemy->m_hitFx->ShowStrike(hit.ImpactPoint, hit.ImpactNormal.GetSafeNormal());
 			}
-			if (hitActor == target && action->m_launch && enemy->IsActing() &&
-				!enemy->WasAttackBlocked())
+			if (hitActor == target && action->m_launch && enemy->IsActing() && !enemy->WasAttackBlocked())
 			{
 				BeginLift(Cast<ACharacter>(hitActor), *action);
 			}

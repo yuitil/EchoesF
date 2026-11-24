@@ -10,7 +10,6 @@ namespace MinionSpawnerTuning
 {
 	//生成数の上限。
 	constexpr auto maxSpawnCount = 100;
-
 	//生成位置を探す回数の上限。
 	constexpr auto maxTries = 8;
 }
@@ -58,7 +57,7 @@ void AMinionSpawner::Spawn()
 
 			//地面に当たった情報。
 			FNavLocation floor;
-			if (nav && ((point && attempt == 0) ? nav->ProjectPointToNavigation(origin, floor) : nav->GetRandomReachablePointInRadius( origin, FMath::Max(0.f, m_radius), floor)))
+			if (nav && ((point && attempt == 0) ? nav->ProjectPointToNavigation(origin, floor) : nav->GetRandomReachablePointInRadius(origin, FMath::Max(0.f, m_radius), floor)))
 			{
 				location = floor.Location + FVector(0, 0, height + 2.f);
 			}
@@ -79,7 +78,7 @@ void AMinionSpawner::Spawn()
 	}
 	if (m_spawned != FMath::Clamp(m_count, 1, MinionSpawnerTuning::maxSpawnCount))
 	{
-		UE_LOG(LogTemp, Warning,TEXT("%s: Spawned %d/%d. Check NavMesh, points and collision."), *GetName(), m_spawned, m_count);
+		UE_LOG(LogTemp, Warning, TEXT("%s: Spawned %d/%d. Check NavMesh, points and collision."), *GetName(), m_spawned, m_count);
 	}
 	if (m_spawned == 0) { m_started = false; }
 }

@@ -16,7 +16,6 @@ class ECHO_API AEnemyAfterimage : public AActor
 	GENERATED_BODY()
 
 public:
-
 	//当たり判定のない表示用モデルを用意する。
 	AEnemyAfterimage();
 
@@ -28,7 +27,6 @@ public:
 	virtual void Tick(float _delta) override;
 
 public:
-
 	//写した姿勢を表示するモデル。
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy|Afterimage")
 	TObjectPtr<UPoseableMeshComponent> m_pose;
@@ -54,7 +52,6 @@ public:
 	FName m_fadeName = TEXT("GhostOpacity");
 
 private:
-
 	//残像を出してからの秒数。
 	float m_age = 0.f;
 

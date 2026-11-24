@@ -130,8 +130,8 @@ bool ABossShadow::IsActionAllowed(const FEnemyActionData& _action) const
 	{
 		return false;
 	}
-    //連携の最初は、ガードや退避ではなく攻撃から始める。
-    if (m_join && m_actionSerial == 0 && _action.m_damage <= 0.f) { return false; }
+	//連携の最初は、ガードや退避ではなく攻撃から始める。
+	if (m_join && m_actionSerial == 0 && _action.m_damage <= 0.f) { return false; }
 	return !m_fading && (!data || data->m_phaseTwoActions.IsEmpty() || data->m_phaseTwoActions.Contains(_action.m_actionId));
 }
 

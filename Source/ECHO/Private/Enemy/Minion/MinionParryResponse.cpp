@@ -22,7 +22,6 @@ namespace MinionParryResponseTuning
 //相手の受け流しが成功するか確認する。
 bool UMinionParryResponse::TryParry(AActor* _defender, float _inputAge)
 {
-
 	//処理の対象となる敵。
 	auto* enemy = Cast<AMinionEnemyCharacter>(GetOwner());
 	return enemy && FMath::IsFinite(_inputAge) && _inputAge >= 0.f && enemy->IsDefenseInputValid(EDefenseResult::Parry, _inputAge) && Begin(_defender);
@@ -31,7 +30,6 @@ bool UMinionParryResponse::TryParry(AActor* _defender, float _inputAge)
 //受け流しによる隙を開始する。
 bool UMinionParryResponse::Begin(AActor* _defender)
 {
-
 	//処理の対象となる敵。
 	auto* enemy = Cast<AMinionEnemyCharacter>(GetOwner());
 	if (!enemy || !enemy->HasAuthority() || !enemy->IsCombatActive() || !enemy->IsActing() || !IsValid(_defender) || _defender != enemy->m_combatTarget || m_paused.IsValid())

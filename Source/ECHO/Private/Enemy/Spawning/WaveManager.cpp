@@ -16,7 +16,6 @@ AWaveManager::AWaveManager()
 //Called when the game starts or when spawned
 void AWaveManager::BeginPlay()
 {
-
 	//基底クラスのBeginPlayを呼び出す
 	Super::BeginPlay();
 }
@@ -24,7 +23,6 @@ void AWaveManager::BeginPlay()
 //経過時間に合わせて敵の状態を更新する。
 void AWaveManager::Tick(float _deltaTime)
 {
-
 	//基底クラスのTickを呼び出す
 	Super::Tick(_deltaTime);
 
@@ -61,7 +59,6 @@ void AWaveManager::StartWave()
 	//エネミープールから敵をスポーン
 	for (int32 i = 0; i < m_enemiesPerWave; ++i)
 	{
-
 		//生成した敵や弾。
 		AEnemyChara* SpawnedEnemy = m_pEnemyPool->SpawnEnemyAtRandomLocation();
 		if (SpawnedEnemy) { m_aliveEnemies.Add(SpawnedEnemy); }
@@ -77,7 +74,6 @@ void AWaveManager::StartWave()
 //敵撃破通知
 void AWaveManager::NotifyEnemyDefeated(AEnemyChara* _defeatedEnemy)
 {
-
 	//ウェーブが開始されていない場合は、処理を行わない
 	if (!m_bWaveStarted) { return; }
 
@@ -98,8 +94,7 @@ void AWaveManager::NotifyEnemyDefeated(AEnemyChara* _defeatedEnemy)
 	{
 
 		//倒された敵の割合を計算
-		float defeatedPercent =
-			(float)m_defeatedEnemyCount / (float)m_initialEnemyCount * 100.f;
+		float defeatedPercent = (float)m_defeatedEnemyCount / (float)m_initialEnemyCount * 100.f;
 
 		//倒された敵の割合が中間ボスポーンの割合を超えている場合、中間ボスをスポーン
 		if (defeatedPercent >= m_midBossSpawnPercent) { SpawnMidBoss(); }
@@ -128,13 +123,13 @@ void AWaveManager::UpdateAttackerRoles()
 	if (!player) { return; }
 
 	//死んでる敵を除外
-	m_aliveEnemies.RemoveAll([](AEnemyChara* enemy) 
+	m_aliveEnemies.RemoveAll([](AEnemyChara* enemy)
 		{
-		return !enemy || enemy->GetCurrentState() == FEEnemyState::Dead;
+			return !enemy || enemy->GetCurrentState() == FEEnemyState::Dead;
 		});
-	m_activeAttackers.RemoveAll([](AEnemyChara* enemy) 
+	m_activeAttackers.RemoveAll([](AEnemyChara* enemy)
 		{
-		return !enemy || enemy->GetCurrentState() == FEEnemyState::Dead;
+			return !enemy || enemy->GetCurrentState() == FEEnemyState::Dead;
 		});
 
 	//アタッカーの数を調整

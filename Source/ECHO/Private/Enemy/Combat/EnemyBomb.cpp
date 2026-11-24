@@ -154,9 +154,9 @@ void AEnemyBomb::Explode()
 		//障害物や有効な防御がない相手だけにダメージを与える。
 		if (!blocked && !dodge && !defended)
 		{
-			if (source && m_unblockable && defense == EDefenseResult::Guard) 
-			{ 
-				source->TargetGuardBroken(target); 
+			if (source && m_unblockable && defense == EDefenseResult::Guard)
+			{
+				source->TargetGuardBroken(target);
 			}
 
 			//爆発を起こした敵と、この弾を防げるかをダメージに渡す。
@@ -171,8 +171,7 @@ void AEnemyBomb::Explode()
 	ShowExplosion(point);
 	if (m_debugHit)
 	{
-		UE_LOG(LogTemp, Display, TEXT("EnemyBomb Burst %s time=%.3f"), *GetName(),
-			GetWorld()->GetTimeSeconds());
+		UE_LOG(LogTemp, Display, TEXT("EnemyBomb Burst %s time=%.3f"), *GetName(), GetWorld()->GetTimeSeconds());
 	}
 	Destroy();
 }

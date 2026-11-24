@@ -13,14 +13,14 @@ UCLASS()
 class ECHO_API APlayerBridge : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
+
+public:
 	APlayerBridge();
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (DisplayName = "EnableDemohealth"))
 	bool m_bUseDemoHealth = false;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (DisplayName = "Max Health", ClampMin = "1"))
 	float m_maxHealth = 200.f;
 

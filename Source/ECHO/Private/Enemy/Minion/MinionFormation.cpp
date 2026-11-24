@@ -117,7 +117,7 @@ void UMinionFormation::Provoke(AActor* _attacker)
 	if (m_counterUntil <= now)
 	{
 		m_counterReady =
-		now + FMath::Max(MinionFormationTuning::minUpdateDelay, m_counterDelay);
+			now + FMath::Max(MinionFormationTuning::minUpdateDelay, m_counterDelay);
 	}
 	m_counterUntil = now + FMath::Max(1.f, m_counterTime);
 	m_ready = FMath::Min(m_ready, m_counterReady);

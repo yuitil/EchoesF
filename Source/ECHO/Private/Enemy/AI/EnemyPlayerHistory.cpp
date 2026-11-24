@@ -36,7 +36,6 @@ void UEnemyPlayerHistory::Deinitialize()
 //今の攻撃を確認して、前の攻撃との違いを覚える。
 void UEnemyPlayerHistory::Sample()
 {
-
 	//分身ではなく、操作中の本体だけを見る。
 	auto* player = Cast<ACharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
 	if (!IsValid(player)) { return; }

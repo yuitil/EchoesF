@@ -106,7 +106,6 @@ AActor* UEnemyTargeting::SelectTarget()
 //戦闘の役割を考えて雑魚敵の相手を選ぶ。
 AActor* UEnemyTargeting::SelectMinionTarget()
 {
-
 	//専用の相手が指定されていれば集団戦の選択を使わない。
 	if (m_lockTarget) { return SelectTarget(); }
 
