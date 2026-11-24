@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Event/StageEventSubsystem/StageEventSubsystem.h"
@@ -133,9 +133,10 @@ void UStageEventSubsystem::OnPlayerRespawn()
 		m_CurrentVolume->SetIsEventExecution(false);
 	}
 
-	if (!m_CurrentEvent)return;
+	if (!m_CurrentEvent || !m_CurrentVolume)return;
 
 	m_CurrentEvent->EventReset();
+	m_CurrentVolume->ResetParam();
 
 	SetGateOpen(true, m_CurrentEvent->GetEventData());
 

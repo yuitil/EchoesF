@@ -32,14 +32,23 @@ void AEventTriggerVolume::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-void AEventTriggerVolume::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-                                         UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
-                                         const FHitResult& SweepResult)
+void AEventTriggerVolume::ResetParam()
 {
+	m_IsEventExecution = false;
+}
+
+void AEventTriggerVolume::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
+	const FHitResult& SweepResult)
+{
+	if (m_IsEventExecution)return;
+
+	m_IsEventExecution = true;
+
 	UStageEventSubsystem* EventSubsystem = GetWorld()->GetSubsystem<UStageEventSubsystem>();
 	if (!EventSubsystem)return;
 
 	EventSubsystem->EventStart(this);
 }
 
-;
+

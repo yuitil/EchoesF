@@ -32,6 +32,7 @@ public:
 
 	void SetIsEventExecution(const bool _isExecute) { m_IsEventExecution = _isExecute; }
 
+	void ResetParam();
 protected:
 	UFUNCTION()
 	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,

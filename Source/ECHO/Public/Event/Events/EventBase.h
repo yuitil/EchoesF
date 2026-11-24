@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -38,4 +38,5 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category="Param")
 	bool m_IsFinalEvent = false;
+
 };
