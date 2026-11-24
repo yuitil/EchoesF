@@ -23,7 +23,6 @@ public:
 	AEnemyAIController();
 
 protected:
-
 	//ゲーム開発開始時の初期化関数
 	virtual void BeginPlay() override;
 
@@ -35,7 +34,6 @@ protected:
 	void OnTargetPerceptionUpdated(AActor* _actor, FAIStimulus _stimulus);
 
 public:
-
 	//ターゲットを設定する関数
 	virtual void SetTargetActor(AActor* _actor);
 
@@ -43,7 +41,6 @@ public:
 	virtual void ClearTarget();
 
 protected:
-
 	//AIの知覚コンポーネントへの参照
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"), Category = "AI")
 	UAIPerceptionComponent* m_pAIPerceptionComp;

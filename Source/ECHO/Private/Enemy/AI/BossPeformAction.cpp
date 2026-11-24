@@ -27,59 +27,42 @@
 //判定に使う幅や待ち時間。
 namespace BossPeformActionTuning
 {
-
 	//退避先に必要な余裕。
 	constexpr auto retreatMargin = 10.f;
-
 	//歩ける場所を探す横幅。
 	constexpr auto navWidth = 25;
-
 	//歩ける場所を探す高さ。
 	constexpr auto navHeight = 50;
-
 	//距離の判定に持たせる余裕。
 	constexpr auto rangeMargin = 20.f;
-
 	//接近しすぎないための余裕。
 	constexpr auto closeMargin = 30.f;
-
 	//相手へ近づく時の速度。
 	constexpr auto approachSpeed = 50.f;
-
 	//命中範囲に持たせる余裕。
 	constexpr auto hitMargin = .08f;
-
 	//直線距離に対して許す経路の長さ。
 	constexpr auto pathRatio = 1.15f;
-
 	//突進中の加速の強さ。
 	constexpr auto dashAccel = 8.f;
-
 	//届く距離の判定に使う余裕。
 	constexpr auto reachMargin = 35.f;
-
 	//突進を始めるまでの時間。
 	constexpr auto dashDelay = .125f;
-
 	//次の確認までの時間。
 	constexpr auto checkDelay = .1;
-
 	//停止位置の余裕。
 	constexpr auto stopMargin = 5.f;
-
 	//追跡を待つ制限時間。
 	constexpr auto chaseTimeout = 4.f;
-
 	//再生速度の下限。
 	constexpr auto minRate = .1f;
-
 	//区間の時間の下限。
 	constexpr auto minStepTime = .05f;
 }
 
 namespace
 {
-
 	//後ろに退避できる場所があるか調べる。
 	bool HasRetreatSpace(AEnemyCharacterBase* enemy)
 	{
@@ -102,11 +85,8 @@ namespace
 
 		//キャラクターの当たり判定。
 		const auto* capsule = enemy->GetCapsuleComponent();
-		if (enemy->GetWorld()->SweepSingleByChannel(hit, start, FVector(end.X, end.Y, start.Z),
-			FQuat::Identity, ECC_Pawn,
-			FCollisionShape::MakeCapsule(
-				capsule->GetScaledCapsuleRadius(), capsule->GetScaledCapsuleHalfHeight()),
-			params))
+		if (enemy->GetWorld()->SweepSingleByChannel(hit, start, FVector(end.X, end.Y, start.Z), FQuat::Identity, ECC_Pawn, 
+			FCollisionShape::MakeCapsule(capsule->GetScaledCapsuleRadius(), capsule->GetScaledCapsuleHalfHeight()),params))
 		{
 			return false;
 		}
@@ -134,7 +114,6 @@ namespace
 	//指定した間合いまで移動する。
 	EPathFollowingRequestResult::Type MoveToRange(AAIController* ai, AEnemyCharacterBase* enemy, float distance)
 	{
-
 		//AIの移動先と停止条件。
 		FAIMoveRequest request(enemy->m_combatTarget);
 		request.SetAcceptanceRadius(distance);
@@ -167,10 +146,8 @@ namespace
 		if (enemy->IsA<ABossEnemyCharacter>() && ai->GetMoveStatus() == EPathFollowingStatus::Idle)
 		{
 			const FVector start = enemy->GetNavAgentLocation();
-			const FVector goal = request.IsMoveToActorRequest()
-				? enemy->m_combatTarget->GetActorLocation() : request.GetGoalLocation();
-			auto* path = UNavigationSystemV1::FindPathToLocationSynchronously(
-				enemy->GetWorld(), start, goal, enemy);
+			const FVector goal = request.IsMoveToActorRequest() ? enemy->m_combatTarget->GetActorLocation() : request.GetGoalLocation();
+			auto* path = UNavigationSystemV1::FindPathToLocationSynchronously(enemy->GetWorld(), start, goal, enemy);
 			if (!path || !path->IsValid()) { return EPathFollowingRequestResult::Failed; }
 		}
 		return ai->MoveTo(request).Code;
@@ -206,8 +183,7 @@ bool UBossPeformAction::StartAttack(UBehaviorTreeComponent& _ownerComp)
 		//雑魚敵は攻撃が届くなら、退避を繰り返さず攻撃へ進む。
 		const bool canStrike = enemy->IsA<AMinionEnemyCharacter>() && enemy->CanRushAttack(distance);
 		const bool tooClose = !canStrike && distance < enemy->GetMeleeDistance() - BossPeformActionTuning::closeMargin;
-		if (tooClose && !enemy->GetCharacterMovement()->IsFalling() &&
-			enemy->GetReadyAction(m_retreatAction))
+		if (tooClose && !enemy->GetCharacterMovement()->IsFalling() && enemy->GetReadyAction(m_retreatAction))
 		{
 			return false;
 		}
@@ -268,7 +244,6 @@ bool UBossPeformAction::CanCatch(AEnemyCharacterBase* _enemy, FName _rush, float
 	_hitEnd = 0.f;
 	for (const auto& notify : action->m_montage->Notifies)
 	{
-
 		//動作の判定に使う時間の幅。
 		const auto* window = Cast<UBossCombatWindow>(notify.NotifyStateClass);
 		if (window && window->m_window == EBossWindow::Damage)
@@ -338,8 +313,7 @@ bool UBossPeformAction::CanCatch(AEnemyCharacterBase* _enemy, FName _rush, float
 
 	//移動する距離。
 	const float travel = speed * ramp + .5f * accel * ramp * ramp + m_rushSpeed * (travelTime - ramp);
-	if (path->GetPathLength() >
-		travel + FMath::Max(0.f, m_attackDist - BossPeformActionTuning::reachMargin))
+	if (path->GetPathLength() > travel + FMath::Max(0.f, m_attackDist - BossPeformActionTuning::reachMargin))
 	{
 		return false;
 	}
@@ -358,7 +332,6 @@ bool UBossPeformAction::CanCatch(AEnemyCharacterBase* _enemy, FName _rush, float
 //突進で相手に届くか調べて開始する。
 bool UBossPeformAction::TryDash(UBehaviorTreeComponent& _ownerComp)
 {
-
 	//敵の行動を操作するAI。
 	auto* ai = _ownerComp.GetAIOwner();
 
@@ -424,7 +397,6 @@ void UBossPeformAction::StopRush(UBehaviorTreeComponent& _ownerComp)
 //BTから呼ばれた行動を開始する。
 EBTNodeResult::Type UBossPeformAction::ExecuteTask(UBehaviorTreeComponent& _ownerComp, uint8* _nodeMemory)
 {
-
 	//敵の行動を操作するAI。
 	auto* ai = _ownerComp.GetAIOwner();
 
@@ -439,8 +411,9 @@ EBTNodeResult::Type UBossPeformAction::ExecuteTask(UBehaviorTreeComponent& _owne
 	{
 		return EBTNodeResult::Failed;
 	}
-	if (const auto* formation = enemy->FindComponentByClass<UMinionFormation>();
-		formation && !formation->HasTurn())
+
+	const auto* formation = enemy->FindComponentByClass<UMinionFormation>();
+	if (formation && !formation->HasTurn())
 	{
 		return EBTNodeResult::Failed;
 	}
@@ -460,7 +433,6 @@ EBTNodeResult::Type UBossPeformAction::ExecuteTask(UBehaviorTreeComponent& _owne
 	const bool tooClose = !canStrike && distance < enemy->GetMeleeDistance() - BossPeformActionTuning::closeMargin;
 	if (tooClose && enemy->GetCharacterMovement()->IsMovingOnGround() && (enemy->GetReadyAction(m_retreatAction) || HasRetreatSpace(enemy)))
 	{
-
 		if (!m_retreatAction.IsNone() && enemy->RequestAction(m_retreatAction))
 		{
 			m_serial = enemy->m_actionSerial;
@@ -502,7 +474,6 @@ EBTNodeResult::Type UBossPeformAction::ExecuteTask(UBehaviorTreeComponent& _owne
 		if (TryDash(_ownerComp)) { return EBTNodeResult::InProgress; }
 		if (MoveToRange(ai, enemy, FMath::Max(m_attackDist, enemy->GetMeleeDistance())) == EPathFollowingRequestResult::Failed)
 		{
-
 			//経路のないボスは、安全な床を確かめながら歩く処理に任せる。
 			if (enemy->IsA<ABossEnemyCharacter>() && ai->GetMoveStatus() == EPathFollowingStatus::Idle)
 			{
@@ -619,16 +590,12 @@ void UBossPeformAction::TickTask(UBehaviorTreeComponent& _ownerComp, uint8* _nod
 	}
 	if (enemy->m_actionSerial != m_serial || !enemy->IsActing())
 	{
-		if (enemy->m_actionSerial == m_serial && enemy->m_actionSuccess &&
-			!enemy->GetPendingComboId().IsNone() && enemy->CanDecide() &&
-			StartAttack(_ownerComp))
+		if (enemy->m_actionSerial == m_serial && enemy->m_actionSuccess && !enemy->GetPendingComboId().IsNone() && enemy->CanDecide() && StartAttack(_ownerComp))
 		{
 			return;
 		}
 
-		FinishLatentTask(_ownerComp, enemy->m_actionSerial == m_serial && enemy->m_actionSuccess
-			? EBTNodeResult::Succeeded
-			: EBTNodeResult::Failed);
+		FinishLatentTask(_ownerComp, enemy->m_actionSerial == m_serial && enemy->m_actionSuccess ? EBTNodeResult::Succeeded : EBTNodeResult::Failed);
 	}
 	else if (now > m_deadline)
 	{

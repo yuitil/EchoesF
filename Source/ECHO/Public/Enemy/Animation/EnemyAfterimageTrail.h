@@ -13,7 +13,6 @@ class ECHO_API UEnemyAfterimageTrail : public UActorComponent
 	GENERATED_BODY()
 
 public:
-
 	//モデル更新後に残像を作るようにする。
 	UEnemyAfterimageTrail();
 
@@ -24,15 +23,13 @@ public:
 	void Stop();
 
 protected:
-
 	//表示した残像を終了時に片付ける。
 	virtual void EndPlay(const EEndPlayReason::Type _reason) override;
 
 	//移動距離と間隔を調べて残像を出す。
-	virtual void TickComponent( float _delta, ELevelTick _type, FActorComponentTickFunction* _tick) override;
+	virtual void TickComponent(float _delta, ELevelTick _type, FActorComponentTickFunction* _tick) override;
 
 public:
-
 	//使用する残像BP。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Afterimage")
 	TSubclassOf<AEnemyAfterimage> m_imageClass;
@@ -54,7 +51,6 @@ public:
 	int32 m_limit = 5;
 
 private:
-
 	//通知が終わるまでの残り時間。
 	float m_left = 0.f;
 

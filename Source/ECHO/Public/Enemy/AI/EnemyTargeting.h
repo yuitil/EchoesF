@@ -10,7 +10,6 @@ class ECHO_API UEnemyTargeting : public UActorComponent
 	GENERATED_BODY()
 
 public:
-
 	//狙う相手を選ぶ。
 	UFUNCTION(BlueprintCallable, Category = "Enemy|Target")
 	AActor* SelectTarget();
@@ -20,7 +19,6 @@ public:
 	AActor* SelectMinionTarget();
 
 public:
-
 	//戦闘開始後、壁の向こうのプレイヤーも追う。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Target")
 	bool m_trackPlayer = false;
@@ -82,7 +80,6 @@ public:
 	float m_chaseRange = 20000.f;
 
 public:
-
 	//攻撃対象にできる相手か調べる。
 	bool IsCandidate(AActor* _actor) const;
 };

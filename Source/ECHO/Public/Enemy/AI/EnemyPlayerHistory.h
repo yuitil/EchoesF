@@ -12,7 +12,6 @@ class ECHO_API UEnemyPlayerHistory : public UWorldSubsystem
 	GENERATED_BODY()
 
 public:
-
 	//ゲーム開始後に観察を始める。
 	virtual void OnWorldBeginPlay(UWorld& _world) override;
 
@@ -20,7 +19,6 @@ public:
 	virtual void Deinitialize() override;
 
 public:
-
 	//記録した攻撃数。直近の傾向だけを残す。
 	UPROPERTY(BlueprintReadOnly, Category = "Enemy|History")
 	int32 m_attacks = 0;
@@ -38,7 +36,6 @@ private:
 	void Sample();
 
 private:
-
 	//観察する間隔を管理する。
 	FTimerHandle m_timer;
 

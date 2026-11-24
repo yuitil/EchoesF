@@ -15,7 +15,6 @@ public:
 	UBossPeformAction();
 
 public:
-
 	//突進に使う攻撃名。
 	UPROPERTY(EditAnywhere, Category = "Rush", meta = (DisplayName = "Rush Action"))
 	FName m_rushAction;
@@ -45,8 +44,7 @@ public:
 	float m_startSpeed = 400.f;
 
 	//近接攻撃へつなぐ距離。
-	UPROPERTY(EditAnywhere, Category = "Rush",
-		meta = (ClampMin = "1", DisplayName = "Attack Distance"))
+	UPROPERTY(EditAnywhere, Category = "Rush", meta = (ClampMin = "1", DisplayName = "Attack Distance"))
 	float m_attackDist = 140.f;
 
 	//突進できる高さの差。
@@ -70,7 +68,6 @@ public:
 	float m_rushAngle = 60.f;
 
 protected:
-
 	//BTから呼ばれた行動を開始する。
 	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& _ownerComp, uint8* _nodeMemory) override;
 

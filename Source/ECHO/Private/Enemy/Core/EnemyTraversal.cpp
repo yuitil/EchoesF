@@ -16,11 +16,10 @@ UEnemyTraversal::UEnemyTraversal()
 //越えられる段差を探して移動を開始する。
 bool UEnemyTraversal::TryTraverse(AActor* target)
 {
-
 	//処理の対象となる敵。
 	auto* enemy = Cast<AEnemyCharacterBase>(GetOwner());
-    if(!m_enabled || m_running || !enemy || !enemy->HasAuthority() || !IsValid(target) || !enemy->CanDecide() || !enemy->GetPendingComboId().IsNone())
-    {
+	if (!m_enabled || m_running || !enemy || !enemy->HasAuthority() || !IsValid(target) || !enemy->CanDecide() || !enemy->GetPendingComboId().IsNone())
+	{
 		return false;
 	}
 
@@ -77,7 +76,7 @@ bool UEnemyTraversal::TryDirection(AEnemyCharacterBase& owner, AActor& target, c
 	const bool wall = GetWorld()->LineTraceSingleByChannel(obstacle, feet + lift, ahead + lift, ECC_Pawn, params);
 	if (wall && Cast<APawn>(obstacle.GetActor())) { return false; }
 
-    //移動先の下にある地面。
+	//移動先の下にある地面。
 	FHitResult support;
 	const bool supported = GetWorld()->LineTraceSingleByChannel(support, ahead + lift, ahead - lift, ECC_Pawn, params);
 
@@ -88,8 +87,7 @@ bool UEnemyTraversal::TryDirection(AEnemyCharacterBase& owner, AActor& target, c
 	const FVector extent(25, 25, 25);
 	FNavLocation edge;
 	const bool missingFloor = !supported || !move->IsWalkable(support);
-	const bool leavingNav = !missingFloor && !nav->ProjectPointToNavigation(support.ImpactPoint, edge, extent, &agent)
-		&& nav->ProjectPointToNavigation(feet, edge, extent, &agent);
+	const bool leavingNav = !missingFloor && !nav->ProjectPointToNavigation(support.ImpactPoint, edge, extent, &agent) && nav->ProjectPointToNavigation(feet, edge, extent, &agent);
 	const bool gap = missingFloor || leavingNav;
 	if (!wall && !gap) { return false; }
 	needsJump = true;
@@ -111,8 +109,8 @@ bool UEnemyTraversal::TryDirection(AEnemyCharacterBase& owner, AActor& target, c
 		}
 	}
 	float reach = FMath::Max(radius * 2.f + 20.f, wall ? obstacle.Distance + radius + 25.f : m_probe + radius);
-    for(; reach <= FMath::Min(m_range, distance - 60.f); reach += 35.f)
-    {
+	for (; reach <= FMath::Min(m_range, distance - 60.f); reach += 35.f)
+	{
 		//経路の途中の確認位置。
 		const FVector sample = feet + toward * reach;
 
@@ -127,8 +125,8 @@ bool UEnemyTraversal::TryDirection(AEnemyCharacterBase& owner, AActor& target, c
 
 		//高さの計算に使う値。
 		const float height = floor.ImpactPoint.Z - feet.Z;
-        if(height > m_up || height < -m_down)
-        {
+		if (height > m_up || height < -m_down)
+		{
 			continue;
 		}
 
@@ -230,11 +228,10 @@ void UEnemyTraversal::TickComponent(float delta, ELevelTick type, FActorComponen
 	const double now = GetWorld()->GetTimeSeconds();
 	if (m_running)
 	{
-        if(!enemy->IsCombatActive() || now - m_started > 3. ||
-           (now - m_started > .1 && enemy->GetCharacterMovement()->IsMovingOnGround()))
-        {
+		if (!enemy->IsCombatActive() || now - m_started > 3. || (now - m_started > .1 && enemy->GetCharacterMovement()->IsMovingOnGround()))
+		{
 			m_running = false;
-		}	
+		}
 		return;
 	}
 	if (now < m_next) { return; }

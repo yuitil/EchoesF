@@ -153,8 +153,7 @@ void UBossUpdateCombat::TickNode(UBehaviorTreeComponent& _ownerComp, uint8* _nod
 	{
 		const FVector start = enemy->GetNavAgentLocation();
 		const FVector goal = target->GetActorLocation();
-		auto* path = UNavigationSystemV1::FindPathToLocationSynchronously(
-			enemy->GetWorld(), start, goal, enemy);
+		auto* path = UNavigationSystemV1::FindPathToLocationSynchronously(enemy->GetWorld(), start, goal, enemy);
 		canMove = path && path->IsValid();
 	}
 	blackboard->SetValueAsBool(TEXT("CanDecide"), canDecide);

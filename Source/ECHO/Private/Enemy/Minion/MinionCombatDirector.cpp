@@ -34,7 +34,6 @@ bool UMinionCombatDirector::CanAssignClone(AActor* _enemy, AActor* _player, AAct
 //判定に使う幅や待ち時間。
 namespace MinionCombatDirectorTuning
 {
-
 	//状態を更新する間隔。
 	constexpr auto updateDelay = .2;
 	//一回転の角度。
@@ -72,7 +71,6 @@ void UMinionCombatDirector::PauseTarget(AActor* _target, float _duration)
 //集団の攻撃役と待機役を更新する。
 void UMinionCombatDirector::Update()
 {
-
 	//現在の時刻。
 	const double now = GetWorld()->GetTimeSeconds();
 	if (now < m_nextUpdate) { return; }
@@ -112,7 +110,6 @@ void UMinionCombatDirector::Update()
 	//戦えなくなった担当を外して次の敵に備える。
 	for (auto it = m_duelists.CreateIterator(); it; ++it)
 	{
-
 		//集団戦に参加している敵の情報。
 		auto* member = it.Value().Get();
 
@@ -329,7 +326,6 @@ AActor* UMinionCombatDirector::GetPlayerGuard(AActor* _player)
 
 	if (eligible(m_playerGuard.Get()))
 	{
-
 		//処理の対象となる敵。
 		auto* enemy = m_playerGuard->Enemy();
 		if (enemy->m_combatTarget == _player ||
@@ -364,7 +360,6 @@ AActor* UMinionCombatDirector::GetPlayerGuard(AActor* _player)
 	//生きている敵を、狙っている相手ごとに分ける。
 	for (auto& item : m_members)
 	{
-
 		//集団戦に参加している敵の情報。
 		auto* member = item.Get();
 		if (!eligible(member)) { continue; }

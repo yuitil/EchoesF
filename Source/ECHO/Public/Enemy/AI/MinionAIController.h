@@ -13,12 +13,10 @@ class ECHO_API AMinionAIController : public AEnemyAIController
     GENERATED_BODY()
 
 public:
-
     //コンストラクタ
     AMinionAIController();
 
 protected:
-
     //ゲーム開発開始時の初期化関数
     virtual void BeginPlay() override;
 
@@ -36,7 +34,6 @@ protected:
     void OnMinionPerceptionUpdated(AActor* _actor, FAIStimulus _stimulus);
 
 public:
-
     //ターゲットを設定する関数をオーバーライド
     virtual void SetTargetActor(AActor* _newTarget) override;
 
@@ -48,7 +45,6 @@ public:
     void NotifyDead();
 
 private:
-
     //攻撃範囲内にいるか判定して、ブラックボードを更新する関数
     void UpdateAttackRangeBlackboard();
 
@@ -56,7 +52,6 @@ private:
     void SetupminionSight();
 
 private:
-
     //現在ポーズしているキャラクタへの参照
     TWeakObjectPtr<AMinionChara> m_minionChara;
 

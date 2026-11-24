@@ -124,9 +124,7 @@ void UEnemyHealthWidget::NativeTick(const FGeometry& _shape, float _delta)
 	m_wasRising = rising;
 
 	//回復は徐々に表示し、体勢の全回復と被弾はすぐ反映する。
-	m_shown = (m_postureMode && ratio >= 1.f) || ratio < m_shown
-		? ratio
-		: FMath::FInterpConstantTo(m_shown, ratio, _delta, m_fillSpeed);
+	m_shown = (m_postureMode && ratio >= 1.f) || ratio < m_shown ? ratio : FMath::FInterpConstantTo(m_shown, ratio, _delta, m_fillSpeed);
 	if (m_healthBar) { m_healthBar->SetPercent(m_shown); }
 	if (m_trailBar)
 	{
@@ -137,7 +135,10 @@ void UEnemyHealthWidget::NativeTick(const FGeometry& _shape, float _delta)
 	const bool phaseTwo = boss && boss->m_bossPhase == EBossPhase::PhaseTwo;
 	if (m_phaseAura && phaseTwo != m_wasPhaseTwo)
 	{
-		if (phaseTwo) { PlayAnimation(m_phaseAura, 0.f, 0); }
+		if (phaseTwo)
+		{
+			PlayAnimation(m_phaseAura, 0.f, 0);
+		}
 		else
 		{
 			StopAnimation(m_phaseAura);
@@ -154,7 +155,6 @@ void UEnemyHealthWidget::NativeTick(const FGeometry& _shape, float _delta)
 	{
 		if (boss)
 		{
-
 			//現在のフェーズに合わせる表示名。
 			FText phase = m_phaseOne;
 			if (boss->m_bossPhase == EBossPhase::PhaseTwo) { phase = m_phaseTwo; }

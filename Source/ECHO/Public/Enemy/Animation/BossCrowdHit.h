@@ -8,9 +8,9 @@
 UCLASS(meta = (DisplayName = "Boss Crowd Hit"))
 class ECHO_API UBossCrowdHit : public UAnimNotify
 {
-    GENERATED_BODY()
+	GENERATED_BODY()
 
 public:
-    //ボスのメインのメッシュからだけ実行する。
-    virtual void Notify(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _anim, const FAnimNotifyEventReference& _event) override;
+	//ボスのメインのメッシュからだけ実行する。
+	virtual void Notify(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _anim, const FAnimNotifyEventReference& _event) override;
 };

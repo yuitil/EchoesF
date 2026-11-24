@@ -122,8 +122,7 @@ void UBossRecovery::Notify(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _an
 }
 
 //通知の区間内で移動を更新する。
-void UBossDive::NotifyTick(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _anim,
-	float _delta, const FAnimNotifyEventReference& _reference)
+void UBossDive::NotifyTick(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _anim, float _delta, const FAnimNotifyEventReference& _reference)
 {
 	Super::NotifyTick(_mesh, _anim, _delta, _reference);
 
@@ -153,7 +152,6 @@ void UBossDive::NotifyTick(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _an
 	FVector velocity = FVector::ZeroVector;
 	if (IsValid(enemy->m_combatTarget))
 	{
-
 		//前回からの経過時間や値の差。
 		FVector delta = enemy->m_combatTarget->GetActorLocation() - enemy->GetActorLocation();
 
@@ -166,8 +164,7 @@ void UBossDive::NotifyTick(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _an
 }
 
 //本体のメッシュだけに合図する。
-void UBossLeftSword::Notify(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _anim,
-	const FAnimNotifyEventReference& _ref)
+void UBossLeftSword::Notify(USkeletalMeshComponent* _mesh, UAnimSequenceBase* _anim, const FAnimNotifyEventReference& _ref)
 {
 	Super::Notify(_mesh, _anim, _ref);
 	auto* enemy = _mesh ? Cast<AEnemyCharacterBase>(_mesh->GetOwner()) : nullptr;

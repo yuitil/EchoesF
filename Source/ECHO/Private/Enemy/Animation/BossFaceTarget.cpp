@@ -35,7 +35,7 @@ void UBossFaceTarget::NotifyTick(USkeletalMeshComponent* _mesh, UAnimSequenceBas
 
 	//表示用メッシュにも通知がある場合、二重に回さない。
 	if (_mesh != enemy->GetMesh()) { return; }
-	const FVector toward = (enemy->m_combatTarget->GetActorLocation() - enemy->GetActorLocation()) .GetSafeNormal2D();
+	const FVector toward = (enemy->m_combatTarget->GetActorLocation() - enemy->GetActorLocation()).GetSafeNormal2D();
 	if (toward.IsNearlyZero()) { return; }
 	FRotator facing = enemy->GetActorRotation();
 	facing.Yaw = FMath::FixedTurn(facing.Yaw, toward.Rotation().Yaw, FMath::Max(0.f, m_turnSpeed) * _delta);

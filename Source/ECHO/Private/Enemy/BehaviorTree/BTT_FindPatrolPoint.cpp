@@ -9,7 +9,6 @@
 //歩ける場所から次の巡回先を選ぶ。
 UBTT_FindPatrolPoint::UBTT_FindPatrolPoint() : m_patrolRadius(1000.0f), m_minDistanceFromLastPoint(200.0f)
 {
-
 	//タスクの名前を設定
 	NodeName = TEXT("Find Patrol Point");
 
@@ -20,7 +19,6 @@ UBTT_FindPatrolPoint::UBTT_FindPatrolPoint() : m_patrolRadius(1000.0f), m_minDis
 //タスクの実行
 EBTNodeResult::Type UBTT_FindPatrolPoint::ExecuteTask(UBehaviorTreeComponent& _ownerComp, uint8* _nodeMemory)
 {
-
 	//ブラックボードにパトロールポイントを取得
 	UBlackboardComponent* blackboardComp = _ownerComp.GetBlackboardComponent();
 

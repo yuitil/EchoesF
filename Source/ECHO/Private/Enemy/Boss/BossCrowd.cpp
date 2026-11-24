@@ -121,6 +121,7 @@ bool UBossCrowd::TryPush()
 	GetTargets(targets, clones);
 	AActor* previous = boss->m_combatTarget.Get();
 	if (targets.IsEmpty()) { return false; }
+	
 	//包囲から抜ける技を、周回の終了まで待たせない。
 	if (boss->m_spacing && boss->m_spacing->IsSpacing()) { boss->m_spacing->Stop(); }
 	if (!targets.Contains(Cast<ACharacter>(previous))) { boss->m_combatTarget = targets[0]; }

@@ -111,7 +111,7 @@ float AEnemyCharacterBase::GetDefenseWindow(EDefenseResult _result, FName _actio
 	const FEnemyActionData* action = GetActiveAction();
 	if (!_actionId.IsNone())
 	{
-		action = m_definition ? m_definition->m_actions.FindByPredicate( [_actionId](const FEnemyActionData& item) 
+		action = m_definition ? m_definition->m_actions.FindByPredicate([_actionId](const FEnemyActionData& item)
 			{
 				return item.m_actionId == _actionId;
 			}) : nullptr;
@@ -311,7 +311,7 @@ void AEnemyCharacterBase::BeginPlay()
 	//別の移動補正がある時は、その設定を上書きしない。
 	if (!GetCharacterMovement()->ProcessRootMotionPostConvertToWorld.IsBound())
 	{
-		GetCharacterMovement()->ProcessRootMotionPostConvertToWorld.BindUObject( this, &AEnemyCharacterBase::AimAttackMove);
+		GetCharacterMovement()->ProcessRootMotionPostConvertToWorld.BindUObject(this, &AEnemyCharacterBase::AimAttackMove);
 	}
 
 	GetCharacterMovement()->MaxWalkSpeed = m_moveSpeed;
@@ -504,9 +504,9 @@ void AEnemyCharacterBase::HandleHealthDepleted()
 		deathLength = length / rate;
 	}
 	m_deathFade->Start(deathLength + GetDeathHold(), m_deathMaterial, FSimpleDelegate::CreateWeakLambda(this, [this]()
-	{
-		if (HasAuthority()) { Destroy(); }
-	}));
+		{
+			if (HasAuthority()) { Destroy(); }
+		}));
 
 	//イベントで使用される敵なら死亡を通知する
 	if (m_IsEventEnemy)
@@ -645,7 +645,7 @@ int32 AEnemyCharacterBase::ChooseAction() const
 
 	//攻撃された後のガード予約があれば先に使う。
 	if (m_defense->HasGuardRequest() && m_defense->ShouldStartGuard())
-	{ 
+	{
 		for (int32 i = 0; i < m_definition->m_actions.Num(); ++i)
 		{
 			if (m_definition->m_actions[i].m_kind == EEnemyAction::Guard && CanUseAction(i))

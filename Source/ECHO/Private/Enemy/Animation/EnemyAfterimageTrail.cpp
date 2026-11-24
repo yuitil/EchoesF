@@ -70,9 +70,7 @@ void UEnemyAfterimageTrail::TickComponent(float _delta, ELevelTick _type, FActor
 	if (m_left <= settings->m_life * rate) { return; }
 
 	m_wait += _delta;
-	if (m_wait < FMath::Max(.03f, m_interval) ||
-		(!m_allowStill && FVector::DistSquared(m_lastPos, enemy->GetActorLocation()) <
-			FMath::Square(FMath::Max(1.f, m_distance))))
+	if (m_wait < FMath::Max(.03f, m_interval) || (!m_allowStill && FVector::DistSquared(m_lastPos, enemy->GetActorLocation()) < FMath::Square(FMath::Max(1.f, m_distance))))
 	{
 		return;
 	}

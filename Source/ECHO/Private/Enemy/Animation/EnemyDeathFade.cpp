@@ -45,7 +45,7 @@ void UEnemyDeathFade::TickComponent(float _delta, ELevelTick _type, FActorCompon
 			if (!mesh->IsA<USkinnedMeshComponent>() && !mesh->IsA<UStaticMeshComponent>()) { continue; }
 			for (int32 slot = 0; slot < mesh->GetNumMaterials(); ++slot)
 			{
-				m_slots.Add({mesh, slot, TStrongObjectPtr<UMaterialInterface>(mesh->GetMaterial(slot))});
+				m_slots.Add({ mesh, slot, TStrongObjectPtr<UMaterialInterface>(mesh->GetMaterial(slot)) });
 				auto* original = mesh->GetMaterial(slot);
 				float value = 0.f;
 				if (original && original->GetScalarParameterValue(FMaterialParameterInfo(TEXT("SpawnReveal")), value))

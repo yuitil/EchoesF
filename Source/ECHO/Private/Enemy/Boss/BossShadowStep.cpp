@@ -224,8 +224,8 @@ bool UBossShadowSummon::TryStep(ABossEnemyCharacter& _boss, double _now)
 	{
 		if (!IsValid(shadow) || !shadow->IsCombatActive() || shadow->IsActing()) { continue; }
 		if (!shadow->GetCharacterMovement()->IsMovingOnGround()) { continue; }
-        //退避用の影も、姿が現れる前には交換しない。
-        if (IsWaitingForSwap(shadow) && !shadow->CanRelay()) { continue; }
+		//退避用の影も、姿が現れる前には交換しない。
+		if (IsWaitingForSwap(shadow) && !shadow->CanRelay()) { continue; }
 		if (!IsWaitingForSwap(shadow))
 		{
 			if (relay && !shadow->CanRelay()) { continue; }
