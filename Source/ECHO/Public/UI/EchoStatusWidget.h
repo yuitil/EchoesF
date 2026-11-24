@@ -153,6 +153,15 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Echo|HP|LowHP", meta = (ClampMin = "0"))
 	float m_LowHPPulseSpeed = 1.2f;
 
+	// --- 回復したときのバーの増え方 ---
+	//増える速さ（大きいほど速い。10 でおよそ0.3秒）
+	UPROPERTY(EditAnywhere, Category = "Echo|HP|Heal", meta = (ClampMin = "0.1"))
+	float m_HealFillSpeed = 10.f;
+
+	//増えている間の光の色（HPFlashBar を使って光らせる）
+	UPROPERTY(EditAnywhere, Category = "Echo|HP|Heal")
+	FLinearColor m_HealFillColor = FLinearColor(0.7f, 1.f, 0.7f, 0.8f);
+
 private:
 	FDelegateHandle m_HPHandle;
 	float m_HPRatio = 1.f;
@@ -162,6 +171,11 @@ private:
 	float m_ShakeRemain = 0.f;      //揺れの残り時間
 	float m_ShakeStrength = 0.f;    //今回の揺れの大きさ
 	float m_VignetteOpacity = 0.f;  //画面端の赤の今の濃さ
+
+	float m_DisplayHPRatio = 1.f;   //バーに表示しているHP（増えるときだけ、少し遅れて追いつく）
+	float m_HealFillGlow = 0.f;     //増えている間に光らせる強さ
+
+	void UpdateHPBar(float DeltaTime);
 
 	void UpdateDamageFeedback(float DeltaTime);
 
@@ -315,8 +329,16 @@ private:
 	float m_EnergyPopScale = 1.f;    //ポンッと膨らんだ大きさ
 	bool  m_bEnergyMax = false;      //最大かどうか
 	float m_BeatTime = 0.f;          //鼓動の経過時間
+	float m_EnergyTargetRatio = 0.f;     //実際のエネルギー（ゲージ全体に対する割合）
+	float m_EnergyDisplayRatio = -1.f;   //ゲージに表示している量（減るときだけ遅れて追いつく）
+	float m_EnergyTotalMax = 0.f;        //ゲージ全体のエネルギー量
+	float m_ChargeReservedRatio = 0.f;   //ため中に減らした分（ゲージ全体に対する割合）
+	int32 m_LastChargeLevel = 0;         //前回のため段階（上がった瞬間を見る）
+	float m_ChargeLevelFlash = 0.f;      //段階が上がった瞬間の光（1 → 0）
 
 	void UpdateEnergyFeedback(float DeltaTime);
 	float CalcBeat() const;
 	void PlaceStockFlash(float FromRatio, float ToRatio);
+
+	void UpdateEnergyBar(float DeltaTime);
 };

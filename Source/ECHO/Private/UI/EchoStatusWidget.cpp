@@ -2,6 +2,7 @@
 
 #include "UI/EchoStatusWidget.h"
 #include "Player/ActionCharacter.h"
+#include "Player/SkillComponent.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Components/HorizontalBox.h"
@@ -54,8 +55,14 @@ void UEchoStatusWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
 	//被弾したときの赤い光と揺れ
 	UpdateDamageFeedback(InDeltaTime);
 
+	//エネルギーゲージ：使ったときは滑らかに減らす
+	UpdateEnergyBar(InDeltaTime);
+
 	//エネルギー：1本たまったときの光と、最大のときの鼓動
 	UpdateEnergyFeedback(InDeltaTime);
+
+	//HPバー：回復したときは滑らかに増やす
+	UpdateHPBar(InDeltaTime);
 
 	//HPバー、減った分の帯を、少し遅れて追いかけさせる
 	if (m_TrailRatio > m_HPRatio)
@@ -157,13 +164,9 @@ void UEchoStatusWidget::HandleEnergyChanged(float Current, float Max)
 		Ratio = FMath::Clamp((Current - Stock * PerStock) / PerStock, 0.f, 1.f);
 	}
 
-	//画像の左の四角ぶんをずらして、中身の部分だけが0→100%になるように変換
-	if (EnergyBar)
-	{
-		const float TotalMax = PerStock * MaxStock;
-		const float Total = TotalMax > 0.f ? FMath::Clamp(Current / TotalMax, 0.f, 1.f) : 0.f;
-		EnergyBar->SetPercent(FMath::Lerp(m_BarStartRatio, m_BarEndRatio, Total));
-	}
+	//ゲージ全体に対する割合（実際の表示は、ため中の分も合わせて UpdateEnergyBar で行う）
+	m_EnergyTotalMax = PerStock * MaxStock;
+	m_EnergyTargetRatio = m_EnergyTotalMax > 0.f ? FMath::Clamp(Current / m_EnergyTotalMax, 0.f, 1.f) : 0.f;
 
 	//--- 演出：本数が増えた瞬間／最大かどうか ---
 	if (m_LastStock >= 0 && Stock > m_LastStock)
@@ -253,13 +256,17 @@ void UEchoStatusWidget::HandleHPChanged(float Current, float Max)
 			FMath::Clamp(Damage / m_ShakeFullDamage, 0.f, 1.f));
 	}
 
-	//回復したときは帯もすぐ合わせる
-	m_TrailRatio = FMath::Max(m_TrailRatio, NewRatio);
 	m_HPRatio = NewRatio;
 
-	if (HPBar)      HPBar->SetPercent(ToHPBarPercent(m_HPRatio));
+	//減ったときは、表示もすぐ合わせる（増えたときは UpdateHPBar で滑らかに増やす）
+	if (m_DisplayHPRatio > m_HPRatio)
+	{
+		m_DisplayHPRatio = m_HPRatio;
+	}
+
+	if (HPBar)      HPBar->SetPercent(ToHPBarPercent(m_DisplayHPRatio));
+	if (HPFlashBar) HPFlashBar->SetPercent(ToHPBarPercent(m_DisplayHPRatio));
 	if (HPTrailBar) HPTrailBar->SetPercent(ToHPBarPercent(m_TrailRatio));
-	if (HPFlashBar) HPFlashBar->SetPercent(ToHPBarPercent(m_HPRatio));
 }
 
 void UEchoStatusWidget::HandleHealCountChanged(int32 Count, int32 Max)
@@ -376,7 +383,7 @@ void UEchoStatusWidget::UpdateEnergyFeedback(float DeltaTime)
 {
 	// --- 最大のとき：鼓動を進める ---
 	float Beat = 0.f;
-	if (m_bEnergyMax)
+	if (m_bEnergyMax && m_ChargeReservedRatio <= 0.f)
 	{
 		m_BeatTime += DeltaTime;
 		Beat = CalcBeat();
@@ -411,6 +418,15 @@ void UEchoStatusWidget::UpdateEnergyFeedback(float DeltaTime)
 		PlaceStockFlash(
 			static_cast<float>(m_FlashFromStock) / m_MaxStockCache,
 			static_cast<float>(m_FlashToStock) / m_MaxStockCache);
+	}
+	else if (m_ChargeReservedRatio > 0.f)
+	{
+		//ため中：減らした区間を脈打つように光らせる（段階が上がった瞬間は強く、少し膨らむ）
+		const float Time = GetWorld() ? GetWorld()->GetRealTimeSeconds() : 0.f;
+		const float Pulse = 0.35f + 0.25f * FMath::Sin(Time * 2.f * PI * 3.f);
+		Alpha = FMath::Max(Pulse, m_ChargeLevelFlash);
+		Scale = 1.f + 0.2f * m_ChargeLevelFlash;
+		PlaceStockFlash(m_EnergyDisplayRatio, m_EnergyTargetRatio);
 	}
 	else if (m_bEnergyMax)
 	{
@@ -452,4 +468,58 @@ void UEchoStatusWidget::PlaceStockFlash(float FromRatio, float ToRatio)
 
 	EnergyStockFlash->SetDesiredSizeOverride(FVector2D(X1 - X0, BarSize.Y));
 	EnergyStockFlash->SetRenderTranslation(FVector2D(X0, 0.f));
+}
+
+void UEchoStatusWidget::UpdateHPBar(float DeltaTime)
+{
+	const bool bFilling = m_DisplayHPRatio < m_HPRatio;
+
+	if (bFilling)
+	{
+		//最初は速く、最後はなめらかに（ただし最後がダラダラ長引かないよう、最低限の速さも足す）
+		const float Smooth = FMath::FInterpTo(m_DisplayHPRatio, m_HPRatio, DeltaTime, m_HealFillSpeed);
+		const float Linear = m_DisplayHPRatio + 0.3f * DeltaTime;
+		m_DisplayHPRatio = FMath::Min(m_HPRatio, FMath::Max(Smooth, Linear));
+
+		if (HPBar)      HPBar->SetPercent(ToHPBarPercent(m_DisplayHPRatio));
+		if (HPFlashBar) HPFlashBar->SetPercent(ToHPBarPercent(m_DisplayHPRatio));
+	}
+
+	//減った分の帯は、増えていくバーより短く残らないようにそろえる
+	if (m_TrailRatio < m_DisplayHPRatio)
+	{
+		m_TrailRatio = m_DisplayHPRatio;
+		if (HPTrailBar) HPTrailBar->SetPercent(ToHPBarPercent(m_TrailRatio));
+	}
+
+	//増えている間は、バーを明るい緑に光らせる（被弾の赤い光が出ているときは、そちらを優先）
+	m_HealFillGlow = FMath::FInterpTo(m_HealFillGlow, bFilling ? 1.f : 0.f, DeltaTime, 12.f);
+	if (HPFlashBar && m_FlashRemain <= 0.f && m_HealFillGlow > 0.01f)
+	{
+		FLinearColor Color = m_HealFillColor;
+		Color.A *= m_HealFillGlow;
+		HPFlashBar->SetFillColorAndOpacity(Color);
+	}
+}
+
+void UEchoStatusWidget::UpdateEnergyBar(float DeltaTime)
+{
+	//ため中は、減らした分（放ったら使う分）をゲージから引いて見せる
+	const USkillComponent* Skill = Player.IsValid() ? Player->SkillComponent : nullptr;
+	const float Drained = Skill ? Skill->GetChargeDrainedEnergy() : 0.f;
+	m_ChargeReservedRatio = (m_EnergyTotalMax > 0.f) ? FMath::Min(Drained / m_EnergyTotalMax, m_EnergyTargetRatio) : 0.f;
+	m_EnergyDisplayRatio = m_EnergyTargetRatio - m_ChargeReservedRatio;
+
+	//段階が上がった瞬間：ゲージをポンッと膨らませて、強く光らせる
+	const int32 ChargeLevel = (Skill && Skill->IsCharging()) ? Skill->GetChargeLevel() : 0;
+	if (ChargeLevel > m_LastChargeLevel)
+	{
+		m_EnergyPopScale = m_StockPopScale;
+		m_ChargeLevelFlash = 1.f;
+	}
+	m_LastChargeLevel = ChargeLevel;
+	m_ChargeLevelFlash = FMath::Max(0.f, m_ChargeLevelFlash - DeltaTime * 3.f);
+
+	//（画像の左の四角ぶんをずらして、中身の部分だけが0→100%になるように変換して表示）
+	if (EnergyBar) EnergyBar->SetPercent(FMath::Lerp(m_BarStartRatio, m_BarEndRatio, m_EnergyDisplayRatio));
 }

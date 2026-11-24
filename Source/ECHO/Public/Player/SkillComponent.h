@@ -12,6 +12,7 @@ class UAnimMontage;
 class AActionCharacter;
 class USpringArmComponent;
 class UNiagaraComponent;
+class UNiagaraSystem;
 struct FUltimateLevelData;
 class UCameraShakeBase;
 
@@ -50,6 +51,9 @@ public:
 	//ため中以外の技の最中は無敵
 	bool IsInvincible() const { return IsBusy() && !IsCharging(); }
 	int32 GetChargeLevel() const { return m_ChargeLevel; }
+
+	//ため中に減らしたエネルギー（放つとこの分を使う）。ため中でなければ 0。UI の表示用
+	float GetChargeDrainedEnergy() const { return IsCharging() ? m_ChargeDrained : 0.f; }
 
 	//アニメーション通知から呼ぶ（ABP の AnimNotify_SkillHit / AnimNotify_SkillFinish）
 	UFUNCTION(BlueprintCallable, Category = "Skill")
@@ -129,6 +133,8 @@ private:
 	// --- 最終奥義 ---
 	float m_ChargeTime = 0.f;
 	int32 m_ChargeLevel = 0;
+	float m_ChargeDrained = 0.f;                    //ため中に減らしたエネルギー
+	float m_PillarFallElapsed = -1.f;               //光の柱を放ってからの時間（-1 なら出ていない）
 	int32 m_UltLevel = 0;
 	int32 m_UltHitsLeft = 0;
 	FVector m_UltOrigin = FVector::ZeroVector;   //放った位置
@@ -146,6 +152,8 @@ private:
 	AActionCharacter* GetOwnerCharacter() const;
 	bool CanStart() const;
 	bool TryConsume(int32 Cost);
+	int32 GetUltimateStockCost(int32 Level) const;   //その段階で使うゲージの本数
+	int32 GetAffordableUltimateLevel() const;        //今のゲージで払える一番上の段階
 	void BeginSkill(ESkillState NewState);
 	void FinishSkill(float RecoveryTime);
 	void EndSkill();
@@ -174,5 +182,10 @@ private:
 	void ClearChargeEffect();
 	void StopChargeGroundEffect();
 	void StopBeamEffect();
+	void SpawnChargeGroundEffect();                                   //足元のエフェクトを出す
+	UNiagaraComponent* SpawnPillar(UNiagaraSystem* Effect, float FallAlpha);  //光の柱を足元に出す
+	FQuat GetPillarRotation(float FallAlpha) const;                   //0=立っている、1=倒れきった
+	FVector GetPillarLocation(float FallAlpha) const;                 //0=立っている位置、1=倒れきった位置
+	void UpdatePillarFall(float DeltaTime);                           //放ったあと前に倒す
 	int32 DamageInWedge(const FVector& Origin, const FVector& Dir, const FUltimateLevelData& Level);
 };

@@ -1006,6 +1006,14 @@ bool AActionCharacter::TryConsumeEnergyStock(int32 Count)
 	return true;
 }
 
+bool AActionCharacter::TryConsumeEnergy(float Amount)
+{
+	if (Amount <= 0.f) return true;
+	if (m_CurrentEnergy + KINDA_SMALL_NUMBER < Amount) return false;
+	SetEnergy(m_CurrentEnergy - Amount);
+	return true;
+}
+
 void AActionCharacter::DebugEnergy(float Amount)
 {
 	SetEnergy(m_CurrentEnergy + Amount);

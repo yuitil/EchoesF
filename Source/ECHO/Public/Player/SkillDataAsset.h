@@ -219,6 +219,10 @@ struct FUltimateLevelData
 
 	UPROPERTY(EditAnywhere, Category = "Ultimate", meta = (ClampMin = "0"))
 	float m_RecoveryTime = 0.6f;
+
+	//この段階で使うゲージの本数（合計）。0 なら段階の番号と同じ本数（1段=1本、2段=2本…）
+	UPROPERTY(EditAnywhere, Category = "Ultimate", meta = (ClampMin = "0"))
+	int32 m_StockCost = 0;
 };
 
 USTRUCT(BlueprintType)
@@ -260,7 +264,7 @@ struct FUltimateData
 	UPROPERTY(EditAnywhere, Category = "Ultimate")
 	FRotator m_ChargeEffectRotation = FRotator(-90.f, 0.f, 0.f);
 
-	//1段階上がるのにかかる時間
+	//ゲージが1本ぶん減るのにかかる時間（ため中はこの速さで一定に減っていく）
 	UPROPERTY(EditAnywhere, Category = "Ultimate", meta = (ClampMin = "0.05"))
 	float m_ChargeStepTime = 0.5f;
 
@@ -272,7 +276,32 @@ struct FUltimateData
 	UPROPERTY(EditAnywhere, Category = "Ultimate", meta = (ClampMin = "0"))
 	float m_ReleaseDelay = 0.25f;
 
-	//段階ごとの性能 [0]=1段 … [4]=5段（要素数が最大段数になる）
+	// --- 光の柱（ため中に出すエフェクト。各段階の ChargeEffect） ---
+	//立っている頭の上の位置
+	UPROPERTY(EditAnywhere, Category = "Ultimate|Pillar")
+	FVector m_PillarOffset = FVector::ZeroVector;
+
+	//エフェクトがまっすぐ上を向く回転（エディタ上の X＝Roll、Y＝Pitch、Z＝Yaw）
+	UPROPERTY(EditAnywhere, Category = "Ultimate|Pillar")
+	FRotator m_PillarUpRotation = FRotator::ZeroRotator;
+
+	//離したときに前へ倒れる角度（90 で地面と平行）
+	UPROPERTY(EditAnywhere, Category = "Ultimate|Pillar", meta = (ClampMin = "0", ClampMax = "180"))
+	float m_PillarFallAngle = 90.f;
+
+	//離してから倒れきるまでの時間
+	UPROPERTY(EditAnywhere, Category = "Ultimate|Pillar", meta = (ClampMin = "0.01"))
+	float m_PillarFallTime = 0.25f;
+
+	//倒れきったときの位置（足元から。X=前、Y=右、Z=上）
+	UPROPERTY(EditAnywhere, Category = "Ultimate|Pillar")
+	FVector m_PillarFallOffset = FVector(0.f, 0.f, 120.f);
+
+	//倒れきってから消すまでの時間
+	UPROPERTY(EditAnywhere, Category = "Ultimate|Pillar", meta = (ClampMin = "0"))
+	float m_PillarHoldTime = 0.3f;
+
+	//段階ごとの性能 [0]=1段 … （要素数が最大段数。消費する本数は各段階の m_StockCost）
 	UPROPERTY(EditAnywhere, Category = "Ultimate")
 	TArray<FUltimateLevelData> Levels;
 };

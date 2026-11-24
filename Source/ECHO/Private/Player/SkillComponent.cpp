@@ -24,6 +24,7 @@
 #include "DrawDebugHelpers.h"
 #include "Camera/CameraShakeBase.h"
 #include "GameFramework/PlayerController.h"
+#include "NiagaraSystem.h"
 
 static const FName SkillDashRootMotionName(TEXT("SkillDash"));
 
@@ -653,26 +654,22 @@ void USkillComponent::OnTempestMontageEnded(UAnimMontage* Montage, bool bInterru
 bool USkillComponent::StartCharge()
 {
 	if (!CanStart()) return false;
-	AActionCharacter* Owner = GetOwnerCharacter();
-	if (Owner->GetEnergyStock() < 1)
+	if (GetAffordableUltimateLevel() < 1)
 	{
-		if (m_bDebugDraw) GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Orange, TEXT("Not enough stock (need 1)"));
+		if (m_bDebugDraw) GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Orange,
+			FString::Printf(TEXT("Not enough stock (need %d)"), GetUltimateStockCost(1)));
 		return false;
 	}
 
 	BeginSkill(ESkillState::Charging);
 	m_ChargeTime = 0.f;
 	m_ChargeLevel = 0;
+	m_ChargeDrained = 0.f;
 	SetMoveSpeedRate(SkillData->Ultimate.m_ChargeMoveSpeedRate);
 	PlayMontage(SkillData->Ultimate.ChargeMontage);
 
 	//足元のエフェクト（ためている間だけ出す）
-	if (UNiagaraSystem* Ground = SkillData->Ultimate.ChargeGroundEffect)
-	{
-		const float HalfHeight = Owner->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-		m_ChargeGroundFX = UNiagaraFunctionLibrary::SpawnSystemAttached(Ground, Owner->GetRootComponent(), NAME_None,
-			FVector(0.f, 0.f, -HalfHeight), FRotator::ZeroRotator, EAttachLocation::KeepRelativeOffset, true);
-	}
+	SpawnChargeGroundEffect();
 	SetComponentTickEnabled(true);
 	return true;
 }
@@ -682,21 +679,33 @@ void USkillComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	UpdateOverheadCamera(DeltaTime);
+	UpdatePillarFall(DeltaTime);
 
 	if (!IsCharging())
 	{
-		//カメラの切り替えも終わっていれば Tick を止める
-		if (m_CamBlendDir == 0) SetComponentTickEnabled(false);
+		//カメラの切り替えも、光の柱も終わっていれば Tick を止める
+		if (m_CamBlendDir == 0 && m_PillarFallElapsed < 0.f) SetComponentTickEnabled(false);
 		return;
 	}
 
 	const FUltimateData& U = SkillData->Ultimate;
+	const AActionCharacter* Owner = GetOwnerCharacter();
+	const float PerStock = Owner->GetEnergyPerStock();
 	m_ChargeTime += DeltaTime;
 
-	//上限は「段階データの数」と「今持っているストック」の小さい方
+	//ゲージは一定の速さで減っていく（1本ぶん減るのに m_ChargeStepTime 秒）
+	//減らせる上限は「今のゲージで払える一番上の段階」の本数ぶん
 	//（ため中に分身がエネルギーを稼げば、さらに上までためられる）
-	const int32 MaxLevel = FMath::Min(U.Levels.Num(), GetOwnerCharacter()->GetEnergyStock());
-	const int32 NewLevel = FMath::Min(FMath::FloorToInt(m_ChargeTime / U.m_ChargeStepTime), MaxLevel);
+	const int32 MaxLevel = GetAffordableUltimateLevel();
+	const float Cap = FMath::Min(GetUltimateStockCost(MaxLevel) * PerStock, Owner->GetCurrentEnergy());
+	m_ChargeDrained = FMath::Min(m_ChargeDrained + PerStock / U.m_ChargeStepTime * DeltaTime, Cap);
+
+	//段階は「減らした量」で決まる（例：1段=1本、2段=3本、3段=5本）
+	int32 NewLevel = 0;
+	for (int32 i = 1; i <= MaxLevel; ++i)
+	{
+		if (m_ChargeDrained + KINDA_SMALL_NUMBER >= GetUltimateStockCost(i) * PerStock) NewLevel = i;
+	}
 
 	if (NewLevel != m_ChargeLevel)
 	{
@@ -708,7 +717,7 @@ void USkillComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 	}
 }
 
-//剣にまとわせるエフェクトを、今の段階のものに差し替える
+//光の柱を、今の段階のエフェクトに差し替える（ずっと出し続けるのはエフェクト側のループで行う）
 void USkillComponent::UpdateChargeEffect()
 {
 	if (m_ChargeLevel <= 0)
@@ -717,21 +726,16 @@ void USkillComponent::UpdateChargeEffect()
 		return;
 	}
 
-	const FUltimateData& U = SkillData->Ultimate;
-	UNiagaraSystem* Effect = U.Levels[m_ChargeLevel - 1].ChargeEffect;
+	UNiagaraSystem* Effect = SkillData->Ultimate.Levels[m_ChargeLevel - 1].ChargeEffect;
 
-	//同じエフェクトのままなら出し直さない（段階が上がるたびに途切れないように）
-	if (UNiagaraComponent* Current = m_ChargeFX.Get())
+	//同じエフェクトのままなら出し直さない（段階が上がっても途切れないように）
+	if (const UNiagaraComponent* Current = m_ChargeFX.Get())
 	{
 		if (Current->GetAsset() == Effect) return;
 	}
 
 	ClearChargeEffect();
-	UStaticMeshComponent* Weapon = GetOwnerCharacter()->GetWeaponMesh();
-	if (!Effect || !Weapon) return;
-
-	m_ChargeFX = UNiagaraFunctionLibrary::SpawnSystemAttached(Effect, Weapon, U.m_ChargeEffectSocket,
-		FVector::ZeroVector, U.m_BeamRotationOffset, EAttachLocation::SnapToTarget, true);
+	m_ChargeFX = SpawnPillar(Effect, 0.f);
 }
 
 void USkillComponent::ClearChargeEffect()
@@ -749,18 +753,20 @@ void USkillComponent::ReleaseCharge()
 
 	const FUltimateData& U = SkillData->Ultimate;
 	AActionCharacter* Owner = GetOwnerCharacter();
-	SetComponentTickEnabled(false);
 	SetMoveSpeedRate(1.f);
-	//剣のエフェクトは放ったあとも振り下ろしに合わせて残し、決めた時間で止める
+	//光の柱は放ったあとも残して前に倒し、決めた時間で止める
 	StopBeamEffect();
 	m_BeamFX = m_ChargeFX;
 	m_ChargeFX.Reset();
-	GetWorld()->GetTimerManager().SetTimer(m_BeamTimer, this,
-		&USkillComponent::StopBeamEffect, U.m_BeamDuration, false);
+
+	//前に倒し始める（倒れきって m_PillarHoldTime たったら UpdatePillarFall で消す）
+	if (m_BeamFX.IsValid()) m_PillarFallElapsed = 0.f;
+
 	StopChargeGroundEffect();
 
 	//1段もたまっていなければ何もせず終わり（ゲージは減らない）
-	if (m_ChargeLevel <= 0 || !TryConsume(m_ChargeLevel))
+	//たまっていれば、ため中に減らした分（ゲージで見えていた分）をそのまま使う
+	if (m_ChargeLevel <= 0 || !Owner->TryConsumeEnergy(m_ChargeDrained))
 	{
 		if (U.ChargeMontage) Owner->StopAnimMontage(U.ChargeMontage);
 		EndSkill();
@@ -823,16 +829,8 @@ void USkillComponent::Ultimate_Fire()
 		const FUltimateData& U = SkillData->Ultimate;
 		StopBeamEffect();
 
-		//剣にくっつけて出す（振り下ろしに合わせて光も動く）
-		if (UStaticMeshComponent* Weapon = Owner->GetWeaponMesh())
-		{
-			m_BeamFX = UNiagaraFunctionLibrary::SpawnSystemAttached(L.BeamEffect, Weapon, U.m_BeamSocket,
-				FVector::ZeroVector, U.m_BeamRotationOffset, EAttachLocation::SnapToTarget, true);
-		}
-		else
-		{
-			m_BeamFX = UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, L.BeamEffect, m_UltOrigin, m_UltDir.Rotation());
-		}
+		//プレイヤーの足元から、前に倒れた（地面と平行な）向きで出す
+		m_BeamFX = SpawnPillar(L.BeamEffect, 1.f);
 
 		//決めた時間がたったら止める（出しっぱなしにしない）
 		GetWorld()->GetTimerManager().SetTimer(m_BeamTimer, this,
@@ -949,20 +947,114 @@ void USkillComponent::PlayImpactShake(float Scale)
 
 void USkillComponent::StopChargeGroundEffect()
 {
-	//新しく出すのをやめて、出ている分は自然に消えるのを待つ（消えたら自動で破棄される）
+	//離した瞬間に消す（粒が残らないように、すぐ破棄する）
 	if (UNiagaraComponent* FX = m_ChargeGroundFX.Get())
 	{
-		FX->Deactivate();
+		FX->DestroyComponent();
 	}
 	m_ChargeGroundFX.Reset();
 }
 
 void USkillComponent::StopBeamEffect()
 {
+	//倒し終わったら、その場で消して終わり
 	if (UNiagaraComponent* FX = m_BeamFX.Get())
 	{
-		FX->Deactivate();
+		FX->DestroyComponent();
 	}
 	m_BeamFX.Reset();
+	m_PillarFallElapsed = -1.f;
 	GetWorld()->GetTimerManager().ClearTimer(m_BeamTimer);
+}
+
+//その段階で使うゲージの本数（データで 0 のときは、段階の番号と同じ本数）
+int32 USkillComponent::GetUltimateStockCost(int32 Level) const
+{
+	if (!SkillData) return 0;
+	const TArray<FUltimateLevelData>& Levels = SkillData->Ultimate.Levels;
+	if (!Levels.IsValidIndex(Level - 1)) return 0;
+
+	const int32 Cost = Levels[Level - 1].m_StockCost;
+	return (Cost > 0) ? Cost : Level;
+}
+
+//今持っているゲージで払える、一番上の段階（1本も足りなければ 0）
+int32 USkillComponent::GetAffordableUltimateLevel() const
+{
+	const AActionCharacter* Owner = GetOwnerCharacter();
+	if (!Owner || !SkillData) return 0;
+
+	const int32 Stock = Owner->GetEnergyStock();
+	int32 Level = 0;
+	for (int32 i = 1; i <= SkillData->Ultimate.Levels.Num(); ++i)
+	{
+		if (GetUltimateStockCost(i) > Stock) break;
+		Level = i;
+	}
+	return Level;
+}
+
+//足元のエフェクトを出す（ため開始時と、途中で消えたときの出し直しで使う）
+void USkillComponent::SpawnChargeGroundEffect()
+{
+	AActionCharacter* Owner = GetOwnerCharacter();
+	UNiagaraSystem* Ground = SkillData ? SkillData->Ultimate.ChargeGroundEffect.Get() : nullptr;
+	if (!Owner || !Ground) return;
+
+	const float HalfHeight = Owner->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	m_ChargeGroundFX = UNiagaraFunctionLibrary::SpawnSystemAttached(Ground, Owner->GetRootComponent(), NAME_None,
+		FVector(0.f, 0.f, -HalfHeight), FRotator::ZeroRotator, EAttachLocation::KeepRelativeOffset, true);
+}
+
+//光の柱をプレイヤーの足元に出す（剣のソケットは使わない）
+UNiagaraComponent* USkillComponent::SpawnPillar(UNiagaraSystem* Effect, float FallAlpha)
+{
+	AActionCharacter* Owner = GetOwnerCharacter();
+	if (!Effect || !Owner || !SkillData) return nullptr;
+
+	return UNiagaraFunctionLibrary::SpawnSystemAttached(Effect, Owner->GetRootComponent(), NAME_None,
+		GetPillarLocation(FallAlpha), GetPillarRotation(FallAlpha).Rotator(),
+		EAttachLocation::KeepRelativeOffset, true);
+}
+
+//光の柱の位置：立っている位置から、倒れきった位置へ（どちらも足元から測る）
+FVector USkillComponent::GetPillarLocation(float FallAlpha) const
+{
+	const FUltimateData& U = SkillData->Ultimate;
+	const AActionCharacter* Owner = GetOwnerCharacter();
+	const float HalfHeight = Owner ? Owner->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() : 0.f;
+	return FVector(0.f, 0.f, -HalfHeight) + FMath::Lerp(U.m_PillarOffset, U.m_PillarFallOffset, FallAlpha);
+}
+
+//光の柱の向き：立っている向きに、キャラの横軸まわりの「前への倒れ」を足す
+FQuat USkillComponent::GetPillarRotation(float FallAlpha) const
+{
+	const FUltimateData& U = SkillData->Ultimate;
+	const FQuat Fall(FRotator(-U.m_PillarFallAngle * FallAlpha, 0.f, 0.f));
+	return Fall * FQuat(U.m_PillarUpRotation);
+}
+
+//放ったあと：足元を軸に前へ倒す。止めるまでは、エフェクトが終わっても出し直す
+void USkillComponent::UpdatePillarFall(float DeltaTime)
+{
+	if (m_PillarFallElapsed < 0.f || !SkillData) return;
+
+	const FUltimateData& U = SkillData->Ultimate;
+	m_PillarFallElapsed += DeltaTime;
+
+	//倒れきって、少し見せたら消して終わり（出し直さない）
+	if (m_PillarFallElapsed >= U.m_PillarFallTime + U.m_PillarHoldTime)
+	{
+		StopBeamEffect();
+		return;
+	}
+
+	//最初はゆっくり、最後は速く（振り下ろす勢い）
+	const float T = FMath::Clamp(m_PillarFallElapsed / U.m_PillarFallTime, 0.f, 1.f);
+	const float Alpha = T * T;
+
+	if (UNiagaraComponent* FX = m_BeamFX.Get())
+	{
+		FX->SetRelativeLocationAndRotation(GetPillarLocation(Alpha), GetPillarRotation(Alpha));
+	}
 }

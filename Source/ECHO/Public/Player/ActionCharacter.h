@@ -247,6 +247,9 @@ public:
 	//ゲージ（ストック）を消費する。足りなければ false
 	bool TryConsumeEnergyStock(int32 Count);
 
+	//エネルギーを量で消費する（足りなければ false で、減らさない）
+	bool TryConsumeEnergy(float Amount);
+
 	//デバッグ用：コンソールで「DebugEnergy 500」と打つとエネルギーが増える
 	UFUNCTION(Exec)
 	void DebugEnergy(float Amount = 500.f);
