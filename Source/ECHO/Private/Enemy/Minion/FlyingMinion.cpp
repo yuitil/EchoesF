@@ -44,6 +44,8 @@ void AFlyingMinion::Tick(float _delta)
 
 	//相手に近すぎると離れ、遠すぎると近づく。
 	FVector direction = FVector::ZeroVector;
+	const float elapsed = GetWorld()->GetTimeSeconds() - m_spawnUntil;
+	const float phase = elapsed * UE_TWO_PI / FMath::Max(1.f, m_flightPeriod);
 	if (IsValid(m_combatTarget))
 	{
 		const FVector offset = m_combatTarget->GetActorLocation() - here;
@@ -54,12 +56,13 @@ void AFlyingMinion::Tick(float _delta)
 
 		//近づく時も離れる時も、BPで決めた横移動を加える。
 		const FVector side = FVector::CrossProduct(FVector::UpVector, forward);
-		direction += side * m_sideSpeed;
+		direction += side * (m_sideSpeed * FMath::Cos(phase * .5f));
 	}
 
 	//高さのずれを緩やかに直す。
-	const float height = floor.ImpactPoint.Z + m_hoverHeight - here.Z;
-	direction.Z = FMath::Clamp(height / m_hoverHeight, -1.f, 1.f);
+	const float rise = m_heightTravel * (.5f - .5f * FMath::Cos(phase));
+	const float height = floor.ImpactPoint.Z + m_hoverHeight + rise - here.Z;
+	direction.Z = FMath::Clamp(height / FMath::Max(1.f, m_hoverHeight), -1.f, 1.f);
 
 	//壁は横方向だけ調べ、下降先の床を壁として扱わない。
 	const FVector wallDirection = direction.GetSafeNormal2D();

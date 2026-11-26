@@ -14,8 +14,9 @@ void UEnemyHealthWidget::SetEnemy(AEnemyCharacterBase* _enemy)
 	m_openAge = 0.f;
 	if (Cast<ABossEnemyCharacter>(_enemy) && !m_postureMode && m_openTime > 0.f)
 	{
-		//文字と必殺技ゲージは元の形に保つ。
-		for (FName name : { FName("Image_0"), FName("m_healthBar"), FName("m_trailBar"), FName("HitFlash"), m_phaseGlowName })
+		//同じ枠に収まる二つのゲージを、中央から一緒に開く。
+		const FName parts[] = { "Image_0", "m_healthBar", "m_trailBar", "HitFlash", "UltimateBar", m_phaseGlowName };
+		for (FName name : parts)
 		{
 			auto* part = GetWidgetFromName(name);
 			if (!part) { continue; }

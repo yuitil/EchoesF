@@ -22,6 +22,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flight", meta = (ClampMin = "50"))
 	float m_hoverHeight = 160.f;
 
+	//旋回中に上昇する幅。低い位置では剣が届く高さに戻る。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flight", meta = (ClampMin = "0", Units = "cm"))
+	float m_heightTravel = 190.f;
+
+	//上昇して元の高さに戻るまでの秒数。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flight", meta = (ClampMin = "1", Units = "s"))
+	float m_flightPeriod = 5.f;
+
 	//射撃するときに保つ距離。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flight", meta = (ClampMin = "100"))
 	float m_shotRange = 650.f;

@@ -73,6 +73,9 @@ void UMinionUpdateCombat::TickNode(UBehaviorTreeComponent& _ownerComp, uint8* _n
 
 	enemy->m_combatTarget = target;
 
+	//押し戻されて次の一撃が届かなくなったら、追跡を再開する。
+	enemy->CheckComboRange();
+
 	//生きていて戦闘できるか。
 	bool alive = enemy->IsCombatActive();
 

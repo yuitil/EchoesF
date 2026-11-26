@@ -223,7 +223,11 @@ void UMinionCombatDirector::Update()
 
 			//敵の行動を操作するAI。
 			auto* ai = Cast<AAIController>(enemy->GetController());
-			if (!ai || !ai->LineOfSightTo(target) || distance > member->m_joinRange)
+			//攻撃役がいない時は、加勢の距離より外でも検知範囲から接近する。
+			const float joinRange = active.IsEmpty()
+				? FMath::Max(member->m_joinRange, enemy->m_targeting->m_range)
+				: member->m_joinRange;
+			if (!ai || !ai->LineOfSightTo(target) || distance > joinRange)
 			{
 				continue;
 			}
@@ -254,12 +258,19 @@ void UMinionCombatDirector::Update()
 			}
 
 			//移動する敵は相手までの道がある時だけ選ぶ。
-			if (!enemy->m_stationary)
+			//すでに間合いにいる敵は、相手の足元までの経路を必要としない。
+			if (!enemy->m_stationary && distance > enemy->GetMeleeDistance())
 			{
 
 				//目的地までの移動経路。
-				auto* path = UNavigationSystemV1::FindPathToLocationSynchronously(GetWorld(), enemy->GetActorLocation(), target->GetActorLocation(), enemy);
-				if (!path || !path->IsValid() || path->IsPartial()) { continue; }
+				const FVector goal = target->GetActorLocation();
+				const FVector start = enemy->GetNavAgentLocation();
+				auto* path = UNavigationSystemV1::FindPathToLocationSynchronously(GetWorld(), start, goal, enemy);
+				if (!path || !path->IsValid() || path->PathPoints.IsEmpty()) { continue; }
+
+				//床の端で相手が止まっていても、剣の届く所まで歩ければ参加できる。
+				const float remaining = FVector::Dist2D(path->PathPoints.Last(), goal);
+				if (path->IsPartial() && remaining > enemy->GetMeleeDistance()) { continue; }
 			}
 
 			//隙を見つけてすぐ飛び込まず、続いているか待って確かめる。
